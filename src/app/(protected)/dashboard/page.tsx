@@ -1,36 +1,34 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { getUserSubscription } from '@/lib/subscription'
+import { redirect } from 'next/navigation'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { getActiveSubscription } from '@/lib/subscription/server'
 import LogoutButton from '@/components/layout/LogoutButton'
 
-export default function Dashboard() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(true)
+export default async function DashboardPage() {
+  const supabase = createSupabaseServerClient()
 
-  useEffect(() => {
-    const checkSubscription = async () => {
-      const subscription = await getUserSubscription()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-      if (!subscription) {
-        router.replace('/no-subscription')
-        return
-      }
+  if (!user) {
+    redirect('/login')
+  }
 
-      setLoading(false)
-    }
+  const subscription = await getActiveSubscription()
 
-    checkSubscription()
-  }, [router])
-
-  if (loading) {
-    return <p className="p-8">Loading...</p>
+  if (!subscription) {
+    redirect('/no-subscription')
   }
 
   return (
     <main className="p-8 space-y-6">
       <h1 className="text-2xl font-bold">Student Dashboard</h1>
+
+      <div className="bg-gray-900 p-4 rounded-lg">
+        <p>الاشتراك فعّال حتى:</p>
+        <p className="font-bold">{subscription.end_date}</p>
+      </div>
+
       <LogoutButton />
     </main>
   )
