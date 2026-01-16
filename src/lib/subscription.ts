@@ -1,16 +1,21 @@
-import { supabase } from '@/lib/supabase/client'
-import { isSubscriptionValid } from './utils'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 export const getUserSubscription = async () => {
-  const { data, error } = await supabase
+  const supabase = await createSupabaseServerClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return null
+
+  const { data } = await supabase
     .from('subscriptions')
     .select('*')
-    .order('end_date', { ascending: false })
-    .limit(1)
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .gte('end_date', new Date().toISOString())
     .single()
-
-  if (error || !data) return null
-  if (!isSubscriptionValid(data)) return null
 
   return data
 }
