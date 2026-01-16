@@ -1,16 +1,37 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { getUserSubscription } from '@/lib/subscription'
-import { redirect } from 'next/navigation'
+import LogoutButton from '@/components/layout/LogoutButton'
 
-export default async function Dashboard() {
-  const subscription = await getUserSubscription()
+export default function Dashboard() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
 
-  if (!subscription) {
-    redirect('/no-subscription')
+  useEffect(() => {
+    const checkSubscription = async () => {
+      const subscription = await getUserSubscription()
+
+      if (!subscription) {
+        router.replace('/no-subscription')
+        return
+      }
+
+      setLoading(false)
+    }
+
+    checkSubscription()
+  }, [router])
+
+  if (loading) {
+    return <p className="p-8">Loading...</p>
   }
 
   return (
-    <main className="p-8">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
+    <main className="p-8 space-y-6">
+      <h1 className="text-2xl font-bold">Student Dashboard</h1>
+      <LogoutButton />
     </main>
   )
 }
