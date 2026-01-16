@@ -1,0 +1,87 @@
+.progressBarContainer {
+  position: fixed;
+  top: 70px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(74, 111, 165, 0.1);
+  z-index: 999;
+  overflow: hidden;
+}
+
+.darkTheme .progressBarContainer {
+  background: rgba(144, 202, 249, 0.1);
+}
+
+.progressBar {
+  height: 100%;
+  background: linear-gradient(90deg, #4a6fa5, #2e4a7a);
+  width: 0%;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.darkTheme .progressBar {
+  background: linear-gradient(90deg, #90caf9, #64b5f6);
+}
+
+.progressGlow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8));
+  animation: glowMove 2s ease-in-out infinite;
+}
+
+.progressText {
+  position: absolute;
+  right: 20px;
+  top: -35px;
+  background: white;
+  padding: 5px 12px;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #2e4a7a;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+}
+
+.darkTheme .progressText {
+  background: #2d2d2d;
+  color: #90caf9;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.progressBarContainer:hover .progressText {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.progressPercent {
+  font-weight: 700;
+}
+
+@keyframes glowMove {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(10px);
+  }
+}
+
+@media (max-width: 768px) {
+  .progressBarContainer {
+    top: 60px;
+    height: 3px;
+  }
+  
+  .progressText {
+    display: none;
+  }
+}

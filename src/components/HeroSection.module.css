@@ -1,0 +1,375 @@
+.heroSection {
+  padding: 4rem 2rem;
+  min-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.heroContent {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+/* المحتوى النصي */
+.textContent {
+  position: relative;
+}
+
+.heroTitle {
+  font-size: 3.5rem;
+  font-weight: 800;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(45deg, #2e4a7a, #4a6fa5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  opacity: 0;
+  transform: translateY(30px);
+  line-height: 1.2;
+}
+
+.animateTitle.visible {
+  animation: slideUp 0.8s ease forwards;
+}
+
+.heroDescription {
+  font-size: 1.4rem;
+  color: #555;
+  margin-bottom: 2.5rem;
+  line-height: 1.6;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.darkTheme .heroDescription {
+  color: #ccc;
+}
+
+.animateDescription.visible {
+  animation: slideUp 0.8s ease 0.3s forwards;
+}
+
+/* زر الدعوة */
+.ctaButton {
+  background: linear-gradient(45deg, #4a6fa5, #2e4a7a);
+  color: white;
+  border: none;
+  padding: 1rem 2.5rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  border-radius: 50px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  opacity: 0;
+  transform: translateY(20px);
+  box-shadow: 0 10px 30px rgba(74, 111, 165, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.animateButton.visible {
+  animation: slideUp 0.8s ease 0.6s forwards;
+}
+
+.ctaButton:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(74, 111, 165, 0.4);
+}
+
+.ctaButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.7s ease;
+}
+
+.ctaButton:hover::before {
+  left: 100%;
+}
+
+.buttonArrow {
+  font-size: 1.4rem;
+  transition: transform 0.3s ease;
+}
+
+.ctaButton:hover .buttonArrow {
+  transform: translateX(5px);
+}
+
+/* حاوية الصورة */
+.imageContainer {
+  position: relative;
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.animateImage.visible {
+  animation: slideLeft 0.8s ease 0.4s forwards;
+}
+
+.teacherImageWrapper {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.teacherImage {
+  width: 100%;
+  height: auto;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+  position: relative;
+  z-index: 2;
+  animation: float 6s ease-in-out infinite;
+}
+
+.imageCaption {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 10px 25px;
+  border-radius: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  z-index: 3;
+  animation: float 4s ease-in-out infinite 1s;
+}
+
+.darkTheme .imageCaption {
+  background: #2d2d2d;
+}
+
+.captionText {
+  font-size: 0.9rem;
+  color: #4a6fa5;
+  font-weight: 500;
+}
+
+.darkTheme .captionText {
+  color: #90caf9;
+}
+
+/* العناصر الطافية */
+.floatingElements {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.floatingElement1,
+.floatingElement2,
+.floatingElement3 {
+  position: absolute;
+  border-radius: 50%;
+  background: linear-gradient(45deg, rgba(74, 111, 165, 0.1), rgba(46, 74, 122, 0.1));
+  animation: floatAround 20s linear infinite;
+}
+
+.floatingElement1 {
+  width: 80px;
+  height: 80px;
+  top: 10%;
+  left: 5%;
+  animation-delay: 0s;
+}
+
+.floatingElement2 {
+  width: 60px;
+  height: 60px;
+  top: 70%;
+  right: 10%;
+  animation-delay: -5s;
+}
+
+.floatingElement3 {
+  width: 40px;
+  height: 40px;
+  bottom: 20%;
+  left: 20%;
+  animation-delay: -10s;
+}
+
+/* الشريط المائل */
+.slantBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(135deg, rgba(74, 111, 165, 0.1) 0%, rgba(46, 74, 122, 0.1) 100%);
+  transform: skewY(-2deg);
+  transform-origin: left;
+  overflow: hidden;
+  margin-top: 4rem;
+}
+
+.slantContent {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%) skewY(2deg);
+  text-align: center;
+  padding: 1rem;
+}
+
+.slantText {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2e4a7a;
+  background: linear-gradient(45deg, #2e4a7a, #4a6fa5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.darkTheme .slantText {
+  background: linear-gradient(45deg, #90caf9, #64b5f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.repeatingText {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  animation: scrollText 20s linear infinite;
+}
+
+.repeatingElement {
+  color: #4a6fa5;
+  font-size: 1.2rem;
+  opacity: 0.7;
+}
+
+/* الرسوم المتحركة */
+@keyframes slideUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideLeft {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes floatAround {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(30px, -30px) rotate(90deg);
+  }
+  50% {
+    transform: translate(0, -60px) rotate(180deg);
+  }
+  75% {
+    transform: translate(-30px, -30px) rotate(270deg);
+  }
+  100% {
+    transform: translate(0, 0) rotate(360deg);
+  }
+}
+
+@keyframes scrollText {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100px);
+  }
+}
+
+/* تحسينات للاستجابة */
+@media (max-width: 1024px) {
+  .heroContent {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    text-align: center;
+  }
+  
+  .heroTitle {
+    font-size: 2.8rem;
+  }
+  
+  .heroDescription {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .heroSection {
+    padding: 2rem 1rem;
+    min-height: 70vh;
+  }
+  
+  .heroTitle {
+    font-size: 2.2rem;
+  }
+  
+  .heroDescription {
+    font-size: 1.1rem;
+  }
+  
+  .ctaButton {
+    padding: 0.8rem 2rem;
+    font-size: 1rem;
+  }
+  
+  .slantBar {
+    height: 60px;
+  }
+  
+  .slantText {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .heroTitle {
+    font-size: 1.8rem;
+  }
+  
+  .floatingElement1,
+  .floatingElement2,
+  .floatingElement3 {
+    display: none;
+  }
+}

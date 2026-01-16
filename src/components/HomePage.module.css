@@ -1,0 +1,68 @@
+.container {
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  transition: background-color 0.3s ease;
+}
+
+.darkTheme {
+  background: linear-gradient(135deg, #121212 0%, #1a1a1a 100%);
+  color: #ffffff;
+}
+
+.main {
+  padding-top: 80px;
+  position: relative;
+}
+
+/* أنماط التحميل */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #4a6fa5 0%, #2e4a7a 100%);
+}
+
+.loadingSpinner {
+  width: 60px;
+  height: 60px;
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 20px;
+}
+
+.loadingText {
+  color: white;
+  font-size: 1.2rem;
+  font-weight: 500;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* أنماط عامة للاستجابة */
+@media (max-width: 768px) {
+  .main {
+    padding-top: 70px;
+  }
+}
+
+/* تحسينات للوضع الداكن */
+@media (prefers-color-scheme: dark) {
+  .container:not(.darkTheme) {
+    background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%);
+    color: #ffffff;
+  }
+}
