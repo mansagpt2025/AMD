@@ -133,6 +133,7 @@
 }
 
 .stageCard {
+  
   position: relative;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
@@ -174,6 +175,7 @@
   position: relative;
   height: 180px;
   overflow: hidden;
+  
 }
 
 .cardtext {
@@ -184,15 +186,16 @@ margin-bottom: 10;
 
 .cardImageContainer {
   position: relative;
-  width: 100%;
-  height: 100%;
+  aspect-ratio: 16 / 9;   /* نفس نسبة 1920x1080 */
 }
 
 .cardImage {
   position: absolute;
-  top: 0;
+  top: -20;
   left: 0;
   right: 0;
+    background-repeat: no-repeat;      /* يمنع التكرار */
+
   bottom: 0;
   background-size: contain;
   background-position: center;
