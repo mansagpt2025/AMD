@@ -9,6 +9,7 @@ import EncouragementSection from './EncouragementSection';
 import Footer from './Footer';
 import ProgressBar from './ProgressBar';
 import styles from './HomePage.module.css';
+import Image from 'next/image';
 
 interface User {
   isLoggedIn: boolean;
@@ -27,70 +28,120 @@ const HomePage = () => {
   
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [isMounted, setIsMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsMounted(true);
     
-    // تحقق من حالة المستخدم في localStorage
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+    // محاكاة تحميل البيانات
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+    
+    // تحميل حالة المستخدم من localStorage
+    const loadUserData = () => {
       try {
-        setUser(JSON.parse(savedUser));
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
       } catch (e) {
-        console.error('Error parsing user data:', e);
+        console.error('Error loading user data:', e);
       }
-    }
-
-    // تحقق من سمة التصميم
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-    } else {
-      // التحقق من تفضيلات النظام
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        setTheme('dark');
-        document.documentElement.setAttribute('data-theme', 'dark');
+    };
+    
+    // تحميل سمة التصميم
+    const loadTheme = () => {
+      try {
+        const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
+        if (savedTheme) {
+          setTheme(savedTheme);
+          document.documentElement.setAttribute('data-theme', savedTheme);
+        } else {
+          // استخدام تفضيلات النظام
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (prefersDark) {
+            setTheme('dark');
+            document.documentElement.setAttribute('data-theme', 'dark');
+          }
+        }
+      } catch (e) {
+        console.error('Error loading theme:', e);
       }
-    }
+    };
+    
+    loadUserData();
+    loadTheme();
+    
+    // إعداد مستمع لتغيرات السمة
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleThemeChange = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem('theme')) {
+        setTheme(e.matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      }
+    };
+    
+    mediaQuery.addEventListener('change', handleThemeChange);
+    
+    return () => {
+      clearTimeout(timer);
+      mediaQuery.removeEventListener('change', handleThemeChange);
+    };
   }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
-  };
-
-  const handleLogin = () => {
-    const mockUser = {
-      isLoggedIn: true,
-      role: 'student' as const,
-      name: 'البارع محمود الديب',
-      profileImage: '/images/teacher-profile.jpg'
-    };
-    setUser(mockUser);
-    localStorage.setItem('user', JSON.stringify(mockUser));
+    try {
+      localStorage.setItem('theme', newTheme);
+      document.documentElement.setAttribute('data-theme', newTheme);
+    } catch (e) {
+      console.error('Error saving theme:', e);
+    }
   };
 
   const handleLogout = () => {
-    const mockUser = {
+    const defaultUser = {
       isLoggedIn: false,
       role: null,
       name: 'البارع محمود الديب',
-      profileImage: '/images/teacher-profile.jpg'
+      profileImage: '/images/main-hero.png'
     };
-    setUser(mockUser);
-    localStorage.removeItem('user');
+    setUser(defaultUser);
+    try {
+      localStorage.removeItem('user');
+    } catch (e) {
+      console.error('Error removing user data:', e);
+    }
   };
 
-  const handleSignup = () => {
-    handleLogin();
-  };
+  if (!isMounted || isLoading) {
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.loadingSpinner}>
 
-  if (!isMounted) {
-    return null;
+                                <Image
+                        src="/logo.svg"
+                        alt="Logo"
+                        width={80}
+                        height={80}
+                        className={styles.logoImage}
+                        priority
+                      />
+
+        </div>        
+        <p className={styles.loadingText}>
+          جاري التحميل...
+        </p>
+        <div className={styles.loadingProgress}>
+          <div 
+            className={styles.loadingProgressBar}
+            style={{ width: '100%' }}
+          ></div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -98,17 +149,15 @@ const HomePage = () => {
       <Navbar 
         user={user}
         toggleTheme={toggleTheme}
-        onLogin={handleLogin}
         onLogout={handleLogout}
-        onSignup={handleSignup}
         theme={theme}
       />
       <ProgressBar />
       <main className={styles.main}>
-        <HeroSection user={user} onGetStarted={handleLogin} />
+        <HeroSection user={user} />
         <FeaturesSection />
         <StagesSection />
-        <EncouragementSection user={user} onGetStarted={handleLogin} />
+        <EncouragementSection user={user} />
       </main>
       <Footer />
     </div>

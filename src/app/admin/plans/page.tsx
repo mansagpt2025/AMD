@@ -1,33 +1,21 @@
+import Link from 'next/link'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-export default async function PlansAdmin() {
+export default async function Page() {
   const supabase = await createSupabaseServerClient()
-
-  const { data: plans } = await supabase
-    .from('plans')
-    .select('*')
-    .order('created_at')
+  const { data } = await supabase.from('plans').select('*')
 
   return (
-    <div>
-      <h1 className="text-xl font-bold mb-4">الباقات</h1>
-
-      <table className="w-full">
-        <thead>
-          <tr>
-            <th>الاسم</th>
-            <th>المدة</th>
-          </tr>
-        </thead>
-        <tbody>
-          {plans?.map(plan => (
-            <tr key={plan.id}>
-              <td>{plan.name}</td>
-              <td>{plan.duration_days} يوم</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <Link href="/admin/plans/new">➕ New Plan</Link>
+      <ul>
+        {data?.map(p => (
+          <li key={p.id}>
+            {p.name} ({p.duration_days} days)
+            <Link href={`/admin/plans/${p.id}/edit`}> ✏️</Link>
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }

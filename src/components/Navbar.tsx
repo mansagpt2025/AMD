@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import styles from './Navbar.module.css';
+import { FiMenu, FiX, FiSun, FiMoon, FiUser, FiLogOut } from 'react-icons/fi';
+import { HiChevronDown } from 'react-icons/hi';
+import Image from 'next/image';
 
 interface User {
   isLoggedIn: boolean;
@@ -15,162 +20,256 @@ interface NavbarProps {
   toggleTheme: () => void;
   onLogin: () => void;
   onLogout: () => void;
-  onSignup: () => void;
   theme: 'light' | 'dark';
 }
 
-const Navbar = ({ user, toggleTheme, onLogin, onLogout, onSignup, theme }: NavbarProps) => {
+const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
+  // إغلاق القائمة المنسدلة عند النقر خارجها
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
     };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
-    return () => {
-      window.removeEventListener('resize', checkMobile);
-    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleProfileClick = () => {
-    setDropdownOpen(!dropdownOpen);
-  };
+  // تأثير التمرير
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-  const handleMobileMenuToggle = () => {
-    setMenuOpen(!menuOpen);
-  };
+  // إغلاق القائمة المتنقلة عند تغيير المسار
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  const navLinks = [
+    { href: '/', label: 'الرئيسية' },
+    { href: '/contact', label: 'تواصل معنا' },
+  ];
+
+  if (user.isLoggedIn && user.role === 'admin') {
+    navLinks.push({ href: '/dashboard', label: 'لوحة التحكم' });
+  }
 
   return (
     <>
-      <nav className={`${styles.navbar} ${theme === 'dark' ? styles.dark : ''}`}>
+      <nav className={`${styles.navbar} ${scrolled ? styles.scrolled : ''} ${theme === 'dark' ? styles.dark : ''}`}>
         <div className={styles.navContainer}>
-          {/* الاسم والصورة على اليمين */}
+          {/* الشعار */}
           <div className={styles.logoSection}>
-            <div className={styles.logoImageContainer}>
-              <img 
-                src={user.profileImage || '/images/teacher-profile.jpg'} 
-                alt="صورة الأستاذ محمود الديب" 
-                className={styles.logoImage}
-              />
-            </div>
-            <h1 className={styles.logoText}>{user.name}</h1>
-          </div>
-
-          {/* الروابط في الوسط */}
-          <div className={`${styles.linksSection} ${menuOpen ? styles.mobileMenuOpen : ''}`}>
-            <a href="/" className={styles.navLink}>الرئيسية</a>
-            <a href="/contact" className={styles.navLink}>تواصل معنا</a>
-            {user.isLoggedIn && user.role === 'admin' && (
-              <a href="/dashboard" className={styles.navLink}>لوحة التحكم</a>
-            )}
-          </div>
-
-          {/* الأزرار على اليسار */}
-          <div className={styles.actionsSection}>
-            <button 
-              className={`${styles.themeToggle} ${theme === 'dark' ? styles.darkThemeBtn : ''}`}
-              onClick={toggleTheme}
-              aria-label="تبديل الوضع"
-            >
-              <span className={styles.themeIcon}>
-                {theme === 'light' ? '🌙' : '☀️'}
-              </span>
-              <span className={styles.themeText}>تحويل الوضع</span>
-            </button>
-
-            {!user.isLoggedIn ? (
-              <div className={styles.authButtons}>
-                <button className={styles.loginButton} onClick={onLogin}>
-                  تسجيل الدخول
-                </button>
-                <button className={styles.signupButton} onClick={onSignup}>
-                  إنشاء حساب
-                </button>
-              </div>
-            ) : user.role === 'student' ? (
-              <div className={styles.profileSection}>
-                <div className={styles.profileContainer}>
-                  <button 
-                    className={styles.profileButton}
-                    onClick={handleProfileClick}
-                    aria-label="فتح قائمة الملف الشخصي"
-                  >
-                    <div className={styles.profileImageWrapper}>
-                      <div className={styles.profileAnimation}>
-                        <img 
-                          src="/images/student-animation.gif" 
-                          alt="صورة الطالب" 
-                          className={styles.profileImage}
-                        />
-                      </div>
-                    </div>
-                  </button>
-                  {dropdownOpen && (
-                    <div className={styles.dropdownMenu}>
-                      <button 
-                        className={styles.dropdownItem} 
-                        onClick={onLogout}
-                      >
-                        تسجيل الخروج
-                      </button>
-                    </div>
-                  )}
+            <Link href="/" className={styles.logoLink}>
+              <div className={styles.logoWrapper}>
+                <div className={styles.logoImage}>
+<Image
+  src="/logo.svg"
+  alt="Logo"
+  width={50}
+  height={50}
+  className={styles.logoImage}
+  priority
+/>
+                </div>
+                <div className={styles.logoText}>
+                  <h1 className={styles.logoTitle}>البارع</h1>
+                  <p className={styles.logoSubtitle}>محمود الديب</p>
                 </div>
               </div>
+            </Link>
+          </div>
+
+          {/* روابط التنقل - سطح المكتب */}
+          <div className={styles.linksSection}>
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`${styles.navLink} ${pathname === link.href ? styles.active : ''}`}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* قسم الإجراءات */}
+          <div className={styles.actionsSection}>
+
+            {/* أزرار المصادقة */}
+            {!user.isLoggedIn ? (
+              <div className={styles.authButtons}>
+                <Link href="/login" className={styles.loginButton}>
+                  تسجيل الدخول
+                </Link>
+                <Link href="/register" className={styles.signupButton}>
+                  إنشاء حساب
+                </Link>
+              </div>
+            ) : user.role === 'student' ? (
+              // القائمة المنسدلة للطالب
+              <div className={styles.profileDropdown} ref={dropdownRef}>
+                <button
+                  className={styles.profileButton}
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  aria-label="الملف الشخصي"
+                >
+                  <div className={styles.profileWrapper}>
+                    <div className={styles.profileImage}>
+                      <FiUser className={styles.profileIcon} />
+                    </div>
+                    <span className={styles.profileName}>{user.name.split(' ')[0]}</span>
+                    <HiChevronDown className={`${styles.chevron} ${dropdownOpen ? styles.rotate : ''}`} />
+                  </div>
+                </button>
+
+                {dropdownOpen && (
+                  <div className={styles.dropdownMenu}>
+                    <div className={styles.dropdownHeader}>
+                      <div className={styles.dropdownProfileImage}>
+                        <FiUser />
+                      </div>
+                      <div className={styles.dropdownProfileInfo}>
+                        <p className={styles.dropdownProfileRole}>أهلًا :</p>
+                        <p className={styles.dropdownProfileName}>{user.name}</p>
+                      </div>
+                    </div>
+                    <div className={styles.dropdownDivider}></div>
+                    <Link href="/profile" className={styles.dropdownItem}>
+                      <FiUser className={styles.dropdownIcon} />
+                      الملف الشخصي
+                    </Link>
+                    <div className={styles.dropdownDivider}></div>
+                    <button
+                      onClick={onLogout}
+                      className={`${styles.dropdownItem} ${styles.logoutItem}`}
+                    >
+                      <FiLogOut className={styles.dropdownIcon} />
+                      تسجيل الخروج
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
-              // حالة الأدمن
-              <button className={styles.adminLogoutButton} onClick={onLogout}>
-                تسجيل الخروج
-              </button>
+              // الأدمن
+              <div className={styles.adminSection}>
+                <Link href="/dashboard" className={styles.adminDashboardButton}>
+                  لوحة التحكم
+                </Link>
+                <button onClick={onLogout} className={styles.adminLogoutButton}>
+                  <FiLogOut />
+                </button>
+              </div>
             )}
 
-            {/* زر القائمة للهواتف */}
-            <button 
+            {/* زر القائمة للهاتف */}
+            <button
               className={styles.mobileMenuButton}
-              onClick={handleMobileMenuToggle}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="فتح/إغلاق القائمة"
             >
-              <span className={styles.menuIcon}></span>
-              <span className={styles.menuIcon}></span>
-              <span className={styles.menuIcon}></span>
+              {mobileMenuOpen ? (
+                <FiX className={styles.menuIcon} />
+              ) : (
+                <FiMenu className={styles.menuIcon} />
+              )}
             </button>
           </div>
         </div>
       </nav>
 
-      {/* قائمة الهاتف المتحركة */}
-      {menuOpen && isMobile && (
-        <div className={styles.mobileMenuOverlay}>
-          <div className={styles.mobileMenuContent}>
-            <a href="/" className={styles.mobileNavLink} onClick={() => setMenuOpen(false)}>الرئيسية</a>
-            <a href="/contact" className={styles.mobileNavLink} onClick={() => setMenuOpen(false)}>تواصل معنا</a>
-            {user.isLoggedIn && user.role === 'admin' && (
-              <a href="/dashboard" className={styles.mobileNavLink} onClick={() => setMenuOpen(false)}>لوحة التحكم</a>
-            )}
-            <div className={styles.mobileAuthButtons}>
-              {!user.isLoggedIn ? (
+      {/* القائمة المتنقلة للهاتف */}
+      <div className={`${styles.mobileMenuOverlay} ${mobileMenuOpen ? styles.open : ''}`}>
+        <div className={styles.mobileMenuContent}>
+          <div className={styles.mobileMenuHeader}>
+            <div className={styles.mobileProfile}>
+              {user.isLoggedIn ? (
                 <>
-                  <button className={styles.mobileLoginButton} onClick={() => { onLogin(); setMenuOpen(false); }}>
-                    تسجيل الدخول
-                  </button>
-                  <button className={styles.mobileSignupButton} onClick={() => { onSignup(); setMenuOpen(false); }}>
-                    إنشاء حساب
-                  </button>
+                  <div className={styles.mobileProfileImage}>
+                    <FiUser />
+                  </div>
+                  <div className={styles.mobileProfileInfo}>
+                    <p className={styles.mobileProfileName}>{user.name}</p>
+                    <p className={styles.mobileProfileRole}>
+                      {user.role === 'admin' ? 'أدمن' : 'طالب'}
+                    </p>
+                  </div>
                 </>
               ) : (
-                <button className={styles.mobileLogoutButton} onClick={() => { onLogout(); setMenuOpen(false); }}>
-                  تسجيل الخروج
-                </button>
+                <div className={styles.mobileWelcome}>
+                  <p>مرحباً بك !</p>
+                  <p>سجل الدخول لبدء التعلم</p>
+                </div>
               )}
             </div>
           </div>
+
+          <div className={styles.mobileNavLinks}>
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`${styles.mobileNavLink} ${pathname === link.href ? styles.active : ''}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+
+          <div className={styles.mobileActions}>
+            {!user.isLoggedIn ? (
+              <div className={styles.mobileAuthButtons}>
+                <Link
+                  href="/login"
+                  className={styles.mobileLoginButton}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  تسجيل الدخول
+                </Link>
+                <Link
+                  href="/register"
+                  className={styles.mobileSignupButton}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  إنشاء حساب
+                </Link>
+              </div>
+            ) : (
+              <div className={styles.mobileUserActions}>
+                <Link
+                  href="/profile"
+                  className={styles.mobileProfileButton}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  الملف الشخصي
+                </Link>
+                <button
+                  onClick={() => {
+                    onLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className={styles.mobileLogoutButton}
+                >
+                  تسجيل الخروج
+                </button>
+              </div>
+            )}
+          </div>
+
         </div>
-      )}
+      </div>
     </>
   );
 };

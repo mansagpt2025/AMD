@@ -1,22 +1,18 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import LessonsDragList from '@/components/admin/LessonsDragList'
 
-export default async function LessonsAdmin() {
+export default async function AdminLessonsPage() {
   const supabase = await createSupabaseServerClient()
 
   const { data: lessons } = await supabase
     .from('lessons')
-    .select('*, courses(title)')
+    .select('id,title,order_index')
+    .order('order_index')
 
   return (
     <div>
-      <h1 className="text-xl font-bold mb-4">المحاضرات</h1>
-
-      {lessons?.map(lesson => (
-        <div key={lesson.id} className="bg-gray-800 p-3 rounded mb-2">
-          <p>{lesson.title}</p>
-          <small>{lesson.courses?.title}</small>
-        </div>
-      ))}
+      <h1>ترتيب المحاضرات</h1>
+      <LessonsDragList initialLessons={lessons || []} />
     </div>
   )
 }

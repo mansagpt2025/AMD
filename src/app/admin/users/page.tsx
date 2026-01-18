@@ -1,19 +1,14 @@
-export default async function UsersAdmin() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/admin/users`, {
-    cache: 'no-store',
-  })
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-  const users = await res.json()
+export default async function Page() {
+  const supabase = await createSupabaseServerClient()
+  const { data } = await supabase.from('profiles').select('*')
 
   return (
-    <div>
-      <h1 className="text-xl font-bold mb-4">المستخدمين</h1>
-
-      {users.map((user: any) => (
-        <div key={user.id} className="bg-gray-800 p-3 rounded mb-2">
-          {user.email}
-        </div>
+    <ul>
+      {data?.map(u => (
+        <li key={u.id}>{u.id} | Admin: {String(u.is_admin)}</li>
       ))}
-    </div>
+    </ul>
   )
 }

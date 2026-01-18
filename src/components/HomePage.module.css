@@ -2,17 +2,15 @@
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: linear-gradient(180deg, white 0%, var(--primary-50) 100%);
   transition: background-color 0.3s ease;
 }
 
-.darkTheme {
-  background: linear-gradient(135deg, #121212 0%, #1a1a1a 100%);
-  color: #ffffff;
+[data-theme="dark"] .container {
+  background: linear-gradient(180deg, var(--gray-900) 0%, var(--gray-800) 100%);
 }
 
 .main {
-  padding-top: 80px;
   position: relative;
 }
 
@@ -23,24 +21,69 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: linear-gradient(135deg, #4a6fa5 0%, #2e4a7a 100%);
+  background: linear-gradient(135deg, var(--primary-800) 0%, var(--primary-900) 100%);
+  color: white;
+  direction: rtl;
 }
 
 .loadingSpinner {
-  width: 60px;
-  height: 60px;
-  border: 5px solid rgba(255, 255, 255, 0.3);
+  width: 80px;
+  height: 80px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--secondary-500);
   border-radius: 50%;
-  border-top-color: #ffffff;
-  animation: spin 1s ease-in-out infinite;
-  margin-bottom: 20px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.loadingSpinner::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  border: 2px solid rgba(251, 191, 36, 0.2);
+  border-radius: 50%;
+  animation: spin 2s linear infinite reverse;
 }
 
 .loadingText {
-  color: white;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   font-weight: 500;
-  animation: pulse 1.5s infinite;
+  animation: pulse 1.5s ease-in-out infinite;
+  text-align: center;
+  max-width: 300px;
+  line-height: 1.6;
+}
+
+.loadingProgress {
+  width: 300px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  margin-top: 2rem;
+  overflow: hidden;
+}
+
+.loadingProgressBar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--secondary-500), var(--secondary-400));
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.loadingProgressBar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5));
+  animation: glowMove 2s ease-in-out infinite;
 }
 
 @keyframes spin {
@@ -52,17 +95,28 @@
   50% { opacity: 0.5; }
 }
 
-/* أنماط عامة للاستجابة */
+/* تحسينات للاستجابة */
 @media (max-width: 768px) {
-  .main {
-    padding-top: 70px;
+  .loadingText {
+    font-size: 1.25rem;
+  }
+  
+  .loadingProgress {
+    width: 250px;
   }
 }
 
-/* تحسينات للوضع الداكن */
-@media (prefers-color-scheme: dark) {
-  .container:not(.darkTheme) {
-    background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%);
-    color: #ffffff;
+@media (max-width: 480px) {
+  .loadingSpinner {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .loadingText {
+    font-size: 1rem;
+  }
+  
+  .loadingProgress {
+    width: 200px;
   }
 }

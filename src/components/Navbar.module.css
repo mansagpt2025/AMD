@@ -1,449 +1,794 @@
-.navbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  height: 70px;
-  transition: all 0.3s ease;
+@font-face {
+  font-family: 'GE SS Two';
+  src: url('/fonts/GE-SS-Two-Medium.otf') format('opentype'),
+       url('/fonts/GE SS Two Bold.otf') format('opentype');
+  font-style: normal;
+  font-display: swap;
 }
 
-.navbar.dark {
-  background: rgba(18, 18, 18, 0.95);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+body {
+  font-family: 'GE SS Two';
+  direction: rtl;
+  text-align: right;
+}
+
+
+.navbar {
+  z-index: 100000;
+  position: fixed;
+  border-radius: 20;
+  top: 20;
+  left: 10;
+  right: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.6);
+  transition: all var(--transition-normal);
+  height: 80px;
+}
+
+.navbar.scrolled {
+  height: 70px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: var(--shadow-lg);
+  border-bottom-color: rgb(229, 231, 235);
 }
 
 .navContainer {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0 2rem;
-  height: 100%;
+  justify-content: space-between;
   max-width: 1400px;
   margin: 0 auto;
+  padding: 0 2rem;
+  height: 100%;
 }
 
-/* قسم الشعار */
+/* الشعار */
 .logoSection {
+  flex-shrink: 0;
+}
+
+.logoLink {
   display: flex;
   align-items: center;
-  gap: 15px;
-  flex: 1;
+  text-decoration: none;
 }
 
-.logoImageContainer {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 3px solid #4a6fa5;
-  position: relative;
-  animation: logoFloat 3s ease-in-out infinite;
+.logoWrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: transform var(--transition-fast);
+}
+
+.logoWrapper:hover {
+  transform: translateY(-2px);
 }
 
 .logoImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
 }
 
+.logoInnerCircle {
+  position: absolute;
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  background: white;
+  opacity: 0.2;
+}
+
+.logoInitial {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: white;
+  z-index: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+
 .logoText {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #2e4a7a;
-  margin: 0;
-  background: linear-gradient(45deg, #2e4a7a, #4a6fa5);
+    font-family: 'GE SS Two';
+  display: flex;
+}
+
+.logoTitle {
+  font-size: 2rem;
+  font-weight: 1000;
+  background: red;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  margin: 0;
+
 }
 
-.navbar.dark .logoText {
-  background: linear-gradient(45deg, #64b5f6, #90caf9);
+.logoSubtitle {
+  font-size: 2rem;
+  font-weight: 1000;
+  background: rgb(1, 1, 135);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 5 0;
+
 }
 
-/* الروابط */
+
+/* روابط التنقل */
 .linksSection {
   display: flex;
-  gap: 2.5rem;
-  flex: 2;
-  justify-content: center;
+  align-items: center;
+  gap: 2rem;
 }
 
 .navLink {
-  color: #333;
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 1.1rem;
   position: relative;
-  padding: 5px 0;
-  transition: all 0.3s ease;
+  padding: 0.75rem 1rem;
+  color: rgb(0, 122, 6);
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 1rem;
+  transition: all var(--transition-fast);
+  border-radius: var(--radius-md);
 }
 
-.navbar.dark .navLink {
-  color: #fff;
+
+.navLink:hover {
+  color: var(--primary-600);
+  background: rgba(59, 130, 246, 0.05);
+  transform: translateY(-1px);
 }
 
-.navLink::after {
+.navLink.active {
+  color: black;
+}
+
+.navLink.active::after {
   content: '';
   position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #4a6fa5, #2e4a7a);
-  transition: width 0.3s ease;
-}
-
-.navLink:hover::after {
-  width: 100%;
+  bottom: 3px;
+  left: 1rem;
+  right: 1rem;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-full);
 }
 
 /* قسم الإجراءات */
 .actionsSection {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  flex: 1;
-  justify-content: flex-end;
-}
-
-/* زر تبديل السمة */
-.themeToggle {
-  background: rgba(74, 111, 165, 0.1);
-  border: none;
-  padding: 8px 16px;
-  border-radius: 25px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.9rem;
-  color: #2e4a7a;
-  font-weight: 500;
-}
-
-.themeToggle:hover {
-  background: rgba(74, 111, 165, 0.2);
-  transform: translateY(-2px);
-}
-
-.themeToggle.darkThemeBtn {
-  background: rgba(100, 181, 246, 0.1);
-  color: #90caf9;
-}
-
-.themeIcon {
-  font-size: 1.2rem;
-}
-
-.themeText {
-  display: inline;
+  gap: 1rem;
 }
 
 /* أزرار المصادقة */
 .authButtons {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.loginButton, .signupButton {
-  padding: 8px 24px;
-  border-radius: 25px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: none;
-  font-size: 0.95rem;
+.loginButton,
+.signupButton {
+  padding: 0.625rem 1.5rem;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .loginButton {
-  background: transparent;
-  border: 2px solid #4a6fa5;
-  color: #4a6fa5;
+  color: var(--primary-600);
+  background: rgba(59, 130, 246, 0.1);
+  border: 2px solid rgba(0, 0, 0, 0.199);
 }
 
 .loginButton:hover {
-  background: #4a6fa5;
-  color: white;
+  color: rgb(18, 0, 0);
   transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .signupButton {
-  background: linear-gradient(45deg, #4a6fa5, #2e4a7a);
   color: white;
-  border: none;
+  background: var(--gradient-primary);
+  border: 2px solid transparent;
 }
 
 .signupButton:hover {
+  color: rgb(255, 255, 255);
+  background:linear-gradient(rgb(255, 0, 0) , rgb(155, 0, 0));
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(74, 111, 165, 0.4);
+  border: 2px solid transparent;
 }
 
-/* قسم الملف الشخصي */
-.profileSection {
+/* القائمة المنسدلة للملف الشخصي */
+.profileDropdown {
   position: relative;
-}
 
-.profileContainer {
-  position: relative;
 }
 
 .profileButton {
   background: none;
   border: none;
-  cursor: pointer;
   padding: 0;
-  position: relative;
+  cursor: pointer;
 }
 
-.profileImageWrapper {
-  width: 45px;
-  height: 45px;
-  position: relative;
+.profileWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem 0.5rem 1rem;
+  border-radius: var(--radius-full);
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
 }
 
-.profileAnimation {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 2px solid #4a6fa5;
-  animation: pulse 2s infinite;
-  position: relative;
+.profileWrapper:hover {
+  background: var(--gray-200);
+  transform: translateY(-1px);
 }
 
 .profileImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.profileIcon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.profileName {
+  font-weight: 600;
+  color: var(--gray-700);
+  font-size: 0.9375rem;
+}
+
+
+.chevron {
+  width: 1.125rem;
+  
+  height: 1.125rem;
+  color: var(--gray-500);
+  transition: transform var(--transition-fast);
+}
+
+.chevron.rotate {
+  transform: rotate(180deg);
 }
 
 /* القائمة المنسدلة */
 .dropdownMenu {
   position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  min-width: 180px;
-  padding: 10px 0;
-  animation: slideDown 0.3s ease;
+  top:calc(100% + 10rem);
+  left: 0;
+  width: 280px;
+  background: rgba(255, 255, 255, 0.093);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2xl);
+  border: 1px solid var(--gray-200);
+  overflow: hidden;
   z-index: 1001;
 }
 
-.navbar.dark .dropdownMenu {
-  background: #2d2d2d;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+.dropdownHeader {
+  padding: 1.25rem;
+  background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.dropdownProfileImage {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.25rem;
+}
+
+.dropdownProfileInfo {
+  flex: 1;
+}
+
+.dropdownProfileName {
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.navbar.dark .dropdownProfileName {
+  color: var(--gray-100);
+}
+
+.dropdownProfileRole {
+  color: var(--gray-600);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.navbar.dark .dropdownProfileRole {
+  color: var(--gray-400);
+}
+
+.dropdownDivider {
+  height: 1px;
+  background: var(--gray-200);
+  margin: 0.5rem 0;
+}
+
+.navbar.dark .dropdownDivider {
+  background: var(--gray-700);
 }
 
 .dropdownItem {
-  width: 100%;
-  padding: 12px 20px;
-  background: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  color: var(--gray-700);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  transition: all var(--transition-fast);
   border: none;
+  background: none;
+  width: 100%;
   text-align: right;
   cursor: pointer;
-  color: #333;
-  font-size: 1rem;
-  transition: all 0.3s ease;
 }
 
 .navbar.dark .dropdownItem {
-  color: #fff;
+  color: var(--gray-300);
 }
 
 .dropdownItem:hover {
-  background: rgba(74, 111, 165, 0.1);
+  background: var(--gray-100);
+  color: var(--primary-600);
 }
 
-/* زر تسجيل خروج الأدمن */
-.adminLogoutButton {
-  padding: 8px 24px;
-  border-radius: 25px;
-  background: linear-gradient(45deg, #ff6b6b, #ff4757);
+.navbar.dark .dropdownItem:hover {
+  background: var(--gray-700);
+  color: var(--secondary-400);
+}
+
+.dropdownIcon {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--gray-500);
+}
+
+.dropdownItem:hover .dropdownIcon {
+  color: inherit;
+}
+
+.logoutItem {
+  color: var(--error-500);
+}
+
+.logoutItem:hover {
+  color: var(--error-600);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* قسم الأدمن */
+.adminSection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.adminDashboardButton {
+  padding: 0.625rem 1.5rem;
+  border-radius: var(--radius-full);
+  background: var(--gradient-secondary);
   color: white;
-  border: none;
-  font-weight: 500;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  transition: all var(--transition-fast);
+}
+
+.adminDashboardButton:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.adminLogoutButton {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--error-500);
+  transition: all var(--transition-fast);
   cursor: pointer;
-  transition: all 0.3s ease;
 }
 
 .adminLogoutButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+  background: rgba(239, 68, 68, 0.2);
+  transform: translateY(-1px);
 }
 
-/* زر القائمة للهواتف */
+/* زر القائمة للهاتف */
 .mobileMenuButton {
   display: none;
-  flex-direction: column;
-  gap: 4px;
-  background: none;
-  border: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 8px;
+  color: var(--gray-700);
+  transition: all var(--transition-fast);
+}
+
+.mobileMenuButton:hover {
+  background: var(--gray-200);
+  color: var(--primary-600);
 }
 
 .menuIcon {
-  width: 25px;
-  height: 3px;
-  background: #4a6fa5;
-  border-radius: 2px;
-  transition: all 0.3s ease;
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
-.navbar.dark .menuIcon {
-  background: #90caf9;
-}
-
-/* قائمة الهاتف */
+/* القائمة المتنقلة للهاتف */
 .mobileMenuOverlay {
   position: fixed;
-  top: 70px;
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(0, 0, 0, 0.119);
+  backdrop-filter: blur(4px);
   z-index: 999;
-  animation: slideIn 0.3s ease;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-normal);
 }
 
-.navbar.dark .mobileMenuOverlay {
-  background: rgba(18, 18, 18, 0.98);
+.mobileMenuOverlay.open {
+  opacity: 1;
+      top: 90;
+
+  visibility: visible;
 }
 
 .mobileMenuContent {
-  padding: 2rem;
+  font-family: 'GE SS Two';
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  max-width: 100%;
+  background: white;
+  box-shadow: var(--shadow-2xl);
+  transition: transform var(--transition-normal);
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  overflow-y: auto;
+}
+
+.mobileMenuOverlay.open .mobileMenuContent {
+  transform: translateX(0);
+}
+
+.mobileMenuHeader {
+  padding: 1.5rem;
+  border-bottom: 1px solid green;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+
+.mobileProfile {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mobileProfileImage {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.25rem;
+}
+
+.mobileProfileInfo {
+  flex: 1;
+}
+
+.mobileProfileName {
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0 0 0.25rem;
+}
+
+
+.mobileProfileRole {
+  color: var(--gray-600);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+
+.mobileWelcome {
+  flex: 1;
+}
+
+.mobileWelcome p {
+  margin: 0;
+}
+
+.mobileWelcome p:first-child {
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 0.25rem;
+}
+
+
+.mobileWelcome p:last-child {
+  color: var(--gray-600);
+  font-size: 0.875rem;
+}
+
+
+.closeMobileMenu {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+
+.closeMobileMenu:hover {
+  background: var(--gray-200);
+  color: var(--primary-600);
+}
+
+
+.mobileNavLinks {
+  flex: 1;
+  padding: 1rem 0;
 }
 
 .mobileNavLink {
-  color: #333;
+  display: block;
+  padding: 1rem 1.5rem;
+  color: red;
   text-decoration: none;
-  font-size: 1.2rem;
   font-weight: 500;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.navbar.dark .mobileNavLink {
-  color: #fff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+.mobileNavLink:hover {
+  background: var(--gray-100);
+  color: green;
+}
+
+.mobileNavLink.active {
+  color: purple;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.mobileActions {
+  padding: 1.5rem;
+  border-top: 1px solid var(--gray-200);
 }
 
 .mobileAuthButtons {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  margin-top: 2rem;
+  gap: 0.75rem;
 }
 
-.mobileLoginButton, .mobileSignupButton, .mobileLogoutButton {
-  padding: 15px 0;
-  border-radius: 12px;
-  font-weight: 500;
-  font-size: 1.1rem;
-  cursor: pointer;
-  border: none;
+.mobileLoginButton,
+.mobileSignupButton,
+.mobileProfileButton,
+.mobileLogoutButton {
+  padding: 0.875rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 400;
+  text-decoration: none;
+  text-align: center;
+  transition: all var(--transition-fast);
 }
 
 .mobileLoginButton {
-  background: transparent;
-  border: 2px solid #4a6fa5;
-  color: #4a6fa5;
+  color: rgb(33, 0, 125);
+  background: rgba(237, 252, 255, 0.256);
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  font-weight: bolder;
 }
 
-.navbar.dark .mobileLoginButton {
-  border-color: #90caf9;
-  color: #90caf9;
+
+.mobileLoginButton:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
 .mobileSignupButton {
-  background: linear-gradient(45deg, #4a6fa5, #2e4a7a);
   color: white;
+  background: var(--gradient-primary);
+  border: 2px solid transparent;
+}
+
+.mobileSignupButton:hover {
+  opacity: 0.9;
+}
+
+.mobileUserActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mobileProfileButton {
+  color: var(--gray-700);
+  background: var(--gray-100);
+  border: 2px solid var(--gray-200);
+}
+
+.navbar.dark .mobileProfileButton {
+  color: var(--gray-300);
+  background: var(--gray-700);
+  border-color: var(--gray-600);
+}
+
+.mobileProfileButton:hover {
+  background: var(--gray-200);
+}
+
+.navbar.dark .mobileProfileButton:hover {
+  background: var(--gray-600);
 }
 
 .mobileLogoutButton {
-  background: linear-gradient(45deg, #ff6b6b, #ff4757);
-  color: white;
+  color: var(--error-500);
+  background: rgba(239, 68, 68, 0.1);
+  border: 2px solid rgba(239, 68, 68, 0.2);
+  cursor: pointer;
 }
 
-/* الرسوم المتحركة */
-@keyframes logoFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+.mobileLogoutButton:hover {
+  background: rgba(239, 68, 68, 0.2);
 }
 
-@keyframes pulse {
-  0%, 100% { 
-    box-shadow: 0 0 0 0 rgba(74, 111, 165, 0.4);
-  }
-  50% { 
-    box-shadow: 0 0 0 10px rgba(74, 111, 165, 0);
-  }
+.mobileThemeToggle {
+  padding: 1.5rem;
+  border-top: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.navbar.dark .mobileThemeToggle {
+  border-top-color: var(--gray-700);
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+.mobileThemeToggle span {
+  color: var(--gray-700);
+  font-weight: 500;
+}
+
+.navbar.dark .mobileThemeToggle span {
+  color: var(--gray-300);
+}
+
+.themeToggleSwitch {
+  position: relative;
+  width: 56px;
+  height: 28px;
+  background: var(--gray-300);
+  border-radius: var(--radius-full);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.navbar.dark .themeToggleSwitch {
+  background: var(--gray-600);
+}
+
+.themeToggleSwitch.active {
+  background: var(--primary-500);
+}
+
+.themeToggleKnob {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 24px;
+  height: 24px;
+  background: white;
+  border-radius: 50%;
+  transition: transform var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.themeToggleSwitch.active .themeToggleKnob {
+  transform: translateX(-28px);
 }
 
 /* تحسينات للاستجابة */
 @media (max-width: 1024px) {
   .navContainer {
-    padding: 0 1rem;
+    padding: 0 1.5rem;
   }
   
   .linksSection {
-    gap: 1.5rem;
+    gap: 1rem;
   }
   
-  .themeText {
-    display: none;
+  .navLink {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9375rem;
   }
 }
 
 @media (max-width: 768px) {
   .navbar {
-    height: 60px;
+    height: 70px;
   }
   
-  .logoText {
-    font-size: 1.2rem;
+  .navbar.scrolled {
+    height: 65px;
   }
   
-  .linksSection {
-    display: none;
+  .navContainer {
+    padding: 0 1rem;
   }
   
-  .authButtons {
+  .linksSection,
+  .authButtons,
+  .profileDropdown,
+  .adminSection {
     display: none;
   }
   
@@ -451,27 +796,20 @@
     display: flex;
   }
   
-  .profileSection {
-    display: none;
+  .logoTitle {
+    font-size: 1.3rem;
   }
   
-  .adminLogoutButton {
-    display: none;
+  .logoSubtitle {
+    font-size: 1.3rem;
   }
   
-  .mobileMenuOpen {
-    display: flex;
-    flex-direction: column;
-    position: absolute;
-    top: 60px;
-    left: 0;
-    right: 0;
-    background: white;
-    padding: 1rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  .logoImage {
+    width: 42px;
+    height: 42px;
   }
   
-  .navbar.dark .mobileMenuOpen {
-    background: #1a1a1a;
+  .logoInitial {
+    font-size: 1.5rem;
   }
 }

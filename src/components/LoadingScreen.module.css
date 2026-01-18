@@ -10,7 +10,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-arabic), system-ui;
   direction: rtl;
   overflow: hidden;
 }

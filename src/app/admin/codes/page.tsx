@@ -1,23 +1,14 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-export default async function CodesAdmin() {
+export default async function Page() {
   const supabase = await createSupabaseServerClient()
-
-  const { data: codes } = await supabase
-    .from('codes')
-    .select('*')
-    .order('created_at', { ascending: false })
+  const { data } = await supabase.from('codes').select('*')
 
   return (
-    <div>
-      <h1 className="text-xl font-bold mb-4">الأكواد</h1>
-
-      {codes?.map(code => (
-        <div key={code.id} className="bg-gray-800 p-3 rounded mb-2">
-          <p>{code.code}</p>
-          <small>{code.is_used ? 'مستخدم' : 'متاح'}</small>
-        </div>
+    <ul>
+      {data?.map(c => (
+        <li key={c.id}>{c.code} - {c.used ? 'USED' : 'NEW'}</li>
       ))}
-    </div>
+    </ul>
   )
 }

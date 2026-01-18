@@ -1,21 +1,19 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-export const getUserSubscription = async () => {
+export async function getUserSubscription(userId: string) {
   const supabase = await createSupabaseServerClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) return null
 
   const { data } = await supabase
     .from('subscriptions')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .gte('end_date', new Date().toISOString())
+    .select('*, plans(*)')
+    .eq('user_id', userId)
     .single()
 
   return data
+}
+
+export function isSubscriptionActive(sub: any) {
+  if (!sub) return false
+  const now = new Date()
+  return new Date(sub.ends_at) > now
 }

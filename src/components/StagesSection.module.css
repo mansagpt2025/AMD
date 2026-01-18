@@ -1,242 +1,558 @@
 .stagesSection {
-  padding: 5rem 2rem;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   position: relative;
+  background: linear-gradient(180deg, rgb(2, 162, 255) 0%, rgb(0, 70, 151) 100%);
   overflow: hidden;
 }
 
-.darkTheme .stagesSection {
-  background: linear-gradient(135deg, #121212 0%, #1a1a1a 100%);
+.heroafter {
+  position: absolute;
+  background: url('./../../public/images/bg-pattern.jpg') center/cover no-repeat; /* حدّد صورتك */
+  opacity: 0.2;
+  width: 2000;
+  height: 2000;
+  z-index: 0;
+}
+
+.backgroundAnimation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('/bg-pattern.jpg') center/cover no-repeat; /* حدّد صورتك */
+  opacity: .1;
+  z-index: 0;
+}
+
+
+.floatingShape1,
+.floatingShape2,
+.floatingShape3 {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  opacity: 0.05;
+  filter: blur(40px);
+  animation: floatShapes 20s ease-in-out infinite;
+}
+
+.floatingShape1 {
+  width: 300px;
+  height: 300px;
+  top: 10%;
+  left: 5%;
+}
+
+.floatingShape2 {
+  width: 200px;
+  height: 200px;
+  bottom: 20%;
+  right: 10%;
+  animation-delay: -5s;
+}
+
+.floatingShape3 {
+  width: 150px;
+  height: 150px;
+  top: 50%;
+  left: 70%;
+  animation-delay: -10s;
+}
+
+.container {
+  position: relative;
+  max-width: 1400px;
+  margin: 0 auto;
+  z-index: 2;
+}
+
+.sectionHeader {
+  text-align: center;
+  margin-bottom: 3rem;
+  font-family: 'GE SS Two';
+  margin-top: 100;
+  margin-bottom: 60;
+  color: rgb(255, 255, 255);
+}
+
+.sectionBadge {
+  display: inline-flex;
+  padding: 0.5rem 1.5rem;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: var(--radius-full);
+  margin-bottom: 1rem;
+}
+
+.sectionBadge span {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--primary-600);
+}
+
+[data-theme="dark"] .sectionBadge span {
+  color: var(--secondary-400);
 }
 
 .sectionTitle {
-  text-align: center;
-  font-size: 2.5rem;
-  font-weight: 700;
+  font-size: 3rem;
+  font-weight: 800;
   margin-bottom: 1rem;
-  color: #2e4a7a;
-  position: relative;
+  line-height: 1.2;
 }
 
-.darkTheme .sectionTitle {
-  color: #90caf9;
+[data-theme="dark"] .sectionTitle {
+  color: var(--gray-100);
 }
 
-.sectionSubtitle {
-  text-align: center;
-  font-size: 1.1rem;
-  color: #666;
-  margin-bottom: 3rem;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
+.highlight {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-right: 0.5rem;
 }
 
-.darkTheme .sectionSubtitle {
-  color: #aaa;
+[data-theme="dark"] .highlight {
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.stagesContainer {
+
+.stagesGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 4rem;
+  margin-bottom: 4rem;
 }
 
-/* بطاقة المرحلة */
 .stageCard {
-  background: white;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
-  transition: all 0.4s ease;
   position: relative;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
   opacity: 0;
-  transform: translateY(30px);
+  transform: translateY(50px) scale(0.95);
+  transition: all var(--transition-normal);
   cursor: pointer;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid rgba(59, 130, 246, 0.1);
 }
 
-.darkTheme .stageCard {
-  background: #2d2d2d;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+[data-theme="dark"] .stageCard {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(251, 191, 36, 0.1);
 }
 
-.animateCard {
-  animation: cardAppear 0.6s ease forwards;
+.stageCard.animateIn {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 .stageCard:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: var(--shadow-2xl);
+  border-color: var(--primary-300);
 }
 
-.stageCard.active {
+[data-theme="dark"] .stageCard:hover {
+  border-color: var(--secondary-400);
+}
+
+.stageCard.hovered {
   transform: translateY(-10px) scale(1.02);
 }
 
-/* حاوية الصورة */
-.cardImageContainer {
+.cardHeader {
   position: relative;
-  height: 220px;
+  height: 180px;
   overflow: hidden;
 }
 
-.cardImage {
+.cardtext {
+    font-family: 'GE SS Two';
+text-align: center;
+margin-bottom: 10;
+}
+
+.cardImageContainer {
+  position: relative;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s ease;
+}
+
+.cardImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: 1920px 1080px;
+  background-position: center;
+  transition: transform var(--transition-normal);
 }
 
 .stageCard:hover .cardImage {
   transform: scale(1.1);
 }
 
-.cardOverlay {
+.imageOverlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.7) 100%);
 }
 
 .cardBadge {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  background: linear-gradient(45deg, #4a6fa5, #2e4a7a);
+  bottom: 1.5rem;
+  right: 1.5rem;
+  background: var(--card-color);
   color: white;
-  padding: 8px 20px;
-  border-radius: 20px;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-full);
   font-weight: 600;
-  font-size: 0.9rem;
-  box-shadow: 0 5px 15px rgba(74, 111, 165, 0.3);
+  font-size: 0.875rem;
   z-index: 2;
+  box-shadow: var(--shadow-md);
 }
 
-/* محتوى البطاقة */
 .cardContent {
-  padding: 1.5rem;
-  position: relative;
-  z-index: 2;
+  padding: 2rem;
+}
+
+.cardTitleSection {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.1);
 }
 
 .cardTitle {
-  font-size: 1.6rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  color: #2e4a7a;
-  margin-bottom: 0.8rem;
+  color: var(--gray-900);
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
 }
 
-.darkTheme .cardTitle {
-  color: #90caf9;
+[data-theme="dark"] .cardTitle {
+  color: var(--gray-100);
 }
 
 .cardDescription {
-  color: #666;
+  color: var(--gray-600);
   font-size: 1rem;
-  line-height: 1.6;
-  margin-bottom: 1.5rem;
+  line-height: 1.5;
+  margin: 0;
 }
 
-.darkTheme .cardDescription {
-  color: #ccc;
+[data-theme="dark"] .cardDescription {
+  color: var(--gray-400);
 }
 
-.cardButton {
-  background: linear-gradient(45deg, #4a6fa5, #2e4a7a);
-  color: white;
-  border: none;
-  padding: 12px 30px;
-  border-radius: 25px;
+.cardFeatures {
+  margin-bottom: 2rem;
+}
+
+.featuresTitle {
+  font-size: 1.125rem;
   font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
+  color: var(--gray-800);
+  margin-bottom: 1rem;
+}
+
+[data-theme="dark"] .featuresTitle {
+  color: var(--gray-200);
+}
+
+.featuresList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.featureItem {
+  display: flex;
   align-items: center;
-  gap: 10px;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: var(--gray-700);
+  font-size: 0.9375rem;
 }
 
-.cardButton:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px rgba(74, 111, 165, 0.4);
+[data-theme="dark"] .featureItem {
+  color: var(--gray-300);
 }
 
-.buttonIcon {
-  transition: transform 0.3s ease;
+.featureIcon {
+  width: 24px;
+  height: 24px;
+  background: var(--card-color);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: bold;
 }
 
-.cardButton:hover .buttonIcon {
-  transform: translateX(5px);
+.cardActions {
+  display: flex;
+  gap: 1rem;
 }
 
-/* تأثير التحويم */
-.cardHoverEffect {
+.primaryButton,
+.secondaryButton {
+  flex: 1;
+  padding: 0.875rem 1.5rem;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  transition: all var(--transition-fast);
+}
+
+.primaryButton {
+  background: var(--card-color);
+  color: white;
+  border: 2px solid transparent;
+}
+
+.primaryButton:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.secondaryButton {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--card-color);
+  border: 2px solid rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="dark"] .secondaryButton {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.2);
+}
+
+.secondaryButton:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: var(--card-color);
+  transform: translateY(-2px);
+}
+
+[data-theme="dark"] .secondaryButton:hover {
+  background: rgba(251, 191, 36, 0.2);
+}
+
+/* تأثيرات البطاقة */
+.cardGlow {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(45deg, rgba(74, 111, 165, 0.1), rgba(46, 74, 122, 0.1));
+  background: radial-gradient(circle at center, var(--card-color) 0%, transparent 70%);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--transition-normal);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.stageCard:hover .cardGlow {
+  opacity: 0.05;
+}
+
+.cardBorder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px solid transparent;
+  border-radius: var(--radius-2xl);
+  background: linear-gradient(45deg, var(--card-color), transparent) border-box;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) padding-box, 
+    linear-gradient(#fff 0 0);
+  mask: 
+    linear-gradient(#fff 0 0) padding-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
   pointer-events: none;
 }
 
-.stageCard:hover .cardHoverEffect {
+.stageCard:hover .cardBorder {
+  opacity: 0.5;
+}
+
+/* مؤشر التقدم */
+.progressIndicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(59, 130, 246, 0.1);
+  opacity: 0;
+  transform: translateY(100%);
+  transition: all var(--transition-normal);
+}
+
+[data-theme="dark"] .progressIndicator {
+  background: rgba(30, 41, 59, 0.95);
+}
+
+.stageCard:hover .progressIndicator {
   opacity: 1;
+  transform: translateY(0);
+}
+
+.progressBar {
+  height: 6px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--card-color);
+  border-radius: var(--radius-full);
+  transition: width 1s ease;
+}
+
+.progressText {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+[data-theme="dark"] .progressText {
+  color: var(--gray-400);
+}
+
+/* موجة فاصلة */
+.waveDivider {
+  position: absolute;
+  bottom: -200;
+  left: 0;
+  right: 0;
+  height: 100px;
+  rotate: 180deg;
+  transform: translateY(1px);
+}
+
+.waveDivider svg {
+  width: 100%;
+  height: 100%;
+  max-width: auto;
+  fill: rgb(223, 251, 255);
+    rotate: 180deg;
+
 }
 
 /* الرسوم المتحركة */
-@keyframes cardAppear {
-  to {
-    opacity: 1;
-    transform: translateY(0);
+@keyframes floatShapes {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(30px, -30px) rotate(120deg);
+  }
+  66% {
+    transform: translate(-20px, 20px) rotate(240deg);
+  }
+}
+
+@keyframes numberPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: var(--shadow-lg);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 30px var(--card-color);
   }
 }
 
 /* تحسينات للاستجابة */
 @media (max-width: 1024px) {
-  .stagesContainer {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  .sectionTitle {
+    font-size: 2.5rem;
+  }
+  
+  .stagesGrid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 2rem;
+  }
+  
+  .cardTitle {
+    font-size: 1.5rem;
   }
 }
 
 @media (max-width: 768px) {
   .stagesSection {
-    padding: 3rem 1rem;
   }
   
   .sectionTitle {
-    font-size: 2rem;
+    font-size: 3rem;
   }
   
-  .sectionSubtitle {
-    font-size: 1rem;
-    padding: 0 1rem;
+  .sectionDescription {
+    font-size: 1.125rem;
   }
   
-  .stagesContainer {
+  .stagesGrid {
     grid-template-columns: 1fr;
-    max-width: 400px;
-    gap: 1.5rem;
+    max-width: 340px;
+    margin: 0 auto 4rem;
   }
   
-  .cardImageContainer {
-    height: 180px;
+  .cardActions {
+    flex-direction: column;
+  }
+  
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .sectionTitle {
+    font-size: 1.75rem;
   }
   
   .cardContent {
-    padding: 1.2rem;
+    padding: 1.5rem;
   }
   
   .cardTitle {
-    font-size: 1.4rem;
+    font-size: 1.375rem;
+  }
+  
+  .featuresTitle {
+    font-size: 1rem;
+  }
+  
+  .featureItem {
+    font-size: 0.875rem;
   }
 }

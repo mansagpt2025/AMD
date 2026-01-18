@@ -2,15 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import styles from './LoadingScreen.module.css';
+import Image from 'next/image';
 
 const LoadingScreen = () => {
   const [progress, setProgress] = useState(0);
   const [phase, setPhase] = useState(0);
   const phases = [
-    "جاري تحميل المنصة التعليمية...",
-    "تهيئة البيانات...",
-    "تحميل المواد الدراسية...",
-    "جاري الإعداد النهائي..."
+    "جاري تحميل ...",
   ];
 
   useEffect(() => {
@@ -47,7 +45,14 @@ const LoadingScreen = () => {
         <div className={styles.logoSection}>
           <div className={styles.logoAnimation}>
             <div className={styles.logoCircle}>
-              <span className={styles.logoText}>البارع</span>
+              <Image
+                src="/logo.svg"
+                alt="Logo"
+                width={50}
+                height={50}
+                className={styles.logoImage}
+                priority
+              />
             </div>
             <div className={styles.logoGlow}></div>
           </div>
@@ -72,42 +77,7 @@ const LoadingScreen = () => {
             <span className={styles.progressPercent}>{progress}%</span>
             <span className={styles.progressPhase}>{phases[phase]}</span>
           </div>
-        </div>
-
-        {/* ميزات المنصة */}
-        <div className={styles.featuresPreview}>
-          <div className={styles.featureItem}>
-            <div className={styles.featureIcon}>📚</div>
-            <span className={styles.featureText}>شرح وافٍ للمنهج</span>
-          </div>
-          <div className={styles.featureItem}>
-            <div className={styles.featureIcon}>📝</div>
-            <span className={styles.featureText}>امتحانات شهرية</span>
-          </div>
-          <div className={styles.featureItem}>
-            <div className={styles.featureIcon}>🎯</div>
-            <span className={styles.featureText}>متابعة الطلاب</span>
-          </div>
-          <div className={styles.featureItem}>
-            <div className={styles.featureIcon}>🏆</div>
-            <span className={styles.featureText}>هدفنا 80 من 80</span>
-          </div>
-        </div>
-
-        {/* فاصل زخرفي */}
-        <div className={styles.decorativeLine}>
-          <span className={styles.decorativeText}>وما توفيقي إلا بالله</span>
-          <div className={styles.decorativeDots}>
-            {[...Array(5)].map((_, i) => (
-              <span key={i} className={styles.dot}>•</span>
-            ))}
-          </div>
-        </div>
-
-        {/* حقوق النشر */}
-        <div className={styles.copyright}>
-          <p>© جميع الحقوق محفوظة للأستاذ محمود الديب {new Date().getFullYear()}</p>
-        </div>
+      </div>
       </div>
     </div>
   );
