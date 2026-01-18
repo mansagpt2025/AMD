@@ -14,16 +14,10 @@ export default async function DashboardPage() {
       last_second,
       lessons (
         title,
-        courses ( title )
+        courses (
+          title
+        )
       )
-    `)
-    .eq('user_id', userId)
-
-  const { data: exams } = await supabase
-    .from('exam_results')
-    .select(`
-      score,
-      lessons ( title )
     `)
     .eq('user_id', userId)
 
@@ -33,21 +27,20 @@ export default async function DashboardPage() {
 
       <section>
         <h2>📚 التقدم في المحاضرات</h2>
-        {progress?.map((p, i) => (
-          <div key={i}>
-            <strong>{p.lessons?.title}</strong> –{' '}
-            {p.completed ? 'مكتملة ✅' : 'غير مكتملة ⏳'}
-          </div>
-        ))}
-      </section>
 
-      <section>
-        <h2>📝 الامتحانات</h2>
-        {exams?.map((e, i) => (
-          <div key={i}>
-            {e.lessons?.title} — الدرجة: {e.score}
-          </div>
-        ))}
+        {progress?.map((p, i) => {
+          const lesson = p.lessons?.[0]
+          const course = lesson?.courses?.[0]
+
+          return (
+            <div key={i}>
+              <strong>{lesson?.title}</strong>
+              {course && <span> — {course.title}</span>}
+              {' — '}
+              {p.completed ? 'مكتملة ✅' : 'غير مكتملة ⏳'}
+            </div>
+          )
+        })}
       </section>
     </div>
   )
