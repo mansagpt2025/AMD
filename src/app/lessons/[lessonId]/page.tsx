@@ -37,7 +37,6 @@ export default async function LessonPage({ params }: any) {
       <ProtectedVideo
         videoUrl={lesson.video_url}
         startAt={progress?.last_second ?? 0}
-        lessonId={lesson.id}
       />
 
       {lesson.pdf_url && (
