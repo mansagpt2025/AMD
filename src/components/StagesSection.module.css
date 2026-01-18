@@ -194,7 +194,7 @@ margin-bottom: 10;
   left: 0;
   right: 0;
   bottom: 0;
-  background-size: 1920px 1080px;
+  background-size: contain;
   background-position: center;
   transition: transform var(--transition-normal);
 }
