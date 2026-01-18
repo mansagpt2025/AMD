@@ -25,20 +25,18 @@ const HomePage = () => {
     name: 'البارع محمود الديب',
     profileImage: '/images/teacher-profile.jpg'
   });
-  
+
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsMounted(true);
-    
-    // محاكاة تحميل البيانات
+
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 2000);
-    
-    // تحميل حالة المستخدم من localStorage
+
     const loadUserData = () => {
       try {
         const savedUser = localStorage.getItem('user');
@@ -49,8 +47,7 @@ const HomePage = () => {
         console.error('Error loading user data:', e);
       }
     };
-    
-    // تحميل سمة التصميم
+
     const loadTheme = () => {
       try {
         const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
@@ -58,7 +55,6 @@ const HomePage = () => {
           setTheme(savedTheme);
           document.documentElement.setAttribute('data-theme', savedTheme);
         } else {
-          // استخدام تفضيلات النظام
           const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           if (prefersDark) {
             setTheme('dark');
@@ -69,21 +65,21 @@ const HomePage = () => {
         console.error('Error loading theme:', e);
       }
     };
-    
+
     loadUserData();
     loadTheme();
-    
-    // إعداد مستمع لتغيرات السمة
+
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleThemeChange = (e: MediaQueryListEvent) => {
       if (!localStorage.getItem('theme')) {
-        setTheme(e.matches ? 'dark' : 'light');
-        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+        const newTheme = e.matches ? 'dark' : 'light';
+        setTheme(newTheme);
+        document.documentElement.setAttribute('data-theme', newTheme);
       }
     };
-    
+
     mediaQuery.addEventListener('change', handleThemeChange);
-    
+
     return () => {
       clearTimeout(timer);
       mediaQuery.removeEventListener('change', handleThemeChange);
@@ -101,13 +97,30 @@ const HomePage = () => {
     }
   };
 
+  const handleLogin = () => {
+    const loggedInUser: User = {
+      isLoggedIn: true,
+      role: 'student',
+      name: 'طالب جديد',
+      profileImage: '/images/teacher-profile.jpg'
+    };
+
+    setUser(loggedInUser);
+    try {
+      localStorage.setItem('user', JSON.stringify(loggedInUser));
+    } catch (e) {
+      console.error('Error saving user data:', e);
+    }
+  };
+
   const handleLogout = () => {
-    const defaultUser = {
+    const defaultUser: User = {
       isLoggedIn: false,
       role: null,
       name: 'البارع محمود الديب',
       profileImage: '/images/main-hero.png'
     };
+
     setUser(defaultUser);
     try {
       localStorage.removeItem('user');
@@ -120,25 +133,21 @@ const HomePage = () => {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.loadingSpinner}>
-
-                                <Image
-                        src="/logo.svg"
-                        alt="Logo"
-                        width={80}
-                        height={80}
-                        className={styles.logoImage}
-                        priority
-                      />
-
-        </div>        
-        <p className={styles.loadingText}>
-          جاري التحميل...
-        </p>
+          <Image
+            src="/logo.svg"
+            alt="Logo"
+            width={80}
+            height={80}
+            className={styles.logoImage}
+            priority
+          />
+        </div>
+        <p className={styles.loadingText}>جاري التحميل...</p>
         <div className={styles.loadingProgress}>
-          <div 
+          <div
             className={styles.loadingProgressBar}
             style={{ width: '100%' }}
-          ></div>
+          />
         </div>
       </div>
     );
@@ -146,9 +155,10 @@ const HomePage = () => {
 
   return (
     <div className={`${styles.container} ${theme === 'dark' ? styles.darkTheme : ''}`}>
-      <Navbar 
+      <Navbar
         user={user}
         toggleTheme={toggleTheme}
+        onLogin={handleLogin}
         onLogout={handleLogout}
         theme={theme}
       />
