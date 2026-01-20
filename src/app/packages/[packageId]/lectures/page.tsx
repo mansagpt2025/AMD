@@ -4,11 +4,11 @@ import Link from 'next/link'
 export default async function PackageLecturesPage({ params }: any) {
   const supabase = createSupabaseServer()
 
-  const { data: lectures } = await supabase
+  const { data } = await supabase
     .from('package_lectures')
     .select(`
       order_index,
-      lectures (
+      lecture:lectures (
         id,
         title,
         description
@@ -19,14 +19,14 @@ export default async function PackageLecturesPage({ params }: any) {
 
   return (
     <div className="space-y-4">
-      {lectures?.map((row) => (
+      {data?.map((row) => (
         <Link
-          key={row.lectures.id}
-          href={`/lectures/${row.lectures.id}`}
+          key={row.lecture.id}
+          href={`/lectures/${row.lecture.id}`}
           className="block border p-4 rounded"
         >
-          <h3>{row.lectures.title}</h3>
-          <p>{row.lectures.description}</p>
+          <h3>{row.lecture.title}</h3>
+          <p>{row.lecture.description}</p>
         </Link>
       ))}
     </div>
