@@ -7,5 +7,4 @@ export const createClient = () => {
   )
 }
 
-// تصدير عميل افتراضي للاستخدام
 export const supabase = createClient()

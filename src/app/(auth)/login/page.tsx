@@ -1,38 +1,39 @@
 'use client'
 
 import { supabase } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { useState, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import './LoginPage.css'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const message = searchParams.get('message')
+  
   const [loading, setLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const loginContainerRef = useRef<HTMLDivElement>(null)
-  const successEffectRef = useRef<HTMLDivElement>(null)
+  const [successMessage, setSuccessMessage] = useState(message || '')
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (loginContainerRef.current) {
-        loginContainerRef.current.classList.add('loaded')
-      }
-    }, 100)
-    
-    return () => clearTimeout(timer)
-  }, [])
+    if (message) {
+      setSuccessMessage(message)
+      // إزالة الرسالة بعد 5 ثواني
+      const timer = setTimeout(() => {
+        setSuccessMessage('')
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [message])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setErrorMessage('')
 
-    const form = e.target as HTMLFormElement
-    const email = form.email.value.trim()
-    const password = form.password.value
+    const formData = new FormData(e.target as HTMLFormElement)
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
 
     if (!email || !password) {
       setErrorMessage('يرجى إدخال البريد الإلكتروني وكلمة المرور')
@@ -40,111 +41,29 @@ export default function LoginPage() {
       return
     }
 
-    // التحقق من صيغة البريد الإلكتروني
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      setErrorMessage('صيغة البريد الإلكتروني غير صحيحة')
-      setLoading(false)
-      return
-    }
-
     try {
-      console.log('جاري تسجيل الدخول بـ:', email)
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      console.log('نتيجة تسجيل الدخول:', { data, error })
-
       if (error) {
-        // تحسين رسائل الخطأ
-        let errorMsg = error.message
-        
         if (error.message.includes('Invalid login credentials')) {
-          errorMsg = 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+          setErrorMessage('البريد الإلكتروني أو كلمة المرور غير صحيحة')
         } else if (error.message.includes('Email not confirmed')) {
-          errorMsg = 'لم يتم تأكيد البريد الإلكتروني. يرجى التحقق من بريدك'
-        } else if (error.message.includes('Too many requests')) {
-          errorMsg = 'محاولات تسجيل دخول كثيرة. يرجى المحاولة لاحقاً'
+          setErrorMessage('لم يتم تأكيد البريد الإلكتروني. يرجى التحقق من بريدك')
+        } else {
+          setErrorMessage(`خطأ في تسجيل الدخول: ${error.message}`)
         }
-        
-        setErrorMessage(errorMsg)
         setLoading(false)
         return
       }
 
-      // التحقق من وجود بيانات المستخدم
-      if (!data.user) {
-        setErrorMessage('لم يتم العثور على بيانات المستخدم')
-        setLoading(false)
-        return
-      }
-
-      console.log('تم تسجيل الدخول بنجاج:', data.user.id)
-      
-      // التحقق من وجود جلسة
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        setErrorMessage('لم يتم إنشاء جلسة تسجيل دخول')
-        setLoading(false)
-        return
-      }
-
-      // التأكد من تحديث التوكن
-      await supabase.auth.refreshSession()
-
-      // التأكد من وجود ملف شخصي للمستخدم
-      try {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single()
-
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.log('خطأ في جلب الملف الشخصي:', profileError)
-          // يمكن الاستمرار حتى بدون ملف شخصي
-        }
-      } catch (profileErr) {
-        console.log('استثناء في جلب الملف الشخصي:', profileErr)
-      }
-
-      // التأكد من وجود محفظة للمستخدم
-      try {
-        const { data: wallet, error: walletError } = await supabase
-          .from('wallets')
-          .select('*')
-          .eq('user_id', data.user.id)
-          .single()
-
-        if (walletError && walletError.code !== 'PGRST116') {
-          console.log('خطأ في جلب المحفظة:', walletError)
-          // إنشاء محفظة إذا لم تكن موجودة
-          try {
-            await supabase.from('wallets').insert({
-              user_id: data.user.id,
-              balance: 0,
-            })
-          } catch (insertErr) {
-            console.log('خطأ في إنشاء المحفظة:', insertErr)
-          }
-        }
-      } catch (walletErr) {
-        console.log('استثناء في جلب المحفظة:', walletErr)
-      }
-
-      // تأثير النجاح قبل الانتقال
-      successEffectRef.current?.classList.add('active')
-      
-      setTimeout(() => {
-        router.replace('/dashboard')
-      }, 1500)
+      // إذا نجح تسجيل الدخول، انتقل للداشبورد
+      router.push('/dashboard')
 
     } catch (error: any) {
-      console.error('خطأ غير متوقع في تسجيل الدخول:', error)
+      console.error('خطأ غير متوقع:', error)
       setErrorMessage('حدث خطأ غير متوقع أثناء تسجيل الدخول')
       setLoading(false)
     }
@@ -156,10 +75,6 @@ export default function LoginPage() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
         },
       })
 
@@ -177,7 +92,6 @@ export default function LoginPage() {
     
     if (!email) return
     
-    // التحقق من صيغة البريد الإلكتروني
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       alert('صيغة البريد الإلكتروني غير صحيحة')
@@ -192,7 +106,7 @@ export default function LoginPage() {
       if (error) {
         alert('خطأ: ' + error.message)
       } else {
-        alert('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني. يرجى التحقق من صندوق الوارد والبريد العشوائي.')
+        alert('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني')
       }
     } catch (error: any) {
       console.error('Forgot password error:', error)
@@ -200,55 +114,9 @@ export default function LoginPage() {
     }
   }
 
-  const handleResendVerification = async () => {
-    const email = (document.getElementById('email') as HTMLInputElement)?.value
-    
-    if (!email) {
-      alert('يرجى إدخال البريد الإلكتروني أولاً')
-      return
-    }
-    
-    try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-        }
-      })
-
-      if (error) {
-        alert('خطأ في إعادة إرسال بريد التفعيل: ' + error.message)
-      } else {
-        alert('تم إرسال بريد التفعيل إلى بريدك الإلكتروني')
-      }
-    } catch (error: any) {
-      console.error('Resend verification error:', error)
-      alert('حدث خطأ أثناء إعادة إرسال بريد التفعيل')
-    }
-  }
-
   return (
-    <div className="login-container" ref={loginContainerRef}>
-      {/* تأثيرات الخلفية المتحركة */}
-      <div className="background-effects">
-        <div className="effect-circle circle-1"></div>
-        <div className="effect-circle circle-2"></div>
-        <div className="effect-circle circle-3"></div>
-        <div className="effect-circle circle-4"></div>
-        <div className="floating-shape shape-1"></div>
-        <div className="floating-shape shape-2"></div>
-        <div className="floating-shape shape-3"></div>
-      </div>
-
-      {/* تأثير النجاح */}
-      <div className="success-effect" ref={successEffectRef}>
-        <div className="success-icon">✓</div>
-        <div className="success-message">تم تسجيل الدخول بنجاح!</div>
-      </div>
-
+    <div className="login-container">
       <div className="login-card">
-        {/* رأس البطاقة */}
         <div className="card-header">
           <div className="logo-container">
             <div className="logo-icon">م</div>
@@ -261,168 +129,94 @@ export default function LoginPage() {
           <p className="page-subtitle">سجل دخولك لتستمر في رحلة التعلم</p>
         </div>
 
-        {/* نموذج تسجيل الدخول */}
+        {successMessage && (
+          <div className="success-message-banner">
+            <div className="success-icon">✓</div>
+            <div className="success-text">{successMessage}</div>
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="error-message">
+            <div className="error-icon">!</div>
+            <div className="error-text">{errorMessage}</div>
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="login-form">
-          <div className="form-container">
-            
-            {/* رسالة الخطأ */}
-            {errorMessage && (
-              <div className="error-message">
-                <div className="error-icon">!</div>
-                <div className="error-text">{errorMessage}</div>
-                {errorMessage.includes('لم يتم تأكيد البريد الإلكتروني') && (
-                  <button 
-                    type="button"
-                    className="resend-verification"
-                    onClick={handleResendVerification}
-                  >
-                    إعادة إرسال بريد التفعيل
-                  </button>
-                )}
-              </div>
-            )}
-            
-            <div className="input-group floating-input">
-              <input
-                type="email"
-                id="email"
-                name="email"
-                required
-                placeholder=" "
-                autoComplete="email"
-                onChange={() => setErrorMessage('')}
-              />
-              <label htmlFor="email">البريد الإلكتروني</label>
-              <div className="input-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-              </div>
-              <div className="input-underline"></div>
+          <div className="input-group">
+            <label htmlFor="email">البريد الإلكتروني</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              placeholder="example@email.com"
+            />
+          </div>
+          
+          <div className="input-group">
+            <label htmlFor="password">كلمة المرور</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              placeholder="أدخل كلمة المرور"
+            />
+          </div>
+
+          <div className="login-options">
+            <div className="remember-me">
+              <input type="checkbox" id="remember" name="remember" />
+              <label htmlFor="remember">تذكرني</label>
             </div>
             
-            <div className="input-group floating-input">
-              <input
-                type={showPassword ? "text" : "password"}
-                id="password"
-                name="password"
-                required
-                placeholder=" "
-                autoComplete="current-password"
-                onChange={() => setErrorMessage('')}
-              />
-              <label htmlFor="password">كلمة المرور</label>
-              <div className="input-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-              </div>
-              <button 
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-                tabIndex={-1}
-              >
-                {showPassword ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                    <line x1="1" y1="1" x2="23" y2="23"></line>
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                )}
-              </button>
-              <div className="input-underline"></div>
-            </div>
-
-            {/* خيارات إضافية */}
-            <div className="login-options">
-              <label className="checkbox-container">
-                <input 
-                  type="checkbox" 
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                <span className="checkmark"></span>
-                <span className="checkbox-label">تذكرني</span>
-              </label>
-              
-              <button 
-                type="button"
-                className="forgot-password"
-                onClick={handleForgotPassword}
-              >
-                نسيت كلمة المرور؟
-              </button>
-            </div>
-
-            {/* زر تسجيل الدخول */}
-            <button 
-              type="submit" 
-              className="btn btn-primary btn-login"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <span className="loading-spinner"></span>
-                  جاري تسجيل الدخول...
-                </>
-              ) : (
-                <>
-                  <span className="btn-icon">→</span>
-                  تسجيل الدخول
-                </>
-              )}
-            </button>
-
-            {/* فاصل أو */}
-            <div className="divider">
-              <span className="divider-line"></span>
-              <span className="divider-text">أو</span>
-              <span className="divider-line"></span>
-            </div>
-
-            {/* تسجيل الدخول بواسطة جوجل */}
             <button 
               type="button"
-              className="btn btn-google"
-              onClick={handleGoogleLogin}
+              className="forgot-password"
+              onClick={handleForgotPassword}
             >
-              <div className="google-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-              </div>
-              <span>تسجيل الدخول بواسطة جوجل</span>
+              نسيت كلمة المرور؟
             </button>
-
-            {/* ميزات المنصة */}
-            <div className="platform-features">
-              <div className="feature">
-                <div className="feature-icon">📚</div>
-                <div className="feature-text">الوصول إلى جميع الدروس</div>
-              </div>
-              <div className="feature">
-                <div className="feature-icon">🎯</div>
-                <div className="feature-text">اختبارات وتقييمات</div>
-              </div>
-              <div className="feature">
-                <div className="feature-icon">💼</div>
-                <div className="feature-text">محفظة نقاط خاصة</div>
-              </div>
-            </div>
           </div>
+
+          <button 
+            type="submit" 
+            className="btn btn-primary btn-login"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="loading-spinner"></span>
+                جاري تسجيل الدخول...
+              </>
+            ) : (
+              'تسجيل الدخول'
+            )}
+          </button>
+
+          <div className="divider">
+            <span>أو</span>
+          </div>
+
+          <button 
+            type="button"
+            className="btn btn-google"
+            onClick={handleGoogleLogin}
+          >
+            <div className="google-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            </div>
+            <span>تسجيل الدخول بواسطة جوجل</span>
+          </button>
         </form>
 
-        {/* تذييل البطاقة */}
         <div className="card-footer">
           <p className="footer-text">
             ليس لديك حساب؟{' '}
