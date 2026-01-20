@@ -1,7 +1,6 @@
 'use client'
 
 import { supabase } from '@/lib/supabase/client'
-import { supabaseAdmin } from '@/lib/supabase/admin'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
@@ -14,8 +13,6 @@ export default function RegisterPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [success, setSuccess] = useState(false)
   const registerContainerRef = useRef<HTMLDivElement>(null)
-  const formContainerRef = useRef<HTMLDivElement>(null)
-  const successEffectRef = useRef<HTMLDivElement>(null)
   
   const [formData, setFormData] = useState({
     email: '',
@@ -51,43 +48,33 @@ export default function RegisterPage() {
   }
 
   const nextStep = () => {
-    if (step < 3) {
-      if (formContainerRef.current) {
-        formContainerRef.current.classList.add('slide-out-left')
-        
-        setTimeout(() => {
-          setStep(step + 1)
-          formContainerRef.current?.classList.remove('slide-out-left')
-          formContainerRef.current?.classList.add('slide-in-right')
-          
-          setTimeout(() => {
-            formContainerRef.current?.classList.remove('slide-in-right')
-          }, 300)
-        }, 300)
-      } else {
-        setStep(step + 1)
-      }
+    if (step < 3 && validateStep(step)) {
+      setStep(step + 1)
     }
   }
 
   const prevStep = () => {
     if (step > 1) {
-      if (formContainerRef.current) {
-        formContainerRef.current.classList.add('slide-out-right')
-        
-        setTimeout(() => {
-          setStep(step - 1)
-          formContainerRef.current?.classList.remove('slide-out-right')
-          formContainerRef.current?.classList.add('slide-in-left')
-          
-          setTimeout(() => {
-            formContainerRef.current?.classList.remove('slide-in-left')
-          }, 300)
-        }, 300)
-      } else {
-        setStep(step - 1)
+      setStep(step - 1)
+    }
+  }
+
+  const validateStep = (stepNumber: number): boolean => {
+    if (stepNumber === 1) {
+      if (!formData.email || !formData.password || !formData.confirmPassword) {
+        setErrorMessage('يرجى ملء جميع حقول الخطوة الأولى')
+        return false
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setErrorMessage('كلمة المرور غير متطابقة')
+        return false
+      }
+      if (formData.password.length < 6) {
+        setErrorMessage('كلمة المرور يجب أن تكون 6 أحرف على الأقل')
+        return false
       }
     }
+    return true
   }
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -95,167 +82,125 @@ export default function RegisterPage() {
     setLoading(true)
     setErrorMessage('')
 
-    // التحقق من كلمة المرور
-    if (formData.password !== formData.confirmPassword) {
-      setErrorMessage('كلمة المرور غير متطابقة')
-      setLoading(false)
-      return
-    }
-
-    // التحقق من صحة البيانات
+    // التحقق النهائي من جميع البيانات
     if (!validateForm()) {
       setLoading(false)
       return
     }
 
     try {
-      console.log('بدء عملية التسجيل...')
+      console.log('🚀 بدء عملية التسجيل...')
       
-      // الخطوة 1: إنشاء حساب المصادقة
+      // الخطوة 1: إنشاء حساب المصادقة في Supabase Auth
+      console.log('📧 إنشاء حساب المصادقة...')
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        options: {
-          data: {
-            full_name: formData.full_name,
-            phone: formData.student_phone,
-            grade: formData.grade
-          }
-        }
       })
 
       if (authError) {
-        console.error('خطأ في المصادقة:', authError)
-        setErrorMessage(`خطأ في إنشاء الحساب: ${authError.message}`)
+        console.error('❌ خطأ في المصادقة:', authError)
+        if (authError.message.includes('User already registered')) {
+          setErrorMessage('هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.')
+        } else {
+          setErrorMessage(`خطأ في إنشاء الحساب: ${authError.message}`)
+        }
         setLoading(false)
         return
       }
 
       const user = authData.user
       if (!user) {
-        setErrorMessage('لم يتم إنشاء حساب المستخدم')
+        setErrorMessage('لم يتم إنشاء المستخدم')
         setLoading(false)
         return
       }
 
-      console.log('تم إنشاء المستخدم بنجاح:', user.id)
+      console.log('✅ تم إنشاء المستخدم:', user.id)
       
-      // الخطوة 2: استخدام Service Role Key لإنشاء الملف الشخصي
-      if (supabaseAdmin) {
-        try {
-          const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .insert({
-              id: user.id,
-              full_name: formData.full_name,
-              grade: formData.grade,
-              section: formData.section,
-              student_phone: formData.student_phone,
-              parent_phone: formData.parent_phone,
-              governorate: formData.governorate,
-              city: formData.city,
-              school: formData.school,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
+      // الانتظار قليلاً للتأكد من اكتمال عملية المصادقة
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
-          if (profileError) {
-            console.error('خطأ في إنشاء الملف الشخصي (Service Role):', profileError)
-            // محاولة باستخدام العميل العادي
-            await createProfileWithClient(user.id)
-          } else {
-            console.log('تم إنشاء الملف الشخصي بنجاح باستخدام Service Role')
-          }
-        } catch (adminError) {
-          console.error('خطأ في Service Role:', adminError)
-          await createProfileWithClient(user.id)
+      // الخطوة 2: إنشاء الملف الشخصي
+      console.log('👤 إنشاء الملف الشخصي...')
+      try {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: formData.email,
+            full_name: formData.full_name,
+            grade: formData.grade,
+            section: formData.section || '',
+            student_phone: formData.student_phone,
+            parent_phone: formData.parent_phone || '',
+            governorate: formData.governorate || '',
+            city: formData.city || '',
+            school: formData.school || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+
+        if (profileError) {
+          console.error('❌ خطأ في إنشاء الملف الشخصي:', profileError)
+          // نستمر حتى مع خطأ الملف الشخصي، يمكن إكماله لاحقاً
+        } else {
+          console.log('✅ تم إنشاء الملف الشخصي بنجاح')
         }
-      } else {
-        await createProfileWithClient(user.id)
+      } catch (profileErr) {
+        console.error('❌ استثناء في إنشاء الملف الشخصي:', profileErr)
       }
 
       // الخطوة 3: إنشاء المحفظة
-      await createWallet(user.id)
+      console.log('💰 إنشاء المحفظة...')
+      try {
+        const { error: walletError } = await supabase
+          .from('wallets')
+          .insert({
+            user_id: user.id,
+            balance: 0,
+            created_at: new Date().toISOString()
+          })
+
+        if (walletError) {
+          console.error('❌ خطأ في إنشاء المحفظة:', walletError)
+          // نستمر حتى مع خطأ المحفظة
+        } else {
+          console.log('✅ تم إنشاء المحفظة بنجاح')
+        }
+      } catch (walletErr) {
+        console.error('❌ استثناء في إنشاء المحفظة:', walletErr)
+      }
 
       // الخطوة 4: تسجيل الدخول تلقائياً
+      console.log('🔐 تسجيل الدخول تلقائياً...')
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       })
 
       if (signInError) {
-        console.log('ملاحظة: لم يتم تسجيل الدخول تلقائياً:', signInError.message)
+        console.error('❌ خطأ في تسجيل الدخول:', signInError)
         setSuccess(true)
         setTimeout(() => {
-          router.push('/login?message=تم إنشاء الحساب بنجاح. يرجى تسجيل الدخول')
-        }, 3000)
-        setLoading(false)
-        return
+          router.push('/login?message=تم إنشاء حسابك بنجاح. يرجى تسجيل الدخول.')
+        }, 2000)
+      } else {
+        console.log('✅ تم تسجيل الدخول بنجاح')
+        setSuccess(true)
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 1500)
       }
 
-      // إذا نجح تسجيل الدخول، انتقل للداشبورد
-      setSuccess(true)
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 1500)
-
     } catch (error: any) {
-      console.error('خطأ غير متوقع:', error)
+      console.error('❌ خطأ غير متوقع:', error)
       setErrorMessage(`حدث خطأ غير متوقع: ${error.message || 'يرجى المحاولة مرة أخرى'}`)
       setLoading(false)
     }
   }
 
-  const createProfileWithClient = async (userId: string) => {
-    try {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          full_name: formData.full_name,
-          grade: formData.grade,
-          section: formData.section,
-          student_phone: formData.student_phone,
-          parent_phone: formData.parent_phone,
-          governorate: formData.governorate,
-          city: formData.city,
-          school: formData.school,
-        })
-
-      if (profileError) {
-        console.error('خطأ في إنشاء الملف الشخصي:', profileError)
-        throw profileError
-      }
-      
-      console.log('تم إنشاء الملف الشخصي بنجاح')
-    } catch (error) {
-      console.error('فشل إنشاء الملف الشخصي:', error)
-      // يمكن للمستخدم إكمال الملف الشخصي لاحقاً
-    }
-  }
-
-  const createWallet = async (userId: string) => {
-    try {
-      const { error: walletError } = await supabase
-        .from('wallets')
-        .insert({
-          user_id: userId,
-          balance: 0,
-        })
-
-      if (walletError) {
-        console.error('خطأ في إنشاء المحفظة:', walletError)
-        // المحفظة يمكن إنشاؤها لاحقاً
-      } else {
-        console.log('تم إنشاء المحفظة بنجاح')
-      }
-    } catch (error) {
-      console.error('فشل إنشاء المحفظة:', error)
-    }
-  }
-
   const validateForm = (): boolean => {
-    // التحقق من إدخال جميع الحقول المطلوبة
     const requiredFields = ['email', 'password', 'full_name', 'grade', 'student_phone'] as const
     for (const field of requiredFields) {
       if (!formData[field]) {
@@ -264,16 +209,9 @@ export default function RegisterPage() {
       }
     }
     
-    // التحقق من صحة البريد الإلكتروني
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(formData.email)) {
       setErrorMessage('يرجى إدخال بريد إلكتروني صحيح')
-      return false
-    }
-    
-    // التحقق من قوة كلمة المرور
-    if (formData.password.length < 6) {
-      setErrorMessage('كلمة المرور يجب أن تكون 6 أحرف على الأقل')
       return false
     }
     
@@ -302,41 +240,28 @@ export default function RegisterPage() {
   ]
 
   const grades = [
-    'الصف الأول الابتدائي',
-    'الصف الثاني الابتدائي',
-    'الصف الثالث الابتدائي',
-    'الصف الرابع الابتدائي',
-    'الصف الخامس الابتدائي',
-    'الصف السادس الابتدائي',
-    'الصف الأول الإعدادي',
-    'الصف الثاني الإعدادي',
-    'الصف الثالث الإعدادي',
     'الصف الأول الثانوي',
     'الصف الثاني الثانوي',
     'الصف الثالث الثانوي'
   ]
 
+  if (success) {
+    return (
+      <div className="success-page">
+        <div className="success-content">
+          <div className="success-icon">✓</div>
+          <h2>تهانينا! تم إنشاء حسابك بنجاح</h2>
+          <p>يتم توجيهك إلى لوحة التحكم...</p>
+          <div className="success-loader"></div>
+          <p className="success-note">إذا لم يتم توجيهك تلقائياً، <Link href="/dashboard">اضغط هنا</Link></p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="register-container" ref={registerContainerRef}>
-      {/* تأثيرات الخلفية المتحركة */}
-      <div className="background-effects">
-        <div className="effect-circle circle-1"></div>
-        <div className="effect-circle circle-2"></div>
-        <div className="effect-circle circle-3"></div>
-        <div className="effect-circle circle-4"></div>
-        <div className="floating-shape shape-1"></div>
-        <div className="floating-shape shape-2"></div>
-        <div className="floating-shape shape-3"></div>
-      </div>
-
-      {/* تأثير النجاح */}
-      <div className="success-effect" ref={successEffectRef} style={{ display: success ? 'flex' : 'none' }}>
-        <div className="success-icon">✓</div>
-        <div className="success-message">تم إنشاء الحساب بنجاح!</div>
-      </div>
-
       <div className="register-card">
-        {/* رأس البطاقة */}
         <div className="card-header">
           <div className="logo-container">
             <div className="logo-icon">م</div>
@@ -349,7 +274,6 @@ export default function RegisterPage() {
           <p className="page-subtitle">انضم إلى منصتنا التعليمية وابدأ رحلة التعلم</p>
         </div>
 
-        {/* خطوات التسجيل */}
         <div className="step-indicator">
           <div className="step-container">
             <div className={`step ${step >= 1 ? 'active' : ''}`}>
@@ -369,21 +293,21 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        {/* نموذج التسجيل */}
+        {errorMessage && (
+          <div className="error-message">
+            <div className="error-icon">!</div>
+            <div className="error-text">{errorMessage}</div>
+          </div>
+        )}
+
         <form onSubmit={handleRegister} className="register-form">
-          <div className="form-container" ref={formContainerRef}>
-            {errorMessage && (
-              <div className="error-message">
-                <div className="error-icon">!</div>
-                <div className="error-text">{errorMessage}</div>
-              </div>
-            )}
-            
+          <div className="form-content">
             {step === 1 && (
               <div className="form-step step-1">
-                <h2 className="step-title">معلومات الحساب الأساسية</h2>
+                <h3 className="step-title">معلومات الحساب الأساسية</h3>
                 
-                <div className="input-group floating-input">
+                <div className="form-group">
+                  <label htmlFor="email">البريد الإلكتروني *</label>
                   <input
                     type="email"
                     id="email"
@@ -391,15 +315,12 @@ export default function RegisterPage() {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
+                    placeholder="example@email.com"
                   />
-                  <label htmlFor="email" className={formData.email ? 'filled' : ''}>البريد الإلكتروني</label>
-                  <div className="input-icon">
-                    📧
-                  </div>
-                  <div className="input-underline"></div>
                 </div>
                 
-                <div className="input-group floating-input">
+                <div className="form-group">
+                  <label htmlFor="password">كلمة المرور *</label>
                   <input
                     type="password"
                     id="password"
@@ -407,15 +328,13 @@ export default function RegisterPage() {
                     value={formData.password}
                     onChange={handleInputChange}
                     required
+                    minLength={6}
+                    placeholder="6 أحرف على الأقل"
                   />
-                  <label htmlFor="password" className={formData.password ? 'filled' : ''}>كلمة المرور</label>
-                  <div className="input-icon">
-                    🔒
-                  </div>
-                  <div className="input-underline"></div>
                 </div>
                 
-                <div className="input-group floating-input">
+                <div className="form-group">
+                  <label htmlFor="confirmPassword">تأكيد كلمة المرور *</label>
                   <input
                     type="password"
                     id="confirmPassword"
@@ -423,21 +342,19 @@ export default function RegisterPage() {
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     required
+                    minLength={6}
+                    placeholder="أعد إدخال كلمة المرور"
                   />
-                  <label htmlFor="confirmPassword" className={formData.confirmPassword ? 'filled' : ''}>تأكيد كلمة المرور</label>
-                  <div className="input-icon">
-                    🔐
-                  </div>
-                  <div className="input-underline"></div>
                 </div>
               </div>
             )}
             
             {step === 2 && (
               <div className="form-step step-2">
-                <h2 className="step-title">المعلومات الشخصية</h2>
+                <h3 className="step-title">المعلومات الشخصية</h3>
                 
-                <div className="input-group floating-input">
+                <div className="form-group">
+                  <label htmlFor="full_name">الاسم الكامل *</label>
                   <input
                     type="text"
                     id="full_name"
@@ -445,16 +362,13 @@ export default function RegisterPage() {
                     value={formData.full_name}
                     onChange={handleInputChange}
                     required
+                    placeholder="الاسم الثلاثي"
                   />
-                  <label htmlFor="full_name" className={formData.full_name ? 'filled' : ''}>الاسم الكامل</label>
-                  <div className="input-icon">
-                    👤
-                  </div>
-                  <div className="input-underline"></div>
                 </div>
                 
-                <div className="input-row">
-                  <div className="input-group floating-input half-width">
+                <div className="form-row">
+                  <div className="form-group half">
+                    <label htmlFor="student_phone">رقم هاتف الطالب *</label>
                     <input
                       type="tel"
                       id="student_phone"
@@ -462,32 +376,26 @@ export default function RegisterPage() {
                       value={formData.student_phone}
                       onChange={handleInputChange}
                       required
+                      placeholder="01XXXXXXXXX"
                     />
-                    <label htmlFor="student_phone" className={formData.student_phone ? 'filled' : ''}>رقم هاتف الطالب</label>
-                    <div className="input-icon">
-                      📱
-                    </div>
-                    <div className="input-underline"></div>
                   </div>
                   
-                  <div className="input-group floating-input half-width">
+                  <div className="form-group half">
+                    <label htmlFor="parent_phone">رقم هاتف ولي الأمر</label>
                     <input
                       type="tel"
                       id="parent_phone"
                       name="parent_phone"
                       value={formData.parent_phone}
                       onChange={handleInputChange}
+                      placeholder="01XXXXXXXXX"
                     />
-                    <label htmlFor="parent_phone" className={formData.parent_phone ? 'filled' : ''}>رقم هاتف ولي الأمر</label>
-                    <div className="input-icon">
-                      📞
-                    </div>
-                    <div className="input-underline"></div>
                   </div>
                 </div>
                 
-                <div className="input-row">
-                  <div className="input-group floating-input half-width">
+                <div className="form-row">
+                  <div className="form-group half">
+                    <label htmlFor="governorate">المحافظة</label>
                     <select
                       id="governorate"
                       name="governorate"
@@ -499,26 +407,18 @@ export default function RegisterPage() {
                         <option key={index} value={gov}>{gov}</option>
                       ))}
                     </select>
-                    <label htmlFor="governorate" className={formData.governorate ? 'filled' : ''}>المحافظة</label>
-                    <div className="input-icon">
-                      🗺️
-                    </div>
-                    <div className="input-underline"></div>
                   </div>
                   
-                  <div className="input-group floating-input half-width">
+                  <div className="form-group half">
+                    <label htmlFor="city">المدينة</label>
                     <input
                       type="text"
                       id="city"
                       name="city"
                       value={formData.city}
                       onChange={handleInputChange}
+                      placeholder="اسم المدينة"
                     />
-                    <label htmlFor="city" className={formData.city ? 'filled' : ''}>المدينة</label>
-                    <div className="input-icon">
-                      🏙️
-                    </div>
-                    <div className="input-underline"></div>
                   </div>
                 </div>
               </div>
@@ -526,10 +426,11 @@ export default function RegisterPage() {
             
             {step === 3 && (
               <div className="form-step step-3">
-                <h2 className="step-title">التفاصيل الدراسية</h2>
+                <h3 className="step-title">التفاصيل الدراسية</h3>
                 
-                <div className="input-row">
-                  <div className="input-group floating-input half-width">
+                <div className="form-row">
+                  <div className="form-group half">
+                    <label htmlFor="grade">الصف الدراسي *</label>
                     <select
                       id="grade"
                       name="grade"
@@ -542,42 +443,35 @@ export default function RegisterPage() {
                         <option key={index} value={grade}>{grade}</option>
                       ))}
                     </select>
-                    <label htmlFor="grade" className={formData.grade ? 'filled' : ''}>الصف الدراسي</label>
-                    <div className="input-icon">
-                      📚
-                    </div>
-                    <div className="input-underline"></div>
                   </div>
                   
-                  <div className="input-group floating-input half-width">
+                  <div className="form-group half">
+                    <label htmlFor="section">القسم</label>
                     <input
                       type="text"
                       id="section"
                       name="section"
                       value={formData.section}
                       onChange={handleInputChange}
+                      placeholder="علمي علوم / علمي رياضة / أدبي"
                     />
-                    <label htmlFor="section" className={formData.section ? 'filled' : ''}>القسم</label>
-                    <div className="input-icon">
-                      📝
-                    </div>
-                    <div className="input-underline"></div>
                   </div>
                 </div>
                 
-                <div className="input-group floating-input">
+                <div className="form-group">
+                  <label htmlFor="school">اسم المدرسة</label>
                   <input
                     type="text"
                     id="school"
                     name="school"
                     value={formData.school}
                     onChange={handleInputChange}
+                    placeholder="اسم المدرسة"
                   />
-                  <label htmlFor="school" className={formData.school ? 'filled' : ''}>اسم المدرسة</label>
-                  <div className="input-icon">
-                    🏫
-                  </div>
-                  <div className="input-underline"></div>
+                </div>
+                
+                <div className="form-note">
+                  <p>⚠️ <strong>ملاحظة:</strong> سيتم إنشاء محفظة رقمية لك برصيد 0 نقطة يمكنك زيادتها من خلال المشاركة في الأنشطة.</p>
                 </div>
               </div>
             )}
@@ -618,7 +512,13 @@ export default function RegisterPage() {
 
         <div className="card-footer">
           <p className="footer-text">
-            لديك حساب بالفعل؟ <Link href="/login" className="login-link">تسجيل الدخول</Link>
+            لديك حساب بالفعل؟{' '}
+            <Link href="/login" className="login-link">
+              تسجيل الدخول
+            </Link>
+          </p>
+          <p className="footer-note">
+            بتسجيلك، فإنك توافق على <a href="/terms">شروط الاستخدام</a> و <a href="/privacy">سياسة الخصوصية</a>
           </p>
         </div>
       </div>

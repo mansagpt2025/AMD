@@ -12,7 +12,6 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
-  // قراءة الرسالة من URL عند تحميل الصفحة
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
@@ -47,8 +46,6 @@ export default function LoginPage() {
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
           setErrorMessage('البريد الإلكتروني أو كلمة المرور غير صحيحة')
-        } else if (error.message.includes('Email not confirmed')) {
-          setErrorMessage('لم يتم تأكيد البريد الإلكتروني. يرجى التحقق من بريدك')
         } else {
           setErrorMessage(`خطأ في تسجيل الدخول: ${error.message}`)
         }
@@ -89,12 +86,6 @@ export default function LoginPage() {
     
     if (!email) return
     
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      alert('صيغة البريد الإلكتروني غير صحيحة')
-      return
-    }
-    
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
@@ -127,7 +118,7 @@ export default function LoginPage() {
         </div>
 
         {successMessage && (
-          <div className="success-message-banner">
+          <div className="success-message">
             <div className="success-icon">✓</div>
             <div className="success-text">{successMessage}</div>
           </div>
@@ -141,7 +132,7 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleLogin} className="login-form">
-          <div className="input-group">
+          <div className="form-group">
             <label htmlFor="email">البريد الإلكتروني</label>
             <input
               type="email"
@@ -152,7 +143,7 @@ export default function LoginPage() {
             />
           </div>
           
-          <div className="input-group">
+          <div className="form-group">
             <label htmlFor="password">كلمة المرور</label>
             <input
               type="password"

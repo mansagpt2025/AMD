@@ -8,25 +8,9 @@ export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState<any>(null)
-  const [wallet, setWallet] = useState<any>(null)
 
   useEffect(() => {
     checkUser()
-    
-    // استمع لتغييرات حالة المصادقة
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === 'SIGNED_OUT') {
-          router.push('/login')
-        } else if (session) {
-          setUser(session.user)
-          loadUserData(session.user.id)
-        }
-      }
-    )
-    
-    return () => subscription.unsubscribe()
   }, [router])
 
   const checkUser = async () => {
@@ -39,40 +23,11 @@ export default function DashboardPage() {
       }
       
       setUser(session.user)
-      await loadUserData(session.user.id)
     } catch (error) {
       console.error('Error checking user:', error)
       router.push('/login')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const loadUserData = async (userId: string) => {
-    try {
-      // جلب بيانات الملف الشخصي
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-      
-      if (profileData) {
-        setProfile(profileData)
-      }
-
-      // جلب بيانات المحفظة
-      const { data: walletData } = await supabase
-        .from('wallets')
-        .select('*')
-        .eq('user_id', userId)
-        .single()
-      
-      if (walletData) {
-        setWallet(walletData)
-      }
-    } catch (error) {
-      console.error('Error loading user data:', error)
     }
   }
 
@@ -108,55 +63,23 @@ export default function DashboardPage() {
       
       <main className="dashboard-content">
         <div className="welcome-card">
-          <h2>مرحباً {profile?.full_name || 'عزيزي الطالب'}</h2>
+          <h2>🎉 تهانينا! التسجيل يعمل بنجاح</h2>
           <p>لقد سجلت دخولك بنجاح إلى منصتنا التعليمية</p>
           
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon">📚</div>
-              <div className="stat-info">
-                <h3>الدروس المتاحة</h3>
-                <p className="stat-number">0</p>
-              </div>
-            </div>
-            
-            <div className="stat-card">
-              <div className="stat-icon">🎯</div>
-              <div className="stat-info">
-                <h3>الاختبارات المكتملة</h3>
-                <p className="stat-number">0</p>
-              </div>
-            </div>
-            
-            <div className="stat-card">
-              <div className="stat-icon">💼</div>
-              <div className="stat-info">
-                <h3>رصيد النقاط</h3>
-                <p className="stat-number">{wallet?.balance || 0}</p>
-              </div>
-            </div>
+          <div className="user-details">
+            <h3>معلومات حسابك:</h3>
+            <p><strong>البريد الإلكتروني:</strong> {user?.email}</p>
+            <p><strong>معرف المستخدم:</strong> {user?.id}</p>
+            <p><strong>تم الإنشاء في:</strong> {new Date(user?.created_at).toLocaleDateString('ar-EG')}</p>
           </div>
-        </div>
-        
-        <div className="user-details">
-          <h3>معلوماتك الشخصية</h3>
-          <div className="details-grid">
-            <div className="detail-item">
-              <span className="detail-label">البريد الإلكتروني:</span>
-              <span className="detail-value">{user?.email}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">الاسم الكامل:</span>
-              <span className="detail-value">{profile?.full_name || 'غير محدد'}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">الصف الدراسي:</span>
-              <span className="detail-value">{profile?.grade || 'غير محدد'}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">رقم الهاتف:</span>
-              <span className="detail-value">{profile?.student_phone || 'غير محدد'}</span>
-            </div>
+          
+          <div className="dashboard-actions">
+            <button className="btn btn-primary">
+              استعراض الدروس
+            </button>
+            <button className="btn btn-secondary">
+              تحديث الملف الشخصي
+            </button>
           </div>
         </div>
       </main>
