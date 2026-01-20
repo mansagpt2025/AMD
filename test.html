@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>اختبار Supabase</title>
+</head>
+<body style="font-family: Arial; padding: 20px;">
+    <h1>🔧 اختبار اتصال Supabase</h1>
+    
+    <div id="result" style="margin: 20px 0; padding: 15px; border: 1px solid #ccc;"></div>
+    
+    <button onclick="testConnection()" style="padding: 10px 20px; background: #0070f3; color: white; border: none; cursor: pointer;">
+        اختبار الاتصال
+    </button>
+    
+    <button onclick="testAuth()" style="padding: 10px 20px; background: #10b981; color: white; border: none; cursor: pointer; margin-left: 10px;">
+        اختبار المصادقة
+    </button>
+    
+    <button onclick="testTables()" style="padding: 10px 20px; background: #f59e0b; color: white; border: none; cursor: pointer; margin-left: 10px;">
+        اختبار الجداول
+    </button>
+
+    <script>
+        const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+        const SUPABASE_KEY = 'YOUR_ANON_KEY';
+        
+        async function testConnection() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+                    headers: { 'apikey': SUPABASE_KEY }
+                });
+                
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = 
+                        '<p style="color: green;">✅ الاتصال بـ Supabase يعمل بنجاح!</p>' +
+                        '<p>URL: ' + SUPABASE_URL + '</p>' +
+                        '<p>Status: ' + response.status + '</p>';
+                } else {
+                    document.getElementById('result').innerHTML = 
+                        '<p style="color: red;">❌ فشل الاتصال: ' + response.status + '</p>' +
+                        '<p>تأكد من: <br>' +
+                        '1. URL صحيح <br>' +
+                        '2. KEY صحيح <br>' +
+                        '3. CORS مفعل في Supabase</p>';
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    '<p style="color: red;">❌ خطأ: ' + error.message + '</p>';
+            }
+        }
+        
+        async function testAuth() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+                    headers: { 'apikey': SUPABASE_KEY }
+                });
+                
+                const data = await response.json();
+                document.getElementById('result').innerHTML = 
+                    '<p style="color: green;">✅ خدمة المصادقة تعمل!</p>' +
+                    '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    '<p style="color: red;">❌ خطأ في المصادقة: ' + error.message + '</p>';
+            }
+        }
+        
+        async function testTables() {
+            try {
+                // اختبار جدول profiles
+                const profilesRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=count`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                
+                // اختبار جدول wallets
+                const walletsRes = await fetch(`${SUPABASE_URL}/rest/v1/wallets?select=count`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                
+                let result = '<h3>نتيجة اختبار الجداول:</h3>';
+                
+                if (profilesRes.ok) {
+                    result += '<p style="color: green;">✅ جدول profiles موجود ويعمل</p>';
+                } else {
+                    result += '<p style="color: red;">❌ جدول profiles غير موجود أو فيه مشكلة</p>';
+                }
+                
+                if (walletsRes.ok) {
+                    result += '<p style="color: green;">✅ جدول wallets موجود ويعمل</p>';
+                } else {
+                    result += '<p style="color: red;">❌ جدول wallets غير موجود أو فيه مشكلة</p>';
+                }
+                
+                document.getElementById('result').innerHTML = result;
+                
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    '<p style="color: red;">❌ خطأ في اختبار الجداول: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>

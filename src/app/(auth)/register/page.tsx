@@ -78,128 +78,158 @@ export default function RegisterPage() {
   }
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setErrorMessage('')
+  e.preventDefault();
+  setLoading(true);
+  setErrorMessage('');
 
-    // التحقق النهائي من جميع البيانات
-    if (!validateForm()) {
-      setLoading(false)
-      return
-    }
-
-    try {
-      console.log('🚀 بدء عملية التسجيل...')
-      
-      // الخطوة 1: إنشاء حساب المصادقة في Supabase Auth
-      console.log('📧 إنشاء حساب المصادقة...')
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-      })
-
-      if (authError) {
-        console.error('❌ خطأ في المصادقة:', authError)
-        if (authError.message.includes('User already registered')) {
-          setErrorMessage('هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.')
-        } else {
-          setErrorMessage(`خطأ في إنشاء الحساب: ${authError.message}`)
-        }
-        setLoading(false)
-        return
-      }
-
-      const user = authData.user
-      if (!user) {
-        setErrorMessage('لم يتم إنشاء المستخدم')
-        setLoading(false)
-        return
-      }
-
-      console.log('✅ تم إنشاء المستخدم:', user.id)
-      
-      // الانتظار قليلاً للتأكد من اكتمال عملية المصادقة
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // الخطوة 2: إنشاء الملف الشخصي
-      console.log('👤 إنشاء الملف الشخصي...')
-      try {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            email: formData.email,
-            full_name: formData.full_name,
-            grade: formData.grade,
-            section: formData.section || '',
-            student_phone: formData.student_phone,
-            parent_phone: formData.parent_phone || '',
-            governorate: formData.governorate || '',
-            city: formData.city || '',
-            school: formData.school || '',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-
-        if (profileError) {
-          console.error('❌ خطأ في إنشاء الملف الشخصي:', profileError)
-          // نستمر حتى مع خطأ الملف الشخصي، يمكن إكماله لاحقاً
-        } else {
-          console.log('✅ تم إنشاء الملف الشخصي بنجاح')
-        }
-      } catch (profileErr) {
-        console.error('❌ استثناء في إنشاء الملف الشخصي:', profileErr)
-      }
-
-      // الخطوة 3: إنشاء المحفظة
-      console.log('💰 إنشاء المحفظة...')
-      try {
-        const { error: walletError } = await supabase
-          .from('wallets')
-          .insert({
-            user_id: user.id,
-            balance: 0,
-            created_at: new Date().toISOString()
-          })
-
-        if (walletError) {
-          console.error('❌ خطأ في إنشاء المحفظة:', walletError)
-          // نستمر حتى مع خطأ المحفظة
-        } else {
-          console.log('✅ تم إنشاء المحفظة بنجاح')
-        }
-      } catch (walletErr) {
-        console.error('❌ استثناء في إنشاء المحفظة:', walletErr)
-      }
-
-      // الخطوة 4: تسجيل الدخول تلقائياً
-      console.log('🔐 تسجيل الدخول تلقائياً...')
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      })
-
-      if (signInError) {
-        console.error('❌ خطأ في تسجيل الدخول:', signInError)
-        setSuccess(true)
-        setTimeout(() => {
-          router.push('/login?message=تم إنشاء حسابك بنجاح. يرجى تسجيل الدخول.')
-        }, 2000)
-      } else {
-        console.log('✅ تم تسجيل الدخول بنجاح')
-        setSuccess(true)
-        setTimeout(() => {
-          router.push('/dashboard')
-        }, 1500)
-      }
-
-    } catch (error: any) {
-      console.error('❌ خطأ غير متوقع:', error)
-      setErrorMessage(`حدث خطأ غير متوقع: ${error.message || 'يرجى المحاولة مرة أخرى'}`)
-      setLoading(false)
-    }
+  // التحقق النهائي
+  if (!validateForm()) {
+    setLoading(false);
+    return;
   }
 
+  try {
+    console.log('🚀 بدء التسجيل...');
+    
+    // 1. إنشاء المستخدم في Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          full_name: formData.full_name,
+          grade: formData.grade
+        }
+      }
+    });
+
+    if (authError) throw authError;
+    
+    if (!authData.user) {
+      throw new Error('لم يتم إنشاء المستخدم');
+    }
+
+    console.log('✅ تم إنشاء المستخدم:', authData.user.id);
+    
+    // 2. انتظار 2 ثانية للتأكد من اكتمال عملية Auth
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // 3. الحصول على جلسة المستخدم
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      console.log('⚠️ لا توجد جلسة، سيتم إنشاء الملف الشخصي بدون جلسة');
+    }
+
+    // 4. إنشاء الملف الشخصي - الطريقة الجديدة
+    console.log('👤 محاولة إنشاء الملف الشخصي...');
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: authData.user.id,
+        email: formData.email,
+        full_name: formData.full_name,
+        grade: formData.grade,
+        section: formData.section || null,
+        student_phone: formData.student_phone,
+        parent_phone: formData.parent_phone || null,
+        governorate: formData.governorate || null,
+        city: formData.city || null,
+        school: formData.school || null
+      }, {
+        onConflict: 'id'
+      });
+
+    if (profileError) {
+      console.error('❌ خطأ في الملف الشخصي:', profileError);
+      
+      // المحاولة الثانية بدون id
+      const { error: retryError } = await supabase
+        .from('profiles')
+        .upsert({
+          email: formData.email,
+          full_name: formData.full_name,
+          grade: formData.grade,
+          student_phone: formData.student_phone
+        });
+
+      if (retryError) {
+        console.error('❌ فشلت المحاولة الثانية:', retryError);
+        // نستمر حتى مع خطأ الملف الشخصي
+      } else {
+        console.log('✅ تم إنشاء الملف الشخصي في المحاولة الثانية');
+      }
+    } else {
+      console.log('✅ تم إنشاء الملف الشخصي بنجاح');
+    }
+
+    // 5. إنشاء المحفظة
+    console.log('💰 إنشاء المحفظة...');
+    const { error: walletError } = await supabase
+      .from('wallets')
+      .upsert({
+        user_id: authData.user.id,
+        balance: 0
+      }, {
+        onConflict: 'user_id'
+      });
+
+    if (walletError) {
+      console.error('⚠️ خطأ في المحفظة (غير حرج):', walletError);
+    } else {
+      console.log('✅ تم إنشاء المحفظة بنجاح');
+    }
+
+    // 6. تسجيل الدخول تلقائياً
+    console.log('🔐 تسجيل الدخول...');
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
+
+    if (signInError) {
+      console.error('❌ خطأ في تسجيل الدخول:', signInError);
+      setSuccess(true);
+      setTimeout(() => {
+        router.push('/login?message=تم إنشاء الحساب بنجاح! يرجى تسجيل الدخول يدوياً.');
+      }, 2000);
+      return;
+    }
+
+    // 7. التحقق من جلسة المستخدم
+    const { data: checkSession } = await supabase.auth.getSession();
+    if (checkSession.session) {
+      console.log('✅ تم تسجيل الدخول بنجاح!');
+      setSuccess(true);
+      
+      // انتظار ثم التوجيه
+      setTimeout(() => {
+        router.push('/dashboard');
+        router.refresh(); // تحديث الصفحة
+      }, 1500);
+    } else {
+      setErrorMessage('تم إنشاء الحساب ولكن فشل تسجيل الدخول. يرجى تسجيل الدخول يدوياً.');
+    }
+
+  } catch (error: any) {
+    console.error('❌ خطأ غير متوقع:', error);
+    
+    let errorMsg = 'حدث خطأ غير متوقع';
+    
+    if (error.message.includes('User already registered')) {
+      errorMsg = 'البريد الإلكتروني مسجل بالفعل';
+    } else if (error.message.includes('Password should be at least')) {
+      errorMsg = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+    } else if (error.message.includes('Invalid email')) {
+      errorMsg = 'البريد الإلكتروني غير صحيح';
+    } else if (error.message.includes('Database error')) {
+      errorMsg = 'خطأ في قاعدة البيانات - تم إنشاء الحساب ولكن الملف الشخصي لم ينشأ';
+    }
+    
+    setErrorMessage(`❌ ${errorMsg}: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
   const validateForm = (): boolean => {
     const requiredFields = ['email', 'password', 'full_name', 'grade', 'student_phone'] as const
     for (const field of requiredFields) {
