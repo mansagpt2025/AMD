@@ -1,21 +1,21 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/auth-helpers-nextjs'
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next()
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next()
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: (name) => request.cookies.get(name)?.value,
+        get: (name) => req.cookies.get(name)?.value,
         set: (name, value, options) => {
-          response.cookies.set({ name, value, ...options })
+          res.cookies.set({ name, value, ...options })
         },
         remove: (name, options) => {
-          response.cookies.set({ name, value: '', ...options })
+          res.cookies.set({ name, value: '', ...options })
         },
       },
     }
@@ -25,15 +25,36 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isProtected = request.nextUrl.pathname.startsWith('/dashboard')
+  const pathname = req.nextUrl.pathname
 
-  if (isProtected && !user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  // صفحات محمية
+  if (
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/packages') ||
+    pathname.startsWith('/lecture') ||
+    pathname.startsWith('/admin')
+  ) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
   }
 
-  return response
+  // حماية الأدمن
+  if (pathname.startsWith('/admin')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user?.id)
+      .single()
+
+    if (profile?.role !== 'admin') {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+  }
+
+  return res
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: ['/dashboard/:path*', '/packages/:path*', '/lecture/:path*', '/admin/:path*'],
 }
