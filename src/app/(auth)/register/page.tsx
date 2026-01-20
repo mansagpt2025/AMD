@@ -1,62 +1,126 @@
 'use client'
 
 import { supabase } from '@/lib/supabase/client'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import './RegisterPage.css'
 
 export default function RegisterPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [step, setStep] = useState(1)
   const [errorMessage, setErrorMessage] = useState('')
   const [success, setSuccess] = useState(false)
+  const registerContainerRef = useRef<HTMLDivElement>(null)
+  const formContainerRef = useRef<HTMLDivElement>(null)
+  const successEffectRef = useRef<HTMLDivElement>(null)
+  
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    full_name: '',
+    grade: '',
+    section: '',
+    student_phone: '',
+    parent_phone: '',
+    governorate: '',
+    city: '',
+    school: ''
+  })
 
-  // التحقق من تسجيل الدخول أولاً
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        router.push('/dashboard')
+    const timer = setTimeout(() => {
+      if (registerContainerRef.current) {
+        registerContainerRef.current.classList.add('loaded')
+      }
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+    setErrorMessage('')
+  }
+
+  const nextStep = () => {
+    if (step < 3) {
+      if (formContainerRef.current) {
+        formContainerRef.current.classList.add('slide-out-left')
+        
+        setTimeout(() => {
+          setStep(step + 1)
+          formContainerRef.current?.classList.remove('slide-out-left')
+          formContainerRef.current?.classList.add('slide-in-right')
+          
+          setTimeout(() => {
+            formContainerRef.current?.classList.remove('slide-in-right')
+          }, 300)
+        }, 300)
+      } else {
+        setStep(step + 1)
       }
     }
-    checkUser()
-  }, [router])
+  }
+
+  const prevStep = () => {
+    if (step > 1) {
+      if (formContainerRef.current) {
+        formContainerRef.current.classList.add('slide-out-right')
+        
+        setTimeout(() => {
+          setStep(step - 1)
+          formContainerRef.current?.classList.remove('slide-out-right')
+          formContainerRef.current?.classList.add('slide-in-left')
+          
+          setTimeout(() => {
+            formContainerRef.current?.classList.remove('slide-in-left')
+          }, 300)
+        }, 300)
+      } else {
+        setStep(step - 1)
+      }
+    }
+  }
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setErrorMessage('')
 
-    const formData = new FormData(e.target as HTMLFormElement)
-    
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
-    const confirmPassword = formData.get('confirmPassword') as string
-    const full_name = formData.get('full_name') as string
-    const grade = formData.get('grade') as string
-    const student_phone = formData.get('student_phone') as string
-
-    // التحقق من البيانات
-    if (!email || !password || !full_name || !grade || !student_phone) {
-      setErrorMessage('يرجى ملء جميع الحقول المطلوبة')
-      setLoading(false)
-      return
-    }
-
-    if (password !== confirmPassword) {
+    // التحقق من كلمة المرور
+    if (formData.password !== formData.confirmPassword) {
       setErrorMessage('كلمة المرور غير متطابقة')
       setLoading(false)
       return
     }
 
+    // التحقق من صحة البيانات
+    if (!validateForm()) {
+      setLoading(false)
+      return
+    }
+
     try {
-      // 1. إنشاء حساب المصادقة
+      console.log('بدء عملية التسجيل...')
+      
+      // الخطوة 1: إنشاء حساب المصادقة
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
+        email: formData.email,
+        password: formData.password,
         options: {
-          data: { full_name, phone: student_phone, grade }
+          data: {
+            full_name: formData.full_name,
+            phone: formData.student_phone,
+            grade: formData.grade
+          }
         }
       })
 
@@ -67,33 +131,212 @@ export default function RegisterPage() {
         return
       }
 
-      if (authData.user) {
+      const user = authData.user
+      if (!user) {
+        setErrorMessage('لم يتم إنشاء حساب المستخدم')
+        setLoading(false)
+        return
+      }
+
+      console.log('تم إنشاء المستخدم بنجاح:', user.id)
+      
+      // الخطوة 2: استخدام Service Role Key لإنشاء الملف الشخصي
+      if (supabaseAdmin) {
+        try {
+          const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .insert({
+              id: user.id,
+              full_name: formData.full_name,
+              grade: formData.grade,
+              section: formData.section,
+              student_phone: formData.student_phone,
+              parent_phone: formData.parent_phone,
+              governorate: formData.governorate,
+              city: formData.city,
+              school: formData.school,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+
+          if (profileError) {
+            console.error('خطأ في إنشاء الملف الشخصي (Service Role):', profileError)
+            // محاولة باستخدام العميل العادي
+            await createProfileWithClient(user.id)
+          } else {
+            console.log('تم إنشاء الملف الشخصي بنجاح باستخدام Service Role')
+          }
+        } catch (adminError) {
+          console.error('خطأ في Service Role:', adminError)
+          await createProfileWithClient(user.id)
+        }
+      } else {
+        await createProfileWithClient(user.id)
+      }
+
+      // الخطوة 3: إنشاء المحفظة
+      await createWallet(user.id)
+
+      // الخطوة 4: تسجيل الدخول تلقائياً
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
+
+      if (signInError) {
+        console.log('ملاحظة: لم يتم تسجيل الدخول تلقائياً:', signInError.message)
         setSuccess(true)
         setTimeout(() => {
           router.push('/login?message=تم إنشاء الحساب بنجاح. يرجى تسجيل الدخول')
         }, 3000)
+        setLoading(false)
+        return
       }
+
+      // إذا نجح تسجيل الدخول، انتقل للداشبورد
+      setSuccess(true)
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 1500)
 
     } catch (error: any) {
       console.error('خطأ غير متوقع:', error)
-      setErrorMessage(error.message || 'حدث خطأ أثناء التسجيل')
+      setErrorMessage(`حدث خطأ غير متوقع: ${error.message || 'يرجى المحاولة مرة أخرى'}`)
       setLoading(false)
     }
   }
 
-  if (success) {
-    return (
-      <div className="success-container">
-        <div className="success-icon">✓</div>
-        <h2>تم إنشاء الحساب بنجاح!</h2>
-        <p>يتم توجيهك إلى صفحة تسجيل الدخول...</p>
-      </div>
-    )
+  const createProfileWithClient = async (userId: string) => {
+    try {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          full_name: formData.full_name,
+          grade: formData.grade,
+          section: formData.section,
+          student_phone: formData.student_phone,
+          parent_phone: formData.parent_phone,
+          governorate: formData.governorate,
+          city: formData.city,
+          school: formData.school,
+        })
+
+      if (profileError) {
+        console.error('خطأ في إنشاء الملف الشخصي:', profileError)
+        throw profileError
+      }
+      
+      console.log('تم إنشاء الملف الشخصي بنجاح')
+    } catch (error) {
+      console.error('فشل إنشاء الملف الشخصي:', error)
+      // يمكن للمستخدم إكمال الملف الشخصي لاحقاً
+    }
   }
 
+  const createWallet = async (userId: string) => {
+    try {
+      const { error: walletError } = await supabase
+        .from('wallets')
+        .insert({
+          user_id: userId,
+          balance: 0,
+        })
+
+      if (walletError) {
+        console.error('خطأ في إنشاء المحفظة:', walletError)
+        // المحفظة يمكن إنشاؤها لاحقاً
+      } else {
+        console.log('تم إنشاء المحفظة بنجاح')
+      }
+    } catch (error) {
+      console.error('فشل إنشاء المحفظة:', error)
+    }
+  }
+
+  const validateForm = (): boolean => {
+    // التحقق من إدخال جميع الحقول المطلوبة
+    const requiredFields = ['email', 'password', 'full_name', 'grade', 'student_phone'] as const
+    for (const field of requiredFields) {
+      if (!formData[field]) {
+        setErrorMessage(`يرجى إدخال ${getFieldName(field)}`)
+        return false
+      }
+    }
+    
+    // التحقق من صحة البريد الإلكتروني
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setErrorMessage('يرجى إدخال بريد إلكتروني صحيح')
+      return false
+    }
+    
+    // التحقق من قوة كلمة المرور
+    if (formData.password.length < 6) {
+      setErrorMessage('كلمة المرور يجب أن تكون 6 أحرف على الأقل')
+      return false
+    }
+    
+    return true
+  }
+
+  const getFieldName = (field: string): string => {
+    const fieldNames: Record<string, string> = {
+      email: 'البريد الإلكتروني',
+      password: 'كلمة المرور',
+      full_name: 'الاسم الكامل',
+      grade: 'الصف الدراسي',
+      student_phone: 'رقم هاتف الطالب'
+    }
+    return fieldNames[field] || field
+  }
+
+  const governorates = [
+    'القاهرة', 'الجيزة', 'الإسكندرية', 'المنصورة',
+    'بورسعيد', 'السويس', 'دمياط', 'الدقهلية',
+    'الشرقية', 'القليوبية', 'كفر الشيخ', 'الغربية',
+    'المنوفية', 'البحيرة', 'الوادي الجديد', 'مطروح',
+    'شمال سيناء', 'جنوب سيناء', 'البحر الأحمر',
+    'الأقصر', 'أسوان', 'سوهاج', 'قنا', 'أسيوط',
+    'المنيا', 'بنى سويف', 'الفيوم'
+  ]
+
+  const grades = [
+    'الصف الأول الابتدائي',
+    'الصف الثاني الابتدائي',
+    'الصف الثالث الابتدائي',
+    'الصف الرابع الابتدائي',
+    'الصف الخامس الابتدائي',
+    'الصف السادس الابتدائي',
+    'الصف الأول الإعدادي',
+    'الصف الثاني الإعدادي',
+    'الصف الثالث الإعدادي',
+    'الصف الأول الثانوي',
+    'الصف الثاني الثانوي',
+    'الصف الثالث الثانوي'
+  ]
+
   return (
-    <div className="register-page">
+    <div className="register-container" ref={registerContainerRef}>
+      {/* تأثيرات الخلفية المتحركة */}
+      <div className="background-effects">
+        <div className="effect-circle circle-1"></div>
+        <div className="effect-circle circle-2"></div>
+        <div className="effect-circle circle-3"></div>
+        <div className="effect-circle circle-4"></div>
+        <div className="floating-shape shape-1"></div>
+        <div className="floating-shape shape-2"></div>
+        <div className="floating-shape shape-3"></div>
+      </div>
+
+      {/* تأثير النجاح */}
+      <div className="success-effect" ref={successEffectRef} style={{ display: success ? 'flex' : 'none' }}>
+        <div className="success-icon">✓</div>
+        <div className="success-message">تم إنشاء الحساب بنجاح!</div>
+      </div>
+
       <div className="register-card">
+        {/* رأس البطاقة */}
         <div className="card-header">
           <div className="logo-container">
             <div className="logo-icon">م</div>
@@ -106,117 +349,276 @@ export default function RegisterPage() {
           <p className="page-subtitle">انضم إلى منصتنا التعليمية وابدأ رحلة التعلم</p>
         </div>
 
-        {errorMessage && (
-          <div className="error-message">
-            <div className="error-icon">!</div>
-            <div className="error-text">{errorMessage}</div>
+        {/* خطوات التسجيل */}
+        <div className="step-indicator">
+          <div className="step-container">
+            <div className={`step ${step >= 1 ? 'active' : ''}`}>
+              <div className="step-number">1</div>
+              <div className="step-label">الحساب</div>
+            </div>
+            <div className={`step-line ${step >= 2 ? 'active' : ''}`}></div>
+            <div className={`step ${step >= 2 ? 'active' : ''}`}>
+              <div className="step-number">2</div>
+              <div className="step-label">المعلومات الشخصية</div>
+            </div>
+            <div className={`step-line ${step >= 3 ? 'active' : ''}`}></div>
+            <div className={`step ${step >= 3 ? 'active' : ''}`}>
+              <div className="step-number">3</div>
+              <div className="step-label">التفاصيل الدراسية</div>
+            </div>
           </div>
-        )}
+        </div>
 
+        {/* نموذج التسجيل */}
         <form onSubmit={handleRegister} className="register-form">
-          <div className="form-section">
-            <h3>معلومات الحساب</h3>
-            
-            <div className="input-group">
-              <label htmlFor="email">البريد الإلكتروني *</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                required
-                placeholder="example@email.com"
-              />
-            </div>
-            
-            <div className="input-row">
-              <div className="input-group half-width">
-                <label htmlFor="password">كلمة المرور *</label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  required
-                  minLength={6}
-                  placeholder="6 أحرف على الأقل"
-                />
+          <div className="form-container" ref={formContainerRef}>
+            {errorMessage && (
+              <div className="error-message">
+                <div className="error-icon">!</div>
+                <div className="error-text">{errorMessage}</div>
               </div>
-              
-              <div className="input-group half-width">
-                <label htmlFor="confirmPassword">تأكيد كلمة المرور *</label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  required
-                  minLength={6}
-                  placeholder="أعد إدخال كلمة المرور"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-section">
-            <h3>المعلومات الشخصية</h3>
-            
-            <div className="input-group">
-              <label htmlFor="full_name">الاسم الكامل *</label>
-              <input
-                type="text"
-                id="full_name"
-                name="full_name"
-                required
-                placeholder="الاسم الثلاثي"
-              />
-            </div>
-            
-            <div className="input-group">
-              <label htmlFor="student_phone">رقم هاتف الطالب *</label>
-              <input
-                type="tel"
-                id="student_phone"
-                name="student_phone"
-                required
-                placeholder="01xxxxxxxxx"
-              />
-            </div>
-          </div>
-
-          <div className="form-section">
-            <h3>التفاصيل الدراسية</h3>
-            
-            <div className="input-group">
-              <label htmlFor="grade">الصف الدراسي *</label>
-              <select id="grade" name="grade" required>
-                <option value="">اختر الصف الدراسي</option>
-                <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
-                <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
-                <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
-              </select>
-            </div>
-          </div>
-
-          <button 
-            type="submit" 
-            className="btn btn-primary btn-register"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <span className="loading-spinner"></span>
-                جاري إنشاء الحساب...
-              </>
-            ) : (
-              'إنشاء حساب'
             )}
-          </button>
+            
+            {step === 1 && (
+              <div className="form-step step-1">
+                <h2 className="step-title">معلومات الحساب الأساسية</h2>
+                
+                <div className="input-group floating-input">
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                  />
+                  <label htmlFor="email" className={formData.email ? 'filled' : ''}>البريد الإلكتروني</label>
+                  <div className="input-icon">
+                    📧
+                  </div>
+                  <div className="input-underline"></div>
+                </div>
+                
+                <div className="input-group floating-input">
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required
+                  />
+                  <label htmlFor="password" className={formData.password ? 'filled' : ''}>كلمة المرور</label>
+                  <div className="input-icon">
+                    🔒
+                  </div>
+                  <div className="input-underline"></div>
+                </div>
+                
+                <div className="input-group floating-input">
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    required
+                  />
+                  <label htmlFor="confirmPassword" className={formData.confirmPassword ? 'filled' : ''}>تأكيد كلمة المرور</label>
+                  <div className="input-icon">
+                    🔐
+                  </div>
+                  <div className="input-underline"></div>
+                </div>
+              </div>
+            )}
+            
+            {step === 2 && (
+              <div className="form-step step-2">
+                <h2 className="step-title">المعلومات الشخصية</h2>
+                
+                <div className="input-group floating-input">
+                  <input
+                    type="text"
+                    id="full_name"
+                    name="full_name"
+                    value={formData.full_name}
+                    onChange={handleInputChange}
+                    required
+                  />
+                  <label htmlFor="full_name" className={formData.full_name ? 'filled' : ''}>الاسم الكامل</label>
+                  <div className="input-icon">
+                    👤
+                  </div>
+                  <div className="input-underline"></div>
+                </div>
+                
+                <div className="input-row">
+                  <div className="input-group floating-input half-width">
+                    <input
+                      type="tel"
+                      id="student_phone"
+                      name="student_phone"
+                      value={formData.student_phone}
+                      onChange={handleInputChange}
+                      required
+                    />
+                    <label htmlFor="student_phone" className={formData.student_phone ? 'filled' : ''}>رقم هاتف الطالب</label>
+                    <div className="input-icon">
+                      📱
+                    </div>
+                    <div className="input-underline"></div>
+                  </div>
+                  
+                  <div className="input-group floating-input half-width">
+                    <input
+                      type="tel"
+                      id="parent_phone"
+                      name="parent_phone"
+                      value={formData.parent_phone}
+                      onChange={handleInputChange}
+                    />
+                    <label htmlFor="parent_phone" className={formData.parent_phone ? 'filled' : ''}>رقم هاتف ولي الأمر</label>
+                    <div className="input-icon">
+                      📞
+                    </div>
+                    <div className="input-underline"></div>
+                  </div>
+                </div>
+                
+                <div className="input-row">
+                  <div className="input-group floating-input half-width">
+                    <select
+                      id="governorate"
+                      name="governorate"
+                      value={formData.governorate}
+                      onChange={handleInputChange}
+                    >
+                      <option value="">اختر المحافظة</option>
+                      {governorates.map((gov, index) => (
+                        <option key={index} value={gov}>{gov}</option>
+                      ))}
+                    </select>
+                    <label htmlFor="governorate" className={formData.governorate ? 'filled' : ''}>المحافظة</label>
+                    <div className="input-icon">
+                      🗺️
+                    </div>
+                    <div className="input-underline"></div>
+                  </div>
+                  
+                  <div className="input-group floating-input half-width">
+                    <input
+                      type="text"
+                      id="city"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                    />
+                    <label htmlFor="city" className={formData.city ? 'filled' : ''}>المدينة</label>
+                    <div className="input-icon">
+                      🏙️
+                    </div>
+                    <div className="input-underline"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {step === 3 && (
+              <div className="form-step step-3">
+                <h2 className="step-title">التفاصيل الدراسية</h2>
+                
+                <div className="input-row">
+                  <div className="input-group floating-input half-width">
+                    <select
+                      id="grade"
+                      name="grade"
+                      value={formData.grade}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">اختر الصف الدراسي</option>
+                      {grades.map((grade, index) => (
+                        <option key={index} value={grade}>{grade}</option>
+                      ))}
+                    </select>
+                    <label htmlFor="grade" className={formData.grade ? 'filled' : ''}>الصف الدراسي</label>
+                    <div className="input-icon">
+                      📚
+                    </div>
+                    <div className="input-underline"></div>
+                  </div>
+                  
+                  <div className="input-group floating-input half-width">
+                    <input
+                      type="text"
+                      id="section"
+                      name="section"
+                      value={formData.section}
+                      onChange={handleInputChange}
+                    />
+                    <label htmlFor="section" className={formData.section ? 'filled' : ''}>القسم</label>
+                    <div className="input-icon">
+                      📝
+                    </div>
+                    <div className="input-underline"></div>
+                  </div>
+                </div>
+                
+                <div className="input-group floating-input">
+                  <input
+                    type="text"
+                    id="school"
+                    name="school"
+                    value={formData.school}
+                    onChange={handleInputChange}
+                  />
+                  <label htmlFor="school" className={formData.school ? 'filled' : ''}>اسم المدرسة</label>
+                  <div className="input-icon">
+                    🏫
+                  </div>
+                  <div className="input-underline"></div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="form-actions">
+            {step > 1 ? (
+              <button type="button" className="btn btn-secondary" onClick={prevStep}>
+                <span className="btn-icon">←</span>
+                السابق
+              </button>
+            ) : (
+              <div></div>
+            )}
+            
+            {step < 3 ? (
+              <button type="button" className="btn btn-primary" onClick={nextStep}>
+                التالي
+                <span className="btn-icon">→</span>
+              </button>
+            ) : (
+              <button type="submit" className="btn btn-success" disabled={loading}>
+                {loading ? (
+                  <>
+                    <span className="loading-spinner"></span>
+                    جاري إنشاء الحساب...
+                  </>
+                ) : (
+                  <>
+                    <span className="btn-icon">✓</span>
+                    إنشاء حساب
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </form>
 
         <div className="card-footer">
           <p className="footer-text">
-            لديك حساب بالفعل؟{' '}
-            <Link href="/login" className="login-link">
-              تسجيل الدخول
-            </Link>
+            لديك حساب بالفعل؟ <Link href="/login" className="login-link">تسجيل الدخول</Link>
           </p>
         </div>
       </div>

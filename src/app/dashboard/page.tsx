@@ -8,6 +8,8 @@ export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState<any>(null)
+  const [wallet, setWallet] = useState<any>(null)
 
   useEffect(() => {
     checkUser()
@@ -19,6 +21,7 @@ export default function DashboardPage() {
           router.push('/login')
         } else if (session) {
           setUser(session.user)
+          loadUserData(session.user.id)
         }
       }
     )
@@ -36,11 +39,40 @@ export default function DashboardPage() {
       }
       
       setUser(session.user)
+      await loadUserData(session.user.id)
     } catch (error) {
       console.error('Error checking user:', error)
       router.push('/login')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadUserData = async (userId: string) => {
+    try {
+      // جلب بيانات الملف الشخصي
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      
+      if (profileData) {
+        setProfile(profileData)
+      }
+
+      // جلب بيانات المحفظة
+      const { data: walletData } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+      
+      if (walletData) {
+        setWallet(walletData)
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error)
     }
   }
 
@@ -76,7 +108,7 @@ export default function DashboardPage() {
       
       <main className="dashboard-content">
         <div className="welcome-card">
-          <h2>مرحباً {user?.user_metadata?.full_name || 'عزيزي الطالب'}</h2>
+          <h2>مرحباً {profile?.full_name || 'عزيزي الطالب'}</h2>
           <p>لقد سجلت دخولك بنجاح إلى منصتنا التعليمية</p>
           
           <div className="stats-grid">
@@ -100,34 +132,31 @@ export default function DashboardPage() {
               <div className="stat-icon">💼</div>
               <div className="stat-info">
                 <h3>رصيد النقاط</h3>
-                <p className="stat-number">0</p>
+                <p className="stat-number">{wallet?.balance || 0}</p>
               </div>
             </div>
           </div>
         </div>
         
-        <div className="quick-actions">
-          <h3>ابدأ التعلم الآن</h3>
-          <div className="actions-grid">
-            <button className="action-btn">
-              <span className="action-icon">📖</span>
-              <span>استعراض الدروس</span>
-            </button>
-            
-            <button className="action-btn">
-              <span className="action-icon">🧪</span>
-              <span>الاختبارات</span>
-            </button>
-            
-            <button className="action-btn">
-              <span className="action-icon">📊</span>
-              <span>التقارير</span>
-            </button>
-            
-            <button className="action-btn">
-              <span className="action-icon">⚙️</span>
-              <span>الإعدادات</span>
-            </button>
+        <div className="user-details">
+          <h3>معلوماتك الشخصية</h3>
+          <div className="details-grid">
+            <div className="detail-item">
+              <span className="detail-label">البريد الإلكتروني:</span>
+              <span className="detail-value">{user?.email}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">الاسم الكامل:</span>
+              <span className="detail-value">{profile?.full_name || 'غير محدد'}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">الصف الدراسي:</span>
+              <span className="detail-value">{profile?.grade || 'غير محدد'}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">رقم الهاتف:</span>
+              <span className="detail-value">{profile?.student_phone || 'غير محدد'}</span>
+            </div>
           </div>
         </div>
       </main>
