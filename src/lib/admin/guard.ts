@@ -1,8 +1,8 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseServer } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 export async function requireAdmin() {
-  const supabase = await createSupabaseServerClient()
+const supabase = await createSupabaseServer()
 
   const {
     data: { user },

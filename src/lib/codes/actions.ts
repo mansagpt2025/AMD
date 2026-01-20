@@ -1,10 +1,10 @@
 'use server'
 
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseServer } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function activateCode(codeValue: string) {
-  const supabase = await createSupabaseServerClient()
+const supabase = await createSupabaseServer()
 
   // 1️⃣ المستخدم
   const {

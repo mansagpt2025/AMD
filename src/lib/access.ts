@@ -1,8 +1,8 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseServer } from '@/lib/supabase/server'
 import { isSubscriptionActive } from '@/lib/subscription'
 
 export async function requireActiveSubscription(userId: string) {
-  const supabase = await createSupabaseServerClient()
+const supabase = await createSupabaseServer()
 
   const { data: sub } = await supabase
     .from('subscriptions')

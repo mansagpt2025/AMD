@@ -1,7 +1,7 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseServer } from '@/lib/supabase/server'
 
 export const getActiveSubscription = async () => {
-const supabase = await createSupabaseServerClient()
+const supabase = await createSupabaseServer()
 
   const {
     data: { user },
