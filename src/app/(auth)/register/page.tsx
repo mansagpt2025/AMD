@@ -2,13 +2,17 @@
 
 import { supabase } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './RegisterPage.css'
 
 export default function RegisterPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState(1)
+  const registerContainerRef = useRef<HTMLDivElement>(null)
+  const formContainerRef = useRef<HTMLDivElement>(null)
+  const successEffectRef = useRef<HTMLDivElement>(null)
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -26,13 +30,15 @@ export default function RegisterPage() {
   useEffect(() => {
     // تأثيرات عند تحميل الصفحة
     const timer = setTimeout(() => {
-      document.querySelector('.register-container').classList.add('loaded')
+      if (registerContainerRef.current) {
+        registerContainerRef.current.classList.add('loaded')
+      }
     }, 100)
     
     return () => clearTimeout(timer)
   }, [])
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -42,41 +48,47 @@ export default function RegisterPage() {
 
   const nextStep = () => {
     if (step < 3) {
-      // إضافة تأثير للمرحلة التالية
-      const formContainer = document.querySelector('.form-container')
-      formContainer.classList.add('slide-out-left')
-      
-      setTimeout(() => {
-        setStep(step + 1)
-        formContainer.classList.remove('slide-out-left')
-        formContainer.classList.add('slide-in-right')
+      if (formContainerRef.current) {
+        // إضافة تأثير للمرحلة التالية
+        formContainerRef.current.classList.add('slide-out-left')
         
         setTimeout(() => {
-          formContainer.classList.remove('slide-in-right')
+          setStep(step + 1)
+          formContainerRef.current?.classList.remove('slide-out-left')
+          formContainerRef.current?.classList.add('slide-in-right')
+          
+          setTimeout(() => {
+            formContainerRef.current?.classList.remove('slide-in-right')
+          }, 300)
         }, 300)
-      }, 300)
+      } else {
+        setStep(step + 1)
+      }
     }
   }
 
   const prevStep = () => {
     if (step > 1) {
-      // إضافة تأثير للمرحلة السابقة
-      const formContainer = document.querySelector('.form-container')
-      formContainer.classList.add('slide-out-right')
-      
-      setTimeout(() => {
-        setStep(step - 1)
-        formContainer.classList.remove('slide-out-right')
-        formContainer.classList.add('slide-in-left')
+      if (formContainerRef.current) {
+        // إضافة تأثير للمرحلة السابقة
+        formContainerRef.current.classList.add('slide-out-right')
         
         setTimeout(() => {
-          formContainer.classList.remove('slide-in-left')
+          setStep(step - 1)
+          formContainerRef.current?.classList.remove('slide-out-right')
+          formContainerRef.current?.classList.add('slide-in-left')
+          
+          setTimeout(() => {
+            formContainerRef.current?.classList.remove('slide-in-left')
+          }, 300)
         }, 300)
-      }, 300)
+      } else {
+        setStep(step - 1)
+      }
     }
   }
 
-  const handleRegister = async (e) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
@@ -93,66 +105,71 @@ export default function RegisterPage() {
       return
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-    })
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+      })
 
-    if (error) {
-      alert(error.message)
+      if (error) {
+        alert(error.message)
+        setLoading(false)
+        return
+      }
+
+      const user = data.user
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
+      // إنشاء profile
+      const { error: profileError } = await supabase.from('profiles').insert({
+        id: user.id,
+        full_name: formData.full_name,
+        grade: formData.grade,
+        section: formData.section,
+        student_phone: formData.student_phone,
+        parent_phone: formData.parent_phone,
+        governorate: formData.governorate,
+        city: formData.city,
+        school: formData.school,
+      })
+
+      if (profileError) {
+        alert('حدث خطأ في إنشاء الملف الشخصي: ' + profileError.message)
+        setLoading(false)
+        return
+      }
+
+      // إنشاء wallet
+      const { error: walletError } = await supabase.from('wallets').insert({
+        user_id: user.id,
+        balance: 0,
+      })
+
+      if (walletError) {
+        alert('حدث خطأ في إنشاء المحفظة: ' + walletError.message)
+        setLoading(false)
+        return
+      }
+
+      // تأثير النجاح قبل الانتقال
+      successEffectRef.current?.classList.add('active')
+      
+      setTimeout(() => {
+        router.replace('/dashboard')
+      }, 1500)
+    } catch (error) {
+      console.error('Registration error:', error)
+      alert('حدث خطأ غير متوقع أثناء التسجيل')
       setLoading(false)
-      return
     }
-
-    const user = data.user
-    if (!user) {
-      setLoading(false)
-      return
-    }
-
-    // إنشاء profile
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: user.id,
-      full_name: formData.full_name,
-      grade: formData.grade,
-      section: formData.section,
-      student_phone: formData.student_phone,
-      parent_phone: formData.parent_phone,
-      governorate: formData.governorate,
-      city: formData.city,
-      school: formData.school,
-    })
-
-    if (profileError) {
-      alert('حدث خطأ في إنشاء الملف الشخصي: ' + profileError.message)
-      setLoading(false)
-      return
-    }
-
-    // إنشاء wallet
-    const { error: walletError } = await supabase.from('wallets').insert({
-      user_id: user.id,
-      balance: 0,
-    })
-
-    if (walletError) {
-      alert('حدث خطأ في إنشاء المحفظة: ' + walletError.message)
-      setLoading(false)
-      return
-    }
-
-    // تأثير النجاح قبل الانتقال
-    const successEffect = document.querySelector('.success-effect')
-    successEffect.classList.add('active')
-    
-    setTimeout(() => {
-      router.replace('/dashboard')
-    }, 1500)
   }
 
-  const validateForm = () => {
+  const validateForm = (): boolean => {
     // التحقق من إدخال جميع الحقول المطلوبة
-    const requiredFields = ['email', 'password', 'full_name', 'grade', 'student_phone']
+    const requiredFields = ['email', 'password', 'full_name', 'grade', 'student_phone'] as const
     for (const field of requiredFields) {
       if (!formData[field]) {
         alert(`يرجى إدخال ${getFieldName(field)}`)
@@ -176,8 +193,8 @@ export default function RegisterPage() {
     return true
   }
 
-  const getFieldName = (field) => {
-    const fieldNames = {
+  const getFieldName = (field: string): string => {
+    const fieldNames: Record<string, string> = {
       email: 'البريد الإلكتروني',
       password: 'كلمة المرور',
       full_name: 'الاسم الكامل',
@@ -187,8 +204,32 @@ export default function RegisterPage() {
     return fieldNames[field] || field
   }
 
+  const governorates = [
+    'القاهرة', 'الجيزة', 'الإسكندرية', 'المنصورة', 'الأسكندرية',
+    'بورسعيد', 'السويس', 'دمياط', 'الدقهلية', 'الشرقية',
+    'القليوبية', 'كفر الشيخ', 'الغربية', 'المنوفية', 'البحيرة',
+    'الوادي الجديد', 'مطروح', 'شمال سيناء', 'جنوب سيناء',
+    'البحر الأحمر', 'الأقصر', 'أسوان', 'سوهاج', 'قنا',
+    'أسيوط', 'المنيا', 'بنى سويف', 'الفيوم'
+  ]
+
+  const grades = [
+    'الصف الأول الابتدائي',
+    'الصف الثاني الابتدائي',
+    'الصف الثالث الابتدائي',
+    'الصف الرابع الابتدائي',
+    'الصف الخامس الابتدائي',
+    'الصف السادس الابتدائي',
+    'الصف الأول الإعدادي',
+    'الصف الثاني الإعدادي',
+    'الصف الثالث الإعدادي',
+    'الصف الأول الثانوي',
+    'الصف الثاني الثانوي',
+    'الصف الثالث الثانوي'
+  ]
+
   return (
-    <div className="register-container">
+    <div className="register-container" ref={registerContainerRef}>
       {/* تأثيرات الخلفية المتحركة */}
       <div className="background-effects">
         <div className="effect-circle circle-1"></div>
@@ -201,8 +242,9 @@ export default function RegisterPage() {
       </div>
 
       {/* تأثير النجاح */}
-      <div className="success-effect">
+      <div className="success-effect" ref={successEffectRef}>
         <div className="success-icon">✓</div>
+        <div className="success-message">تم إنشاء الحساب بنجاح!</div>
       </div>
 
       <div className="register-card">
@@ -241,7 +283,7 @@ export default function RegisterPage() {
 
         {/* نموذج التسجيل */}
         <form onSubmit={handleRegister} className="register-form">
-          <div className="form-container">
+          <div className="form-container" ref={formContainerRef}>
             {step === 1 && (
               <div className="form-step step-1">
                 <h2 className="step-title">معلومات الحساب الأساسية</h2>
@@ -308,19 +350,19 @@ export default function RegisterPage() {
                   <div className="strength-meter">
                     <div 
                       className={`strength-bar ${formData.password.length >= 6 ? 'active' : ''}`}
-                      style={{'--strength': formData.password.length >= 6 ? '1' : '0'}}
+                      style={{'--strength': formData.password.length >= 6 ? '1' : '0'} as React.CSSProperties}
                     ></div>
                     <div 
                       className={`strength-bar ${formData.password.length >= 8 ? 'active' : ''}`}
-                      style={{'--strength': formData.password.length >= 8 ? '1' : '0'}}
+                      style={{'--strength': formData.password.length >= 8 ? '1' : '0'} as React.CSSProperties}
                     ></div>
                     <div 
                       className={`strength-bar ${/[A-Z]/.test(formData.password) ? 'active' : ''}`}
-                      style={{'--strength': /[A-Z]/.test(formData.password) ? '1' : '0'}}
+                      style={{'--strength': /[A-Z]/.test(formData.password) ? '1' : '0'} as React.CSSProperties}
                     ></div>
                     <div 
                       className={`strength-bar ${/[0-9]/.test(formData.password) ? 'active' : ''}`}
-                      style={{'--strength': /[0-9]/.test(formData.password) ? '1' : '0'}}
+                      style={{'--strength': /[0-9]/.test(formData.password) ? '1' : '0'} as React.CSSProperties}
                     ></div>
                   </div>
                 </div>
@@ -359,6 +401,8 @@ export default function RegisterPage() {
                       value={formData.student_phone}
                       onChange={handleInputChange}
                       required
+                      pattern="[0-9]{11}"
+                      title="يجب أن يكون رقم الهاتف 11 رقما"
                     />
                     <label htmlFor="student_phone" className={formData.student_phone ? 'filled' : ''}>رقم هاتف الطالب</label>
                     <div className="input-icon">
@@ -376,6 +420,8 @@ export default function RegisterPage() {
                       name="parent_phone"
                       value={formData.parent_phone}
                       onChange={handleInputChange}
+                      pattern="[0-9]{11}"
+                      title="يجب أن يكون رقم الهاتف 11 رقما"
                     />
                     <label htmlFor="parent_phone" className={formData.parent_phone ? 'filled' : ''}>رقم هاتف ولي الأمر</label>
                     <div className="input-icon">
@@ -396,11 +442,10 @@ export default function RegisterPage() {
                       onChange={handleInputChange}
                       className={formData.governorate ? 'filled' : ''}
                     >
-                      <option value=""></option>
-                      <option value="القاهرة">القاهرة</option>
-                      <option value="الجيزة">الجيزة</option>
-                      <option value="الإسكندرية">الإسكندرية</option>
-                      <option value="المنصورة">المنصورة</option>
+                      <option value="">اختر المحافظة</option>
+                      {governorates.map((gov, index) => (
+                        <option key={index} value={gov}>{gov}</option>
+                      ))}
                     </select>
                     <label htmlFor="governorate" className={formData.governorate ? 'filled' : ''}>المحافظة</label>
                     <div className="input-icon">
@@ -447,10 +492,10 @@ export default function RegisterPage() {
                       className={formData.grade ? 'filled' : ''}
                       required
                     >
-                      <option value=""></option>
-                      <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
-                      <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
-                      <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
+                      <option value="">اختر الصف الدراسي</option>
+                      {grades.map((grade, index) => (
+                        <option key={index} value={grade}>{grade}</option>
+                      ))}
                     </select>
                     <label htmlFor="grade" className={formData.grade ? 'filled' : ''}>الصف الدراسي</label>
                     <div className="input-icon">
@@ -469,6 +514,7 @@ export default function RegisterPage() {
                       name="section"
                       value={formData.section}
                       onChange={handleInputChange}
+                      placeholder="علمي علوم / علمي رياضة / أدبي"
                     />
                     <label htmlFor="section" className={formData.section ? 'filled' : ''}>القسم</label>
                     <div className="input-icon">
@@ -490,6 +536,7 @@ export default function RegisterPage() {
                     name="school"
                     value={formData.school}
                     onChange={handleInputChange}
+                    placeholder="اسم المدرسة"
                   />
                   <label htmlFor="school" className={formData.school ? 'filled' : ''}>اسم المدرسة</label>
                   <div className="input-icon">
@@ -505,7 +552,7 @@ export default function RegisterPage() {
                   <label className="checkbox-container">
                     <input type="checkbox" required />
                     <span className="checkmark"></span>
-                    <span className="checkbox-label">أوافق على <a href="#" className="terms-link">شروط الاستخدام</a> و <a href="#" className="terms-link">سياسة الخصوصية</a></span>
+                    <span className="checkbox-label">أوافق على <a href="/terms" className="terms-link">شروط الاستخدام</a> و <a href="/privacy" className="terms-link">سياسة الخصوصية</a></span>
                   </label>
                 </div>
                 
