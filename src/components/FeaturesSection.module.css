@@ -68,15 +68,6 @@ margin-bottom: -150;
   animation: waveMove 20s linear infinite;
 }
 
-[data-theme="dark"] .wave1,
-[data-theme="dark"] .wave2,
-[data-theme="dark"] .wave3 {
-  background: linear-gradient(90deg,
-    transparent,
-    var(--secondary-400),
-    transparent);
-}
-
 .wave1 {
   animation-delay: 0s;
   opacity: 0.5;
@@ -119,12 +110,6 @@ margin-bottom: -150;
   box-shadow: var(--shadow-md);
 }
 
-[data-theme="dark"] .sectionBadge {
-  background: linear-gradient(135deg,
-    rgba(30, 41, 59, 0.95) 0%,
-    rgba(30, 41, 59, 0.9) 100%);
-  border-color: rgba(251, 191, 36, 0.3);
-}
 
 .sectionBadge span {
   font-size: 1rem;
@@ -132,9 +117,6 @@ margin-bottom: -150;
   color: var(--primary-700);
 }
 
-[data-theme="dark"] .sectionBadge span {
-  color: var(--secondary-400);
-}
 
 .sectionTitle {
   font-size: 3.5rem;
@@ -145,9 +127,6 @@ margin-bottom: -150;
   line-height: 1.2;
 }
 
-[data-theme="dark"] .sectionTitle {
-  color: var(--gray-100);
-}
 
 .highlight {
   background: var(--gradient-primary);
@@ -191,13 +170,6 @@ margin-bottom: -150;
   animation: statFloat 6s ease-in-out infinite;
 }
 
-[data-theme="dark"] .stat1,
-[data-theme="dark"] .stat2,
-[data-theme="dark"] .stat3 {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(251, 191, 36, 0.3);
-}
-
 .stat1 {
   top: 0;
   left: -50px;
@@ -223,9 +195,6 @@ margin-bottom: -150;
   line-height: 1;
 }
 
-[data-theme="dark"] .statNumber {
-  color: var(--secondary-400);
-}
 
 .statLabel {
   font-size: 0.875rem;
@@ -233,9 +202,6 @@ margin-bottom: -150;
   font-weight: 500;
 }
 
-[data-theme="dark"] .statLabel {
-  color: var(--gray-400);
-}
 
 /* المميزات حول الصورة */
 .featuresGrid {
@@ -264,10 +230,6 @@ margin-bottom: -150;
   overflow: hidden;
 }
 
-[data-theme="dark"] .featureCard {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(251, 191, 36, 0.1);
-}
 
 .featureCard.animateIn {
   opacity: 1;
@@ -279,11 +241,6 @@ margin-bottom: -150;
   transform: translateY(-10px) scale(1.05);
   box-shadow: var(--shadow-2xl);
   border-color: var(--primary-300);
-}
-
-[data-theme="dark"] .featureCard:hover,
-[data-theme="dark"] .featureCard.active {
-  border-color: var(--secondary-400);
 }
 
 .featureHeader {
@@ -334,11 +291,6 @@ margin-bottom: -150;
   border: 2px solid var(--primary-200);
 }
 
-[data-theme="dark"] .featureNumber {
-  background: var(--gray-800);
-  color: var(--secondary-400);
-  border-color: rgba(251, 191, 36, 0.3);
-}
 
 .featureContent {
   margin-bottom: 2rem;
@@ -352,19 +304,12 @@ margin-bottom: -150;
   line-height: 1.3;
 }
 
-[data-theme="dark"] .featureTitle {
-  color: var(--gray-100);
-}
 
 .featureDescription {
   font-size: 1rem;
   color: var(--gray-600);
   line-height: 1.6;
   margin: 0;
-}
-
-[data-theme="dark"] .featureDescription {
-  color: var(--gray-400);
 }
 
 .featureHover {
@@ -431,11 +376,6 @@ margin-bottom: -150;
   transition: all var(--transition-normal);
 }
 
-[data-theme="dark"] .featureProgress {
-  background: linear-gradient(to top,
-    rgba(30, 41, 59, 0.95) 0%,
-    transparent 100%);
-}
 
 .featureCard:hover .featureProgress,
 .featureCard.active .featureProgress {
@@ -463,10 +403,6 @@ margin-bottom: -150;
   font-weight: 500;
 }
 
-[data-theme="dark"] .progressText {
-  color: var(--gray-400);
-}
-
 /* موجات فاصلة */
 .dividerWaves {
   position: absolute;
@@ -481,10 +417,6 @@ margin-bottom: -150;
   width: 100%;
   height: 100%;
   fill: var(--primary-50);
-}
-
-[data-theme="dark"] .dividerWaves svg {
-  fill: var(--gray-900);
 }
 
 /* الرسوم المتحركة */

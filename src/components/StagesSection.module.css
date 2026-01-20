@@ -95,19 +95,11 @@
   color: var(--primary-600);
 }
 
-[data-theme="dark"] .sectionBadge span {
-  color: var(--secondary-400);
-}
-
 .sectionTitle {
   font-size: 3rem;
   font-weight: 800;
   margin-bottom: 1rem;
   line-height: 1.2;
-}
-
-[data-theme="dark"] .sectionTitle {
-  color: var(--gray-100);
 }
 
 .highlight {
@@ -117,13 +109,6 @@
   background-clip: text;
   margin-right: 0.5rem;
 }
-
-[data-theme="dark"] .highlight {
-  background: var(--gradient-gold);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
 
 .stagesGrid {
   display: grid;
@@ -147,11 +132,6 @@
   border: 1px solid rgba(59, 130, 246, 0.1);
 }
 
-[data-theme="dark"] .stageCard {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(251, 191, 36, 0.1);
-}
-
 .stageCard.animateIn {
   opacity: 1;
   transform: translateY(0) scale(1);
@@ -163,9 +143,6 @@
   border-color: var(--primary-300);
 }
 
-[data-theme="dark"] .stageCard:hover {
-  border-color: var(--secondary-400);
-}
 
 .stageCard.hovered {
   transform: translateY(-10px) scale(1.02);
@@ -246,19 +223,12 @@ margin-bottom: 10;
   line-height: 1.2;
 }
 
-[data-theme="dark"] .cardTitle {
-  color: var(--gray-100);
-}
 
 .cardDescription {
   color: var(--gray-600);
   font-size: 1rem;
   line-height: 1.5;
   margin: 0;
-}
-
-[data-theme="dark"] .cardDescription {
-  color: var(--gray-400);
 }
 
 .cardFeatures {
@@ -272,9 +242,6 @@ margin-bottom: 10;
   margin-bottom: 1rem;
 }
 
-[data-theme="dark"] .featuresTitle {
-  color: var(--gray-200);
-}
 
 .featuresList {
   list-style: none;
@@ -291,9 +258,6 @@ margin-bottom: 10;
   font-size: 0.9375rem;
 }
 
-[data-theme="dark"] .featureItem {
-  color: var(--gray-300);
-}
 
 .featureIcon {
   width: 24px;
@@ -342,19 +306,10 @@ margin-bottom: 10;
   border: 2px solid rgba(59, 130, 246, 0.2);
 }
 
-[data-theme="dark"] .secondaryButton {
-  background: rgba(251, 191, 36, 0.1);
-  border-color: rgba(251, 191, 36, 0.2);
-}
-
 .secondaryButton:hover {
   background: rgba(59, 130, 246, 0.2);
   border-color: var(--card-color);
   transform: translateY(-2px);
-}
-
-[data-theme="dark"] .secondaryButton:hover {
-  background: rgba(251, 191, 36, 0.2);
 }
 
 /* تأثيرات البطاقة */
@@ -416,9 +371,6 @@ margin-bottom: 10;
   transition: all var(--transition-normal);
 }
 
-[data-theme="dark"] .progressIndicator {
-  background: rgba(30, 41, 59, 0.95);
-}
 
 .stageCard:hover .progressIndicator {
   opacity: 1;
@@ -444,10 +396,6 @@ margin-bottom: 10;
   font-size: 0.875rem;
   color: var(--gray-600);
   font-weight: 500;
-}
-
-[data-theme="dark"] .progressText {
-  color: var(--gray-400);
 }
 
 /* موجة فاصلة */

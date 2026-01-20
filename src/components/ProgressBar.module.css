@@ -39,9 +39,6 @@
   font-weight: 600;
 }
 
-[data-theme="dark"] .currentSection {
-  color: var(--secondary-400);
-}
 
 .progressPercentage {
   color: var(--gray-600);
@@ -51,10 +48,6 @@
   border-radius: var(--radius-full);
 }
 
-[data-theme="dark"] .progressPercentage {
-  color: var(--gray-400);
-  background: var(--gray-800);
-}
 
 .progressTrack {
   position: relative;
@@ -62,10 +55,6 @@
   background: rgba(240, 230, 140, 0);
   border-radius: var(--radius-full);
   overflow: hidden;
-}
-
-[data-theme="dark"] .progressTrack {
-  background: var(--gray-800);
 }
 
 .progressFill {
@@ -76,10 +65,6 @@
   border-radius: var(--radius-full);
   position: relative;
   transition: width 0.1s linear;
-}
-
-[data-theme="dark"] .progressFill {
-  background: linear-gradient(90deg, var(--secondary-500), var(--secondary-600), var(--secondary-700));
 }
 
 /* علامات الأقسام */

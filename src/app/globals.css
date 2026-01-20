@@ -59,7 +59,6 @@ body {
   --gradient-primary: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-800) 100%);
   --gradient-secondary: linear-gradient(135deg, var(--secondary-500) 0%, var(--secondary-700) 100%);
   --gradient-gold: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
-  --gradient-dark: linear-gradient(135deg, var(--gray-800) 0%, var(--gray-900) 100%);
   
   /* الظلال المحسنة */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -83,34 +82,6 @@ body {
   --transition-bounce: 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-/* الوضع الداكن */
-[data-theme="dark"] {
-  --primary-50: #0f172a;
-  --primary-100: #1e293b;
-  --primary-200: #334155;
-  --primary-300: #475569;
-  --primary-400: #64748b;
-  --primary-500: #94a3b8;
-  --primary-600: #cbd5e1;
-  --primary-700: #e2e8f0;
-  --primary-800: #f1f5f9;
-  --primary-900: #f8fafc;
-  
-  --gray-50: #0f172a;
-  --gray-100: #1e293b;
-  --gray-200: #334155;
-  --gray-300: #475569;
-  --gray-400: #64748b;
-  --gray-500: #94a3b8;
-  --gray-600: #cbd5e1;
-  --gray-700: #e2e8f0;
-  --gray-800: #f1f5f9;
-  --gray-900: #f8fafc;
-}
-
-/* بقية الأنماط تبقى كما هي مع تعديلات طفيفة */
-
-/* إعادة التعيين والإعدادات العامة */
 * {
   box-sizing: border-box;
   padding: 0;
@@ -193,18 +164,6 @@ ul, ol {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--primary-light);
-}
-
-[data-theme="dark"] ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-[data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background: var(--secondary-color);
-}
-
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background: var(--secondary-light);
 }
 
 /* تحسينات للطباعة */

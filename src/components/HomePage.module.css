@@ -6,9 +6,6 @@
   transition: background-color 0.3s ease;
 }
 
-[data-theme="dark"] .container {
-  background: linear-gradient(180deg, var(--gray-900) 0%, var(--gray-800) 100%);
-}
 
 .main {
   position: relative;

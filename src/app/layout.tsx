@@ -16,31 +16,30 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'البارع محمود الديب - منصة تعليم اللغة العربية',
-  description: 'منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن تفوقك وتميزك في اللغة العربية.',
+  title: 'البارع محمود الديب',
   keywords: ['اللغة العربية', 'الثانوية العامة', 'محمود الديب', 'البارع', 'تعليم'],
   authors: [{ name: 'محمود الديب' }],
   openGraph: {
     type: 'website',
     locale: 'ar_AR',
-    url: 'https://al-bare3.com',
-    title: 'البارع محمود الديب - منصة تعليم اللغة العربية',
-    description: 'منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن تفوقك وتميزك في اللغة العربية.',
+    url: 'https://mahmoud-eldeeb.com/',
+    title: 'البارع محمود الديب ',
+    description: 'منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن التفوق و التميز في اللغة العربية.',
     siteName: 'البارع محمود الديب',
     images: [
       {
-        url: '/images/og-image.jpg',
+        url: '/logo.svg',
         width: 1200,
-        height: 630,
+        height: 1200,
         alt: 'البارع محمود الديب',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'البارع محمود الديب - منصة تعليم اللغة العربية',
-    description: 'منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن تفوقك وتميزك في اللغة العربية.',
-    images: ['/images/og-image.jpg'],
+    title: 'البارع محمود الديب ',
+    description: 'منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن التفوق و التميز في اللغة العربية.',
+    images: ['/logo.svg'],
   },
   robots: {
     index: true,
@@ -83,22 +82,23 @@ export default function RootLayout({
         />
         
         {/* Facebook Meta Tags */}
-        <meta property="og:url" content="https://al-bare3.com" />
+        <meta property="og:url" content="https://mahmoud-eldeeb.com/" />
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="البارع محمود الديب - منصة تعليم اللغة العربية" />
-        <meta property="og:description" content="منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن تفوقك وتميزك في اللغة العربية." />
-        <meta property="og:image" content="https://al-bare3.com/images/og-image.jpg" />
+        <meta property="og:title" content="البارع محمود الديب" />
+        <meta property="og:description" content="منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن التفوق و التميز في اللغة العربية." />
+        <meta property="og:image" content="https://al-bare3.com/logo.svg" />
         
         {/* Twitter Meta Tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta property="twitter:domain" content="al-bare3.com" />
-        <meta property="twitter:url" content="https://al-bare3.com" />
-        <meta name="twitter:title" content="البارع محمود الديب - منصة تعليم اللغة العربية" />
-        <meta name="twitter:description" content="منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن تفوقك وتميزك في اللغة العربية." />
-        <meta name="twitter:image" content="https://al-bare3.com/images/og-image.jpg" />
+        <meta property="twitter:url" content="https://mahmoud-eldeeb.com/" />
+        <meta name="twitter:title" content="البارع محمود الديب" />
+        <meta name="twitter:description" content="منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن التفوق و التميز في اللغة العربية." />
+        <meta name="twitter:image" content="https://al-bare3.com/logo.svg" />
       </head>
       <body className={`${notoSansArabic.className} antialiased`}>
         <div id="root">
+          
           {children}
         </div>
         

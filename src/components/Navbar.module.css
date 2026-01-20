@@ -324,28 +324,16 @@ body {
   font-size: 1rem;
 }
 
-.navbar.dark .dropdownProfileName {
-  color: var(--gray-100);
-}
-
 .dropdownProfileRole {
   color: var(--gray-600);
   font-size: 0.875rem;
   margin: 0;
 }
 
-.navbar.dark .dropdownProfileRole {
-  color: var(--gray-400);
-}
-
 .dropdownDivider {
   height: 1px;
   background: var(--gray-200);
   margin: 0.5rem 0;
-}
-
-.navbar.dark .dropdownDivider {
-  background: var(--gray-700);
 }
 
 .dropdownItem {
@@ -365,18 +353,10 @@ body {
   cursor: pointer;
 }
 
-.navbar.dark .dropdownItem {
-  color: var(--gray-300);
-}
 
 .dropdownItem:hover {
   background: var(--gray-100);
   color: var(--primary-600);
-}
-
-.navbar.dark .dropdownItem:hover {
-  background: var(--gray-700);
-  color: var(--secondary-400);
 }
 
 .dropdownIcon {
@@ -675,18 +655,8 @@ body {
   border: 2px solid var(--gray-200);
 }
 
-.navbar.dark .mobileProfileButton {
-  color: var(--gray-300);
-  background: var(--gray-700);
-  border-color: var(--gray-600);
-}
-
 .mobileProfileButton:hover {
   background: var(--gray-200);
-}
-
-.navbar.dark .mobileProfileButton:hover {
-  background: var(--gray-600);
 }
 
 .mobileLogoutButton {
@@ -708,17 +678,9 @@ body {
   justify-content: space-between;
 }
 
-.navbar.dark .mobileThemeToggle {
-  border-top-color: var(--gray-700);
-}
-
 .mobileThemeToggle span {
   color: var(--gray-700);
   font-weight: 500;
-}
-
-.navbar.dark .mobileThemeToggle span {
-  color: var(--gray-300);
 }
 
 .themeToggleSwitch {
@@ -730,10 +692,6 @@ body {
   border: none;
   cursor: pointer;
   transition: all var(--transition-fast);
-}
-
-.navbar.dark .themeToggleSwitch {
-  background: var(--gray-600);
 }
 
 .themeToggleSwitch.active {
