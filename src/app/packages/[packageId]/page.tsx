@@ -3,7 +3,7 @@ import Link from 'next/link'
 import BuyPackageButton from './BuyPackageButton'
 
 export default async function PackagePage({ params }: any) {
-  const supabase = createSupabaseServer()
+const supabase = await createSupabaseServer()
 
   const {
     data: { user },

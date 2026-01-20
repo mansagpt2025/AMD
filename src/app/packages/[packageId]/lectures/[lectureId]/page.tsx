@@ -1,7 +1,7 @@
 import { createSupabaseServer } from '@/lib/supabase/server'
 
 export default async function LecturePage({ params }: any) {
-  const supabase = createSupabaseServer()
+const supabase = await createSupabaseServer()
 
   const { data: contents } = await supabase
     .from('contents')

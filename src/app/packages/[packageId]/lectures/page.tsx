@@ -2,7 +2,7 @@ import { createSupabaseServer } from '@/lib/supabase/server'
 import Link from 'next/link'
 
 export default async function PackageLecturesPage({ params }: any) {
-  const supabase = createSupabaseServer()
+const supabase = await createSupabaseServer()
 
   const { data, error } = await supabase
     .from('package_lectures')

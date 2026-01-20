@@ -6,7 +6,7 @@ import GradeCard from './components/GradeCard'
 import Subscriptions from './components/Subscriptions'
 
 export default async function DashboardPage() {
-  const supabase = createSupabaseServer()
+const supabase = await createSupabaseServer()
 
   const {
     data: { user },
