@@ -11,11 +11,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
   const loginContainerRef = useRef<HTMLDivElement>(null)
   const successEffectRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // تأثيرات عند تحميل الصفحة
     const timer = setTimeout(() => {
       if (loginContainerRef.current) {
         loginContainerRef.current.classList.add('loaded')
@@ -28,27 +28,112 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setErrorMessage('')
 
     const form = e.target as HTMLFormElement
-    const email = form.email.value
+    const email = form.email.value.trim()
     const password = form.password.value
 
     if (!email || !password) {
-      alert('يرجى إدخال البريد الإلكتروني وكلمة المرور')
+      setErrorMessage('يرجى إدخال البريد الإلكتروني وكلمة المرور')
+      setLoading(false)
+      return
+    }
+
+    // التحقق من صيغة البريد الإلكتروني
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setErrorMessage('صيغة البريد الإلكتروني غير صحيحة')
       setLoading(false)
       return
     }
 
     try {
-      const { error, data } = await supabase.auth.signInWithPassword({
+      console.log('جاري تسجيل الدخول بـ:', email)
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
+      console.log('نتيجة تسجيل الدخول:', { data, error })
+
       if (error) {
-        alert('خطأ في تسجيل الدخول: ' + error.message)
+        // تحسين رسائل الخطأ
+        let errorMsg = error.message
+        
+        if (error.message.includes('Invalid login credentials')) {
+          errorMsg = 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMsg = 'لم يتم تأكيد البريد الإلكتروني. يرجى التحقق من بريدك'
+        } else if (error.message.includes('Too many requests')) {
+          errorMsg = 'محاولات تسجيل دخول كثيرة. يرجى المحاولة لاحقاً'
+        }
+        
+        setErrorMessage(errorMsg)
         setLoading(false)
         return
+      }
+
+      // التحقق من وجود بيانات المستخدم
+      if (!data.user) {
+        setErrorMessage('لم يتم العثور على بيانات المستخدم')
+        setLoading(false)
+        return
+      }
+
+      console.log('تم تسجيل الدخول بنجاج:', data.user.id)
+      
+      // التحقق من وجود جلسة
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        setErrorMessage('لم يتم إنشاء جلسة تسجيل دخول')
+        setLoading(false)
+        return
+      }
+
+      // التأكد من تحديث التوكن
+      await supabase.auth.refreshSession()
+
+      // التأكد من وجود ملف شخصي للمستخدم
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single()
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.log('خطأ في جلب الملف الشخصي:', profileError)
+          // يمكن الاستمرار حتى بدون ملف شخصي
+        }
+      } catch (profileErr) {
+        console.log('استثناء في جلب الملف الشخصي:', profileErr)
+      }
+
+      // التأكد من وجود محفظة للمستخدم
+      try {
+        const { data: wallet, error: walletError } = await supabase
+          .from('wallets')
+          .select('*')
+          .eq('user_id', data.user.id)
+          .single()
+
+        if (walletError && walletError.code !== 'PGRST116') {
+          console.log('خطأ في جلب المحفظة:', walletError)
+          // إنشاء محفظة إذا لم تكن موجودة
+          try {
+            await supabase.from('wallets').insert({
+              user_id: data.user.id,
+              balance: 0,
+            })
+          } catch (insertErr) {
+            console.log('خطأ في إنشاء المحفظة:', insertErr)
+          }
+        }
+      } catch (walletErr) {
+        console.log('استثناء في جلب المحفظة:', walletErr)
       }
 
       // تأثير النجاح قبل الانتقال
@@ -59,8 +144,8 @@ export default function LoginPage() {
       }, 1500)
 
     } catch (error: any) {
-      console.error('Login error:', error)
-      alert('حدث خطأ غير متوقع أثناء تسجيل الدخول')
+      console.error('خطأ غير متوقع في تسجيل الدخول:', error)
+      setErrorMessage('حدث خطأ غير متوقع أثناء تسجيل الدخول')
       setLoading(false)
     }
   }
@@ -71,13 +156,19 @@ export default function LoginPage() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         },
       })
 
-      if (error) throw error
+      if (error) {
+        setErrorMessage('خطأ في تسجيل الدخول بواسطة جوجل: ' + error.message)
+      }
     } catch (error: any) {
       console.error('Google login error:', error)
-      alert('حدث خطأ أثناء تسجيل الدخول بواسطة جوجل')
+      setErrorMessage('حدث خطأ أثناء تسجيل الدخول بواسطة جوجل')
     }
   }
 
@@ -86,19 +177,54 @@ export default function LoginPage() {
     
     if (!email) return
     
+    // التحقق من صيغة البريد الإلكتروني
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      alert('صيغة البريد الإلكتروني غير صحيحة')
+      return
+    }
+    
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/auth/reset-password`,
       })
 
       if (error) {
         alert('خطأ: ' + error.message)
       } else {
-        alert('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني')
+        alert('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني. يرجى التحقق من صندوق الوارد والبريد العشوائي.')
       }
     } catch (error: any) {
       console.error('Forgot password error:', error)
       alert('حدث خطأ أثناء إرسال رابط إعادة التعيين')
+    }
+  }
+
+  const handleResendVerification = async () => {
+    const email = (document.getElementById('email') as HTMLInputElement)?.value
+    
+    if (!email) {
+      alert('يرجى إدخال البريد الإلكتروني أولاً')
+      return
+    }
+    
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        }
+      })
+
+      if (error) {
+        alert('خطأ في إعادة إرسال بريد التفعيل: ' + error.message)
+      } else {
+        alert('تم إرسال بريد التفعيل إلى بريدك الإلكتروني')
+      }
+    } catch (error: any) {
+      console.error('Resend verification error:', error)
+      alert('حدث خطأ أثناء إعادة إرسال بريد التفعيل')
     }
   }
 
@@ -139,6 +265,23 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className="login-form">
           <div className="form-container">
             
+            {/* رسالة الخطأ */}
+            {errorMessage && (
+              <div className="error-message">
+                <div className="error-icon">!</div>
+                <div className="error-text">{errorMessage}</div>
+                {errorMessage.includes('لم يتم تأكيد البريد الإلكتروني') && (
+                  <button 
+                    type="button"
+                    className="resend-verification"
+                    onClick={handleResendVerification}
+                  >
+                    إعادة إرسال بريد التفعيل
+                  </button>
+                )}
+              </div>
+            )}
+            
             <div className="input-group floating-input">
               <input
                 type="email"
@@ -146,6 +289,8 @@ export default function LoginPage() {
                 name="email"
                 required
                 placeholder=" "
+                autoComplete="email"
+                onChange={() => setErrorMessage('')}
               />
               <label htmlFor="email">البريد الإلكتروني</label>
               <div className="input-icon">
@@ -164,6 +309,8 @@ export default function LoginPage() {
                 name="password"
                 required
                 placeholder=" "
+                autoComplete="current-password"
+                onChange={() => setErrorMessage('')}
               />
               <label htmlFor="password">كلمة المرور</label>
               <div className="input-icon">
