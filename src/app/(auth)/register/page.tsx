@@ -2,7 +2,7 @@
 
 import { supabase } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import './RegisterPage.css'
 
@@ -11,6 +11,17 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [success, setSuccess] = useState(false)
+
+  // التحقق من تسجيل الدخول أولاً
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.push('/dashboard')
+      }
+    }
+    checkUser()
+  }, [router])
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,9 +36,6 @@ export default function RegisterPage() {
     const full_name = formData.get('full_name') as string
     const grade = formData.get('grade') as string
     const student_phone = formData.get('student_phone') as string
-    const governorate = formData.get('governorate') as string
-    const city = formData.get('city') as string
-    const school = formData.get('school') as string
 
     // التحقق من البيانات
     if (!email || !password || !full_name || !grade || !student_phone) {
@@ -42,25 +50,13 @@ export default function RegisterPage() {
       return
     }
 
-    if (password.length < 6) {
-      setErrorMessage('كلمة المرور يجب أن تكون 6 أحرف على الأقل')
-      setLoading(false)
-      return
-    }
-
     try {
-      console.log('بدء عملية إنشاء الحساب...')
-      
-      // الخطوة 1: إنشاء حساب المصادقة
+      // 1. إنشاء حساب المصادقة
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: {
-            full_name,
-            phone: student_phone,
-            grade,
-          }
+          data: { full_name, phone: student_phone, grade }
         }
       })
 
@@ -71,113 +67,32 @@ export default function RegisterPage() {
         return
       }
 
-      const user = authData.user
-      if (!user) {
-        setErrorMessage('لم يتم إنشاء حساب المستخدم')
-        setLoading(false)
-        return
-      }
-
-      console.log('تم إنشاء المستخدم بنجاح:', user.id)
-      
-      // الانتظار لضمان اكتمال عملية المصادقة
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // محاولة إنشاء الملف الشخصي
-      try {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            full_name,
-            grade,
-            section: formData.get('section') as string || '',
-            student_phone,
-            parent_phone: formData.get('parent_phone') as string || '',
-            governorate: governorate || '',
-            city: city || '',
-            school: school || '',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-
-        if (profileError) {
-          console.log('ملاحظة: لم يتم إنشاء الملف الشخصي كاملاً:', profileError.message)
-          // نستمر رغم ذلك، يمكن للمستخدم إكماله لاحقاً
-        }
-      } catch (profileErr) {
-        console.log('خطأ في إنشاء الملف الشخصي:', profileErr)
-      }
-
-      // محاولة إنشاء المحفظة
-      try {
-        await supabase
-          .from('wallets')
-          .insert({
-            user_id: user.id,
-            balance: 0,
-            created_at: new Date().toISOString()
-          })
-      } catch (walletErr) {
-        console.log('خطأ في إنشاء المحفظة:', walletErr)
-      }
-
-      // تسجيل الدخول تلقائياً
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (signInError) {
-        console.log('ملاحظة: لم يتم تسجيل الدخول تلقائياً:', signInError.message)
+      if (authData.user) {
         setSuccess(true)
         setTimeout(() => {
           router.push('/login?message=تم إنشاء الحساب بنجاح. يرجى تسجيل الدخول')
-        }, 2000)
-        setLoading(false)
-        return
+        }, 3000)
       }
-
-      // إذا نجح تسجيل الدخول، انتقل للداشبورد
-      setSuccess(true)
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 1000)
 
     } catch (error: any) {
       console.error('خطأ غير متوقع:', error)
-      setErrorMessage(`حدث خطأ غير متوقع: ${error.message || 'يرجى المحاولة مرة أخرى'}`)
+      setErrorMessage(error.message || 'حدث خطأ أثناء التسجيل')
       setLoading(false)
     }
   }
 
-  const governorates = [
-    'القاهرة', 'الجيزة', 'الإسكندرية', 'المنصورة',
-    'بورسعيد', 'السويس', 'دمياط', 'الدقهلية',
-    'الشرقية', 'القليوبية', 'كفر الشيخ', 'الغربية',
-    'المنوفية', 'البحيرة', 'الوادي الجديد', 'مطروح',
-    'شمال سيناء', 'جنوب سيناء', 'البحر الأحمر',
-    'الأقصر', 'أسوان', 'سوهاج', 'قنا', 'أسيوط',
-    'المنيا', 'بنى سويف', 'الفيوم'
-  ]
-
-  const grades = [
-    'الصف الأول الابتدائي',
-    'الصف الثاني الابتدائي',
-    'الصف الثالث الابتدائي',
-    'الصف الرابع الابتدائي',
-    'الصف الخامس الابتدائي',
-    'الصف السادس الابتدائي',
-    'الصف الأول الإعدادي',
-    'الصف الثاني الإعدادي',
-    'الصف الثالث الإعدادي',
-    'الصف الأول الثانوي',
-    'الصف الثاني الثانوي',
-    'الصف الثالث الثانوي'
-  ]
+  if (success) {
+    return (
+      <div className="success-container">
+        <div className="success-icon">✓</div>
+        <h2>تم إنشاء الحساب بنجاح!</h2>
+        <p>يتم توجيهك إلى صفحة تسجيل الدخول...</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="register-container">
+    <div className="register-page">
       <div className="register-card">
         <div className="card-header">
           <div className="logo-container">
@@ -190,16 +105,6 @@ export default function RegisterPage() {
           <h1 className="page-title">إنشاء حساب جديد</h1>
           <p className="page-subtitle">انضم إلى منصتنا التعليمية وابدأ رحلة التعلم</p>
         </div>
-
-        {success && (
-          <div className="success-message-banner">
-            <div className="success-icon">✓</div>
-            <div className="success-text">
-              <strong>تم إنشاء الحساب بنجاح!</strong>
-              <p>يتم توجيهك الآن...</p>
-            </div>
-          </div>
-        )}
 
         {errorMessage && (
           <div className="error-message">
@@ -264,104 +169,46 @@ export default function RegisterPage() {
               />
             </div>
             
-            <div className="input-row">
-              <div className="input-group half-width">
-                <label htmlFor="student_phone">رقم هاتف الطالب *</label>
-                <input
-                  type="tel"
-                  id="student_phone"
-                  name="student_phone"
-                  required
-                  placeholder="01xxxxxxxxx"
-                />
-              </div>
-              
-              <div className="input-group half-width">
-                <label htmlFor="parent_phone">رقم هاتف ولي الأمر</label>
-                <input
-                  type="tel"
-                  id="parent_phone"
-                  name="parent_phone"
-                  placeholder="01xxxxxxxxx"
-                />
-              </div>
-            </div>
-            
-            <div className="input-row">
-              <div className="input-group half-width">
-                <label htmlFor="governorate">المحافظة</label>
-                <select id="governorate" name="governorate">
-                  <option value="">اختر المحافظة</option>
-                  {governorates.map((gov, index) => (
-                    <option key={index} value={gov}>{gov}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="input-group half-width">
-                <label htmlFor="city">المدينة</label>
-                <input
-                  type="text"
-                  id="city"
-                  name="city"
-                  placeholder="اسم المدينة"
-                />
-              </div>
+            <div className="input-group">
+              <label htmlFor="student_phone">رقم هاتف الطالب *</label>
+              <input
+                type="tel"
+                id="student_phone"
+                name="student_phone"
+                required
+                placeholder="01xxxxxxxxx"
+              />
             </div>
           </div>
 
           <div className="form-section">
             <h3>التفاصيل الدراسية</h3>
             
-            <div className="input-row">
-              <div className="input-group half-width">
-                <label htmlFor="grade">الصف الدراسي *</label>
-                <select id="grade" name="grade" required>
-                  <option value="">اختر الصف الدراسي</option>
-                  {grades.map((grade, index) => (
-                    <option key={index} value={grade}>{grade}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="input-group half-width">
-                <label htmlFor="section">القسم</label>
-                <input
-                  type="text"
-                  id="section"
-                  name="section"
-                  placeholder="علمي علوم / علمي رياضة / أدبي"
-                />
-              </div>
-            </div>
-            
             <div className="input-group">
-              <label htmlFor="school">اسم المدرسة</label>
-              <input
-                type="text"
-                id="school"
-                name="school"
-                placeholder="اسم المدرسة"
-              />
+              <label htmlFor="grade">الصف الدراسي *</label>
+              <select id="grade" name="grade" required>
+                <option value="">اختر الصف الدراسي</option>
+                <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
+                <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
+                <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
+              </select>
             </div>
           </div>
 
-          <div className="form-actions">
-            <button 
-              type="submit" 
-              className="btn btn-primary btn-register"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <span className="loading-spinner"></span>
-                  جاري إنشاء الحساب...
-                </>
-              ) : (
-                'إنشاء حساب'
-              )}
-            </button>
-          </div>
+          <button 
+            type="submit" 
+            className="btn btn-primary btn-register"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="loading-spinner"></span>
+                جاري إنشاء الحساب...
+              </>
+            ) : (
+              'إنشاء حساب'
+            )}
+          </button>
         </form>
 
         <div className="card-footer">
