@@ -1,0 +1,53 @@
+/* Sections.css */
+
+.sections__section {
+  @apply mb-12;
+}
+
+.sections__header {
+  @apply flex items-center justify-between mb-6;
+}
+
+.sections__title {
+  @apply text-2xl font-bold text-gray-800;
+}
+
+.sections__counter {
+  @apply text-sm text-gray-600;
+}
+
+.sections__badge {
+  @apply flex items-center space-x-2 space-x-reverse;
+}
+
+.sections__badge-dot {
+  @apply w-3 h-3 rounded-full;
+}
+
+.sections__badge-dot--green {
+  @apply bg-green-500;
+}
+
+.sections__badge-dot--blue {
+  @apply bg-blue-500;
+}
+
+.sections__badge-dot--purple {
+  @apply bg-purple-500;
+}
+
+.sections__badge-text {
+  @apply text-sm text-gray-600;
+}
+
+.sections__description {
+  @apply text-sm text-gray-600;
+}
+
+.sections__popular-badge {
+  @apply px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm;
+}
+
+.sections__offer-badge {
+  @apply px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm;
+}

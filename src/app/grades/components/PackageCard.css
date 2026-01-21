@@ -1,0 +1,121 @@
+/* PackageCard.css - باستخدام نظام الألوان المحدد */
+
+.package-card {
+  @apply bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 border border-gray-100;
+}
+
+.package-card__image {
+  @apply relative h-48 bg-gradient-to-r from-primary-400 to-primary-600;
+}
+
+.package-card__image-content {
+  @apply w-full h-full object-cover;
+}
+
+.package-card__image-placeholder {
+  @apply flex items-center justify-center h-full;
+}
+
+.package-card__image-letter {
+  @apply text-white text-4xl font-bold;
+}
+
+.package-card__badge {
+  @apply absolute top-4 left-4 px-3 py-1 rounded-full text-sm font-medium;
+}
+
+.package-card__badge--weekly {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.package-card__badge--monthly {
+  @apply bg-green-100 text-green-800;
+}
+
+.package-card__badge--term {
+  @apply bg-purple-100 text-purple-800;
+}
+
+.package-card__badge--offer {
+  @apply bg-red-100 text-red-800;
+}
+
+.package-card__badge--default {
+  @apply bg-gray-100 text-gray-800;
+}
+
+.package-card__purchased-badge {
+  @apply absolute top-4 right-4 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium;
+}
+
+.package-card__content {
+  @apply p-6;
+}
+
+.package-card__title {
+  @apply text-xl font-bold text-gray-800 mb-2;
+}
+
+.package-card__description {
+  @apply text-gray-600 text-sm mb-4 line-clamp-2;
+}
+
+.package-card__info {
+  @apply flex items-center justify-between mb-6;
+}
+
+.package-card__lectures {
+  @apply flex items-center space-x-2 space-x-reverse;
+}
+
+.package-card__icon {
+  @apply w-5 h-5 text-gray-400;
+}
+
+.package-card__lectures-count {
+  @apply text-sm text-gray-600;
+}
+
+.package-card__price {
+  @apply text-lg font-bold text-primary-600;
+}
+
+.package-card__buttons {
+  @apply space-y-3;
+}
+
+.package-card__enter-button {
+  @apply w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg font-medium hover:from-primary-600 hover:to-primary-700 transition-all duration-300 flex items-center justify-center space-x-2 space-x-reverse;
+}
+
+.package-card__purchase-button {
+  @apply w-full py-3 rounded-lg font-medium flex items-center justify-center space-x-2 space-x-reverse transition-all duration-300;
+}
+
+.package-card__purchase-button--enabled {
+  @apply bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700;
+}
+
+.package-card__purchase-button--disabled {
+  @apply bg-gray-100 text-gray-400 cursor-not-allowed;
+}
+
+.package-card__code-button {
+  @apply w-full py-3 border-2 border-primary-500 text-primary-600 rounded-lg font-medium hover:bg-primary-50 transition-all duration-300;
+}
+
+.package-card__balance-alert {
+  @apply mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg;
+}
+
+.package-card__balance-content {
+  @apply flex items-center space-x-2 space-x-reverse;
+}
+
+.package-card__alert-icon {
+  @apply w-5 h-5 text-yellow-600;
+}
+
+.package-card__alert-text {
+  @apply text-sm text-yellow-700;
+}

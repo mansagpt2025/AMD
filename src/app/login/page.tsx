@@ -1,4 +1,5 @@
 'use client'
+import Image from 'next/image';
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -114,20 +115,11 @@ export default function LoginPage() {
           <div className="logo-section">
             <div className="logo-container">
               <Sparkles className="logo-sparkle" />
-              <h1 className="logo-text">
-                <span className="logo-primary">محمود</span>
-                <span className="logo-secondary">الديب</span>
-              </h1>
             </div>
-            <p className="logo-subtitle">منصة التعليم الإلكتروني للثانوية العامة</p>
             <div className="welcome-text">
-              <span className="welcome-char">أ</span>
-              <span className="welcome-char">ه</span>
-              <span className="welcome-char">ل</span>
-              <span className="welcome-char">ا</span>
-              <span className="welcome-char">&nbsp;</span>
-              <span className="welcome-char">ب</span>
-              <span className="welcome-char">ك</span>
+              <h1 className="logo-text">
+                <span className="logo-primary">البارع محمود الديب </span>
+              </h1>
             </div>
           </div>
           

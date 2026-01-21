@@ -1,0 +1,106 @@
+/* PurchaseModal.css */
+
+.purchase-modal {
+  @apply fixed inset-0 z-50;
+}
+
+.purchase-modal__overlay {
+  @apply absolute inset-0 bg-black bg-opacity-50;
+}
+
+.purchase-modal__container {
+  @apply absolute inset-0 flex items-center justify-center p-4;
+}
+
+.purchase-modal__content {
+  @apply bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto;
+}
+
+.purchase-modal__header {
+  @apply flex justify-between items-center p-6 border-b border-gray-200;
+}
+
+.purchase-modal__title {
+  @apply text-xl font-bold text-gray-800;
+}
+
+.purchase-modal__close-button {
+  @apply text-gray-400 hover:text-gray-600 text-lg;
+}
+
+.purchase-modal__body {
+  @apply p-6;
+}
+
+.purchase-modal__package-info {
+  @apply bg-gray-50 rounded-xl p-4 mb-4;
+}
+
+.purchase-modal__package-name {
+  @apply font-medium text-gray-800 mb-1;
+}
+
+.purchase-modal__package-description {
+  @apply text-gray-600 text-sm;
+}
+
+.purchase-modal__package-details {
+  @apply mt-3 flex justify-between items-center;
+}
+
+.purchase-modal__package-price {
+  @apply text-lg font-bold text-primary-600;
+}
+
+.purchase-modal__package-lectures {
+  @apply text-sm text-gray-600;
+}
+
+.purchase-modal__wallet-info {
+  @apply bg-blue-50 rounded-xl p-4;
+}
+
+.purchase-modal__balance-row {
+  @apply flex justify-between items-center mb-2 last:mb-0;
+}
+
+.purchase-modal__balance-label {
+  @apply text-gray-700;
+}
+
+.purchase-modal__balance-value {
+  @apply font-bold text-gray-800;
+}
+
+.purchase-modal__error {
+  @apply mt-4 p-3 bg-red-50 border border-red-200 rounded-lg;
+}
+
+.purchase-modal__error-icon {
+  @apply w-5 h-5 text-red-600;
+}
+
+.purchase-modal__error-text {
+  @apply text-red-600 text-sm;
+}
+
+.purchase-modal__footer {
+  @apply p-6 border-t border-gray-200 flex space-x-3 space-x-reverse;
+}
+
+.purchase-modal__cancel-button {
+  @apply flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50;
+}
+
+.purchase-modal__confirm-button {
+  @apply flex-1 py-3 rounded-lg font-medium text-white transition-colors;
+}
+
+.purchase-modal__confirm-button--enabled {
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-800) 100%);
+  @apply hover:opacity-90;
+}
+
+.purchase-modal__confirm-button--disabled {
+  @apply bg-gray-300 cursor-not-allowed;
+}
