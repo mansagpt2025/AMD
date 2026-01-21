@@ -3,28 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, Mail, Phone, Lock } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-
-// تعريف بسيط للأنواع مباشرة في الملف
-type AuthResponse = {
-  user: {
-    id: string
-    email: string
-    phone?: string
-  } | null
-  error: Error | null
-}
-
-type UserProfile = {
-  id: string
-  email: string
-  // يمكن إضافة حقول أخرى حسب الحاجة
-}
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
-  const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,6 +22,10 @@ export default function LoginPage() {
     setLoading(true)
     
     try {
+      // استيراد الديناميكي فقط عند الحاجة
+      const { createClient } = await import('@/lib/supabase/browser-client')
+      const supabase = createClient()
+      
       let email = formData.identifier
       
       // التحقق إذا كان المدخل رقم هاتف
@@ -89,6 +75,9 @@ export default function LoginPage() {
     }
     
     try {
+      const { createClient } = await import('@/lib/supabase/browser-client')
+      const supabase = createClient()
+      
       let email = formData.identifier
       
       // إذا كان المدخل رقم هاتف، احصل على البريد الإلكتروني المرتبط
@@ -119,11 +108,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
         {/* الشعار */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary-700 mb-2">محمود الديب</h1>
+          <h1 className="text-3xl font-bold text-blue-700 mb-2">محمود الديب</h1>
           <p className="text-gray-600">منصة التعليم الإلكتروني للثانوية العامة</p>
         </div>
         
@@ -151,7 +140,7 @@ export default function LoginPage() {
                   value={formData.identifier}
                   onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="email@example.com أو 01xxxxxxxxx"
                 />
               </div>
@@ -166,7 +155,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-sm text-primary-600 hover:text-primary-700"
+                  className="text-sm text-blue-600 hover:text-blue-700"
                 >
                   نسيت كلمة المرور؟
                 </button>
@@ -185,7 +174,7 @@ export default function LoginPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="أدخل كلمة المرور"
                 />
               </div>
@@ -195,7 +184,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-primary text-white py-3 px-4 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
             </button>
@@ -204,7 +193,7 @@ export default function LoginPage() {
             <div className="text-center pt-4">
               <p className="text-gray-600">
                 ليس لديك حساب؟{' '}
-                <Link href="/register" className="text-primary-600 hover:text-primary-700 font-semibold">
+                <Link href="/register" className="text-blue-600 hover:text-blue-700 font-semibold">
                   أنشئ حساب الآن
                 </Link>
               </p>
@@ -215,7 +204,7 @@ export default function LoginPage() {
           <div className="mt-8 pt-6 border-t border-gray-200">
             <div className="space-y-4">
               <div className="flex items-center">
-                <Phone className="w-5 h-5 text-primary-600 mr-3" />
+                <div className="w-5 h-5 text-blue-600 mr-3">📱</div>
                 <div>
                   <p className="text-sm font-medium text-gray-700">الدعم الفني</p>
                   <p className="text-sm text-gray-600">01012345678 (واتساب فقط)</p>
@@ -223,7 +212,7 @@ export default function LoginPage() {
               </div>
               
               <div className="flex items-center">
-                <Mail className="w-5 h-5 text-primary-600 mr-3" />
+                <div className="w-5 h-5 text-blue-600 mr-3">📚</div>
                 <div>
                   <p className="text-sm font-medium text-gray-700">الدعم العلمي</p>
                   <p className="text-sm text-gray-600">01198765432</p>
