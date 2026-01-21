@@ -13,9 +13,9 @@ export async function POST() {
   }
 
   // حذف الكوكيز
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   cookieStore.delete('sb-access-token')
   cookieStore.delete('sb-refresh-token')
 
-  return NextResponse.redirect(new URL('/login', new URL('/', 'http://localhost')))
+  return NextResponse.redirect(new URL('/login', 'http://localhost'))
 }
