@@ -2,21 +2,8 @@
 
 import { useState } from 'react'
 import PackageGrid from './PackageGrid'
-import PurchaseModal from '../components/PurchaseModal'
+import PurchaseModal from './PurchaseModal'
 import CodeModal from './CodeModal'
-import { Package } from '../types'
-import './Sections.css'
-
-interface SectionsProps {
-  purchasedPackages: Package[]
-  weeklyPackages: Package[]
-  monthlyPackages: Package[]
-  termPackages: Package[]
-  offerPackages: Package[]
-  walletBalance: number
-  studentId: string
-  gradeId: string
-}
 
 export default function Sections({
   purchasedPackages,
@@ -27,13 +14,13 @@ export default function Sections({
   walletBalance,
   studentId,
   gradeId
-}: SectionsProps) {
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+}: any) {
+  const [selectedPackage, setSelectedPackage] = useState<any>(null)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [showCodeModal, setShowCodeModal] = useState(false)
   const [purchaseMethod, setPurchaseMethod] = useState<'wallet' | 'code'>('wallet')
 
-  const handlePurchaseClick = (pkg: Package, method: 'wallet' | 'code') => {
+  const handlePurchaseClick = (pkg: any, method: 'wallet' | 'code') => {
     setSelectedPackage(pkg)
     setPurchaseMethod(method)
     
@@ -44,7 +31,7 @@ export default function Sections({
     }
   }
 
-  const handleEnterClick = (pkg: Package) => {
+  const handleEnterClick = (pkg: any) => {
     window.location.href = `/package/${pkg.id}`
   }
 
@@ -52,10 +39,10 @@ export default function Sections({
     <>
       {/* قسم الاشتراكات */}
       {purchasedPackages.length > 0 && (
-        <section className="sections__section">
-          <div className="sections__header">
-            <h2 className="sections__title">اشتراكاتك</h2>
-            <div className="sections__counter">
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">اشتراكاتك</h2>
+            <div className="text-sm text-gray-600">
               {purchasedPackages.length} باقة
             </div>
           </div>
@@ -69,30 +56,30 @@ export default function Sections({
 
       {/* الباقات الأسبوعية */}
       {weeklyPackages.length > 0 && (
-        <section className="sections__section">
-          <div className="sections__header">
-            <h2 className="sections__title">الباقات الأسبوعية</h2>
-            <div className="sections__badge">
-              <div className="sections__badge-dot sections__badge-dot--green"></div>
-              <span className="sections__badge-text">جديدة كل أسبوع</span>
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">الباقات الأسبوعية</h2>
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <span className="text-sm text-gray-600">جديدة كل أسبوع</span>
             </div>
           </div>
           <PackageGrid 
             packages={weeklyPackages}
             type="available"
             walletBalance={walletBalance}
-            onPurchaseClick={(pkg) => handlePurchaseClick(pkg, 'wallet')}
-            onCodeClick={(pkg) => handlePurchaseClick(pkg, 'code')}
+            onPurchaseClick={(pkg: any) => handlePurchaseClick(pkg, 'wallet')}
+            onCodeClick={(pkg: any) => handlePurchaseClick(pkg, 'code')}
           />
         </section>
       )}
 
       {/* الباقات الشهرية */}
       {monthlyPackages.length > 0 && (
-        <section className="sections__section">
-          <div className="sections__header">
-            <h2 className="sections__title">الباقات الشهرية</h2>
-            <div className="sections__description">
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">الباقات الشهرية</h2>
+            <div className="text-sm text-gray-600">
               وفر مع الباقات الشهرية
             </div>
           </div>
@@ -100,46 +87,50 @@ export default function Sections({
             packages={monthlyPackages}
             type="available"
             walletBalance={walletBalance}
-            onPurchaseClick={(pkg) => handlePurchaseClick(pkg, 'wallet')}
-            onCodeClick={(pkg) => handlePurchaseClick(pkg, 'code')}
+            onPurchaseClick={(pkg: any) => handlePurchaseClick(pkg, 'wallet')}
+            onCodeClick={(pkg: any) => handlePurchaseClick(pkg, 'code')}
           />
         </section>
       )}
 
       {/* باقات الترم */}
       {termPackages.length > 0 && (
-        <section className="sections__section">
-          <div className="sections__header">
-            <h2 className="sections__title">باقات الترم</h2>
-            <div className="sections__popular-badge">
-              الأكثر طلباً
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">باقات الترم</h2>
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <div className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
+                الأكثر طلباً
+              </div>
             </div>
           </div>
           <PackageGrid 
             packages={termPackages}
             type="available"
             walletBalance={walletBalance}
-            onPurchaseClick={(pkg) => handlePurchaseClick(pkg, 'wallet')}
-            onCodeClick={(pkg) => handlePurchaseClick(pkg, 'code')}
+            onPurchaseClick={(pkg: any) => handlePurchaseClick(pkg, 'wallet')}
+            onCodeClick={(pkg: any) => handlePurchaseClick(pkg, 'code')}
           />
         </section>
       )}
 
       {/* العروض الخاصة */}
       {offerPackages.length > 0 && (
-        <section className="sections__section">
-          <div className="sections__header">
-            <h2 className="sections__title">العروض الخاصة</h2>
-            <div className="sections__offer-badge">
-              لفترة محدودة
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">العروض الخاصة</h2>
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <div className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
+                لفترة محدودة
+              </div>
             </div>
           </div>
           <PackageGrid 
             packages={offerPackages}
             type="offer"
             walletBalance={walletBalance}
-            onPurchaseClick={(pkg) => handlePurchaseClick(pkg, 'wallet')}
-            onCodeClick={(pkg) => handlePurchaseClick(pkg, 'code')}
+            onPurchaseClick={(pkg: any) => handlePurchaseClick(pkg, 'wallet')}
+            onCodeClick={(pkg: any) => handlePurchaseClick(pkg, 'code')}
           />
         </section>
       )}

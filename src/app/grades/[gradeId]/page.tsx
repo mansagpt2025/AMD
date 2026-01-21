@@ -1,22 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import GradeHero from '@/app/grades/components/GradeHero'
-import Sections from '@/app/grades/components/Sections'
-import { Grade, Package, StudentPurchase, Wallet } from '@/app/grades/types'
+import GradeHero from '../components/GradeHero'
+import Sections from '../components/Sections'
 
 interface GradePageProps {
-  params: Promise<{ gradeId: string }>
+  params: { gradeId: string }
 }
 
 export default async function GradePage({ params }: GradePageProps) {
-  const { gradeId } = await params
+  const { gradeId } = params
   const supabase = await createClient()
   
   // التحقق من تسجيل الدخول
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  const { data: { session } } = await supabase.auth.getSession()
 
   if (!session) {
     redirect('/login')
@@ -53,10 +49,7 @@ export default async function GradePage({ params }: GradePageProps) {
   // جلب الباقات التي اشتراها الطالب
   const { data: studentPurchases } = await supabase
     .from('student_purchases')
-    .select(`
-      *,
-      package:packages(*)
-    `)
+    .select('*')
     .eq('student_id', session.user.id)
     .eq('status', 'active')
 
@@ -68,28 +61,28 @@ export default async function GradePage({ params }: GradePageProps) {
     .single()
 
   // فصل الباقات حسب النوع
-  const purchasedPackages = packages?.filter((pkg: Package) => 
-    studentPurchases?.some((purchase: StudentPurchase) => purchase.package_id === pkg.id)
+  const purchasedPackages = packages?.filter((pkg: any) => 
+    studentPurchases?.some((purchase: any) => purchase.package_id === pkg.id)
   ) || []
 
-  const weeklyPackages = packages?.filter((pkg: Package) => 
+  const weeklyPackages = packages?.filter((pkg: any) => 
     pkg.type === 'weekly' && 
-    !studentPurchases?.some((purchase: StudentPurchase) => purchase.package_id === pkg.id)
+    !studentPurchases?.some((purchase: any) => purchase.package_id === pkg.id)
   ) || []
 
-  const monthlyPackages = packages?.filter((pkg: Package) => 
+  const monthlyPackages = packages?.filter((pkg: any) => 
     pkg.type === 'monthly' && 
-    !studentPurchases?.some((purchase: StudentPurchase) => purchase.package_id === pkg.id)
+    !studentPurchases?.some((purchase: any) => purchase.package_id === pkg.id)
   ) || []
 
-  const termPackages = packages?.filter((pkg: Package) => 
+  const termPackages = packages?.filter((pkg: any) => 
     pkg.type === 'term' && 
-    !studentPurchases?.some((purchase: StudentPurchase) => purchase.package_id === pkg.id)
+    !studentPurchases?.some((purchase: any) => purchase.package_id === pkg.id)
   ) || []
 
-  const offerPackages = packages?.filter((pkg: Package) => 
+  const offerPackages = packages?.filter((pkg: any) => 
     pkg.type === 'offer' && 
-    !studentPurchases?.some((purchase: StudentPurchase) => purchase.package_id === pkg.id)
+    !studentPurchases?.some((purchase: any) => purchase.package_id === pkg.id)
   ) || []
 
   return (

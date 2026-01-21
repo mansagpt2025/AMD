@@ -2,17 +2,6 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Package } from '../types'
-import './PurchaseModal.css'
-
-interface PurchaseModalProps {
-  package: Package
-  walletBalance: number
-  studentId: string
-  gradeId: string
-  onClose: () => void
-  onSuccess: () => void
-}
 
 export default function PurchaseModal({
   package: pkg,
@@ -21,7 +10,7 @@ export default function PurchaseModal({
   gradeId,
   onClose,
   onSuccess
-}: PurchaseModalProps) {
+}: any) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const supabase = createClient()
@@ -91,45 +80,43 @@ export default function PurchaseModal({
   }
 
   return (
-    <div className="purchase-modal">
-      <div className="purchase-modal__overlay" onClick={onClose}></div>
-      
-      <div className="purchase-modal__container">
-        <div className="purchase-modal__content">
-          <div className="purchase-modal__header">
-            <h3 className="purchase-modal__title">تأكيد الشراء</h3>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl max-w-md w-full">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold text-gray-800">تأكيد الشراء</h3>
             <button
               onClick={onClose}
-              className="purchase-modal__close-button"
+              className="text-gray-400 hover:text-gray-600"
             >
               ✕
             </button>
           </div>
 
-          <div className="purchase-modal__body">
-            <div className="purchase-modal__package-info">
-              <h4 className="purchase-modal__package-name">{pkg.name}</h4>
-              <p className="purchase-modal__package-description">{pkg.description}</p>
-              <div className="purchase-modal__package-details">
-                <span className="purchase-modal__package-price">
+          <div className="mb-6">
+            <div className="bg-gray-50 rounded-xl p-4 mb-4">
+              <h4 className="font-medium text-gray-800 mb-2">{pkg.name}</h4>
+              <p className="text-gray-600 text-sm">{pkg.description}</p>
+              <div className="mt-3 flex justify-between items-center">
+                <span className="text-lg font-bold text-primary-600">
                   {formatPrice(pkg.price)}
                 </span>
-                <span className="purchase-modal__package-lectures">
+                <span className="text-sm text-gray-600">
                   {pkg.lectures_count} محاضرة
                 </span>
               </div>
             </div>
 
-            <div className="purchase-modal__wallet-info">
-              <div className="purchase-modal__balance-row">
-                <span className="purchase-modal__balance-label">رصيدك الحالي:</span>
-                <span className="purchase-modal__balance-value">
+            <div className="bg-blue-50 rounded-xl p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-700">رصيدك الحالي:</span>
+                <span className="font-bold text-gray-800">
                   {formatPrice(walletBalance)}
                 </span>
               </div>
-              <div className="purchase-modal__balance-row">
-                <span className="purchase-modal__balance-label">الرصيد بعد الشراء:</span>
-                <span className="purchase-modal__balance-value">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">الرصيد بعد الشراء:</span>
+                <span className="font-bold text-gray-800">
                   {formatPrice(walletBalance - pkg.price)}
                 </span>
               </div>
@@ -137,18 +124,15 @@ export default function PurchaseModal({
           </div>
 
           {error && (
-            <div className="purchase-modal__error">
-              <svg className="purchase-modal__error-icon" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <p className="purchase-modal__error-text">{error}</p>
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
 
-          <div className="purchase-modal__footer">
+          <div className="flex space-x-3 space-x-reverse">
             <button
               onClick={onClose}
-              className="purchase-modal__cancel-button"
+              className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
               disabled={loading}
             >
               إلغاء
@@ -156,10 +140,10 @@ export default function PurchaseModal({
             <button
               onClick={handlePurchase}
               disabled={loading || walletBalance < pkg.price}
-              className={`purchase-modal__confirm-button ${
+              className={`flex-1 py-3 rounded-lg font-medium text-white transition-colors ${
                 walletBalance < pkg.price
-                  ? 'purchase-modal__confirm-button--disabled'
-                  : 'purchase-modal__confirm-button--enabled'
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700'
               }`}
             >
               {loading ? 'جاري المعالجة...' : 'تأكيد الشراء'}
