@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -22,10 +23,6 @@ export default function LoginPage() {
     setLoading(true)
     
     try {
-      // استيراد الديناميكي فقط عند الحاجة
-      const { createClient } = await import('@/lib/supabase/browser-client')
-      const supabase = createClient()
-      
       let email = formData.identifier
       
       // التحقق إذا كان المدخل رقم هاتف
@@ -65,45 +62,6 @@ export default function LoginPage() {
       setError('البريد الإلكتروني أو رقم الهاتف أو كلمة المرور غير صحيحة')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleForgotPassword = async () => {
-    if (!formData.identifier) {
-      setError('يرجى إدخال البريد الإلكتروني أو رقم الهاتف')
-      return
-    }
-    
-    try {
-      const { createClient } = await import('@/lib/supabase/browser-client')
-      const supabase = createClient()
-      
-      let email = formData.identifier
-      
-      // إذا كان المدخل رقم هاتف، احصل على البريد الإلكتروني المرتبط
-      if (formData.identifier.match(/^01\d{9}$/)) {
-        const { data: userData } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('student_phone', formData.identifier)
-          .single()
-        
-        if (!userData) {
-          setError('لا يوجد حساب مرتبط بهذا الرقم')
-          return
-        }
-        email = (userData as any).email
-      }
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      })
-      
-      if (error) throw error
-      
-      alert('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني')
-    } catch (err: any) {
-      setError(err.message || 'حدث خطأ أثناء إرسال رابط إعادة التعيين')
     }
   }
 
@@ -154,7 +112,7 @@ export default function LoginPage() {
                 </label>
                 <button
                   type="button"
-                  onClick={handleForgotPassword}
+                  onClick={() => alert('لإعادة تعيين كلمة المرور، تواصل مع الدعم الفني')}
                   className="text-sm text-blue-600 hover:text-blue-700"
                 >
                   نسيت كلمة المرور؟
@@ -199,27 +157,6 @@ export default function LoginPage() {
               </p>
             </div>
           </form>
-          
-          {/* معلومات إضافية */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <div className="w-5 h-5 text-blue-600 mr-3">📱</div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">الدعم الفني</p>
-                  <p className="text-sm text-gray-600">01012345678 (واتساب فقط)</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <div className="w-5 h-5 text-blue-600 mr-3">📚</div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">الدعم العلمي</p>
-                  <p className="text-sm text-gray-600">01198765432</p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -4,13 +4,14 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Mail, User, School, MapPin, Building } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 const governorates = [
   'القاهرة', 'الجيزة', 'الإسكندرية', 'الدقهلية', 'البحر الأحمر', 'البحيرة',
   'الفيوم', 'الغربية', 'الإسماعيلية', 'المنوفية', 'المنيا', 'القليوبية',
   'الوادي الجديد', 'السويس', 'اسوان', 'أسيوط', 'بني سويف', 'بورسعيد',
   'دمياط', 'سوهاج', 'جنوب سينا', 'كفر الشيخ', 'مطروح', 'الأقصر', 'قنا',
-  'شمال سينا', 'الشرقية', 'طنطا'
+  'شمال سينا', 'الشرقية'
 ]
 
 const grades = [
@@ -18,19 +19,6 @@ const grades = [
   { id: 'second', name: 'الصف الثاني الثانوي' },
   { id: 'third', name: 'الصف الثالث الثانوي' }
 ]
-
-const sectionsData: Record<string, Array<{id: string, name: string}>> = {
-  first: [{ id: 'general', name: 'عام' }],
-  second: [
-    { id: 'scientific', name: 'علمي' },
-    { id: 'literary', name: 'أدبي' }
-  ],
-  third: [
-    { id: 'science_science', name: 'علمي علوم' },
-    { id: 'science_math', name: 'علمي رياضة' },
-    { id: 'literary', name: 'أدبي' }
-  ]
-}
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -53,19 +41,25 @@ export default function RegisterPage() {
     confirmPassword: ''
   })
 
+  const sections = {
+    first: [{ id: 'general', name: 'عام' }],
+    second: [
+      { id: 'scientific', name: 'علمي' },
+      { id: 'literary', name: 'أدبي' }
+    ],
+    third: [
+      { id: 'science_science', name: 'علمي علوم' },
+      { id: 'science_math', name: 'علمي رياضة' },
+      { id: 'literary', name: 'أدبي' }
+    ]
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: value
     }))
-    
-    if (name === 'grade') {
-      setFormData(prev => ({
-        ...prev,
-        section: ''
-      }))
-    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,10 +79,6 @@ export default function RegisterPage() {
     setLoading(true)
     
     try {
-      // استيراد الديناميكي فقط عند الحاجة
-      const { createClient } = await import('@/lib/supabase/browser-client')
-      const supabase = createClient()
-      
       // إنشاء المستخدم في Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
@@ -104,7 +94,7 @@ export default function RegisterPage() {
       if (authError) throw authError
       
       if (authData.user) {
-        // تحضير بيانات الملف الشخصي للإدراج
+        // تحضير بيانات الملف الشخصي
         const profileData = {
           id: authData.user.id,
           name: formData.name,
@@ -120,17 +110,13 @@ export default function RegisterPage() {
           role: 'student'
         }
 
-        // إضافة معلومات المستخدم إلى جدول profiles
+        // إضافة معلومات المستخدم
         const { error: profileError } = await supabase
           .from('profiles')
           .insert(profileData)
         
-        if (profileError) {
-          console.error('Profile creation error:', profileError)
-          throw profileError
-        }
+        if (profileError) throw profileError
         
-        // إرسال بريد التحقق
         alert('تم إنشاء الحساب بنجاح! يرجى التحقق من بريدك الإلكتروني.')
         router.push('/login')
       }
@@ -142,59 +128,25 @@ export default function RegisterPage() {
     }
   }
 
-  const currentSections = formData.grade && sectionsData[formData.grade] 
-    ? sectionsData[formData.grade] 
-    : []
+  const currentSections = formData.grade ? sections[formData.grade as keyof typeof sections] : []
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden">
         <div className="md:flex">
-          {/* الجانب الأيسر - صورة وشعار */}
+          {/* الجانب الأيسر */}
           <div className="md:w-2/5 bg-gradient-to-br from-blue-600 to-blue-800 p-8 flex flex-col justify-center items-center text-white">
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold mb-2">محمود الديب</h1>
-              <p className="text-blue-100">منصة التعليم الإلكتروني للثانوية العامة</p>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center mr-3">
-                  <School className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">تعليم متميز</h3>
-                  <p className="text-sm text-blue-100">أفضل المناهج التعليمية</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center mr-3">
-                  <User className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">مدرس متخصص</h3>
-                  <p className="text-sm text-blue-100">خبرة 15 عاماً في التدريس</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center mr-3">
-                  <div className="w-6 h-6">📱</div>
-                </div>
-                <div>
-                  <h3 className="font-semibold">دعم فني</h3>
-                  <p className="text-sm text-blue-100">متاح على مدار الساعة</p>
-                </div>
-              </div>
+              <p className="text-blue-100">منصة التعليم الإلكتروني</p>
             </div>
           </div>
           
-          {/* الجانب الأيمن - نموذج التسجيل */}
+          {/* الجانب الأيمن */}
           <div className="md:w-3/5 p-8">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-gray-800">إنشاء حساب جديد</h2>
-              <p className="text-gray-600 mt-2">سجل الآن للوصول إلى جميع الدورات والمحاضرات</p>
+              <p className="text-gray-600 mt-2">سجل الآن للوصول إلى المنصة</p>
             </div>
             
             {error && (
@@ -204,8 +156,23 @@ export default function RegisterPage() {
             )}
             
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* الصف والشعبة */}
+              {/* الاسم والصف */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    الاسم الكامل *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="أدخل الاسم الكامل"
+                  />
+                </div>
+                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     الصف الدراسي *
@@ -225,7 +192,10 @@ export default function RegisterPage() {
                     ))}
                   </select>
                 </div>
-                
+              </div>
+              
+              {/* الشعبة والبريد */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     الشعبة *
@@ -246,67 +216,58 @@ export default function RegisterPage() {
                     ))}
                   </select>
                 </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    البريد الإلكتروني *
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="example@email.com"
+                  />
+                </div>
               </div>
               
-              {/* الاسم والمدينة */}
+              {/* أرقام الهواتف */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    الاسم الكامل *
+                    رقم هاتف الطالب *
                   </label>
-                  <div className="relative">
-                    <User className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      required
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="أدخل الاسم الكامل"
-                    />
-                  </div>
+                  <input
+                    type="tel"
+                    name="studentPhone"
+                    value={formData.studentPhone}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="01xxxxxxxxx"
+                  />
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    المدينة *
+                    رقم ولي الأمر *
                   </label>
-                  <div className="relative">
-                    <MapPin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleChange}
-                      required
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="أدخل المدينة"
-                    />
-                  </div>
+                  <input
+                    type="tel"
+                    name="parentPhone"
+                    value={formData.parentPhone}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="01xxxxxxxxx"
+                  />
                 </div>
               </div>
               
-              {/* المدرسة والمحافظة */}
+              {/* المحافظة والمدينة */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    المدرسة *
-                  </label>
-                  <div className="relative">
-                    <Building className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      name="school"
-                      value={formData.school}
-                      onChange={handleChange}
-                      required
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="أدخل اسم المدرسة"
-                    />
-                  </div>
-                </div>
-                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     المحافظة *
@@ -326,67 +287,39 @@ export default function RegisterPage() {
                     ))}
                   </select>
                 </div>
-              </div>
-              
-              {/* البريد الإلكتروني */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  البريد الإلكتروني *
-                </label>
-                <div className="relative">
-                  <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    المدينة *
+                  </label>
                   <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
+                    type="text"
+                    name="city"
+                    value={formData.city}
                     onChange={handleChange}
                     required
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="example@email.com"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="أدخل المدينة"
                   />
                 </div>
               </div>
               
-              {/* أرقام الهواتف */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    رقم هاتف الطالب *
-                  </label>
-                  <div className="relative">
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5">📱</div>
-                    <input
-                      type="tel"
-                      name="studentPhone"
-                      value={formData.studentPhone}
-                      onChange={handleChange}
-                      required
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="01xxxxxxxxx"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    رقم هاتف ولي الأمر *
-                  </label>
-                  <div className="relative">
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5">📱</div>
-                    <input
-                      type="tel"
-                      name="parentPhone"
-                      value={formData.parentPhone}
-                      onChange={handleChange}
-                      required
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="01xxxxxxxxx"
-                    />
-                  </div>
-                </div>
+              {/* المدرسة وكلمة المرور */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  المدرسة *
+                </label>
+                <input
+                  type="text"
+                  name="school"
+                  value={formData.school}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="أدخل اسم المدرسة"
+                />
               </div>
               
-              {/* كلمة المرور */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
