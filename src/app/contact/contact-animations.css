@@ -1,0 +1,291 @@
+/* contact-animations.css */
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.8);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* فئات Tailwind مخصصة */
+@layer utilities {
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  
+  .animate-shimmer {
+    background: linear-gradient(90deg, 
+      transparent, 
+      rgba(255, 255, 255, 0.6), 
+      transparent);
+    background-size: 200% 100%;
+    animation: shimmer 3s infinite;
+  }
+  
+  .animate-slide-in-right {
+    animation: slideInRight 0.8s ease-out forwards;
+  }
+  
+  .animate-slide-in-left {
+    animation: slideInLeft 0.8s ease-out forwards;
+  }
+  
+  .animate-fade-in-up {
+    animation: fadeInUp 0.8s ease-out forwards;
+  }
+  
+  .animate-gradient-shift {
+    background-size: 200% 200%;
+    animation: gradientShift 10s ease infinite;
+  }
+  
+  .hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  }
+  
+  .card-glow {
+    transition: all 0.3s ease;
+  }
+  
+  .card-glow:hover {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+  }
+  
+  .icon-3d {
+    transition: all 0.3s ease;
+    transform-style: preserve-3d;
+  }
+  
+  .icon-3d:hover {
+    transform: rotateY(20deg) scale(1.1);
+  }
+  
+  .text-gradient {
+    background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-800) 50%, var(--secondary-500) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% 200%;
+    animation: gradientShift 8s ease infinite;
+  }
+}
+
+/* أنماط مخصصة للمكونات */
+.floating-shape {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.1;
+  z-index: 0;
+}
+
+.floating-shape-1 {
+  width: 300px;
+  height: 300px;
+  background: var(--primary-300);
+  top: 10%;
+  left: 5%;
+  animation: float 15s ease-in-out infinite;
+}
+
+.floating-shape-2 {
+  width: 200px;
+  height: 200px;
+  background: var(--secondary-300);
+  bottom: 20%;
+  right: 10%;
+  animation: float 20s ease-in-out infinite reverse;
+}
+
+.floating-shape-3 {
+  width: 150px;
+  height: 150px;
+  background: var(--primary-400);
+  top: 60%;
+  left: 80%;
+  animation: float 12s ease-in-out infinite;
+}
+
+/* تأثيرات النصوص */
+.typing-text {
+  overflow: hidden;
+  border-right: 3px solid var(--primary-500);
+  white-space: nowrap;
+  animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: var(--primary-500) }
+}
+
+/* تأثيرات الأزرار */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%);
+  transform-origin: 50% 50%;
+}
+
+.btn-ripple:focus:not(:active)::after {
+  animation: ripple 1s ease-out;
+}
+
+/* تأثيرات بطاقات التواصل */
+.contact-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.contact-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.7s;
+}
+
+.contact-card:hover::before {
+  left: 100%;
+}
+
+/* تأثيرات الأيقونات */
+.icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-wrapper::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.3;
+  transform: scale(1.2);
+  z-index: -1;
+  transition: all 0.3s ease;
+}
+
+.icon-wrapper:hover::after {
+  transform: scale(1.5);
+  opacity: 0.5;
+}
+
+/* تأثيرات الـ Form */
+.input-focus-effect:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.input-focus-effect {
+  transition: all 0.3s ease;
+}

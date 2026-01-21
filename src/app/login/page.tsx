@@ -1,21 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, Sparkles, BookOpen, GraduationCap } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import './login-styles.css'
 
 export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [particles, setParticles] = useState<Array<{ x: number; y: number; size: number; speed: number }>>([])
   
   const [formData, setFormData] = useState({
     identifier: '',
     password: ''
   })
+
+  // إنشاء تأثير الجسيمات المتحركة
+  useEffect(() => {
+    const newParticles = Array.from({ length: 20 }).map(() => ({
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: Math.random() * 4 + 1,
+      speed: Math.random() * 1 + 0.5
+    }))
+    setParticles(newParticles)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,7 +40,6 @@ export default function LoginPage() {
       
       // التحقق إذا كان المدخل رقم هاتف
       if (formData.identifier.match(/^01\d{9}$/)) {
-        // البحث عن المستخدم برقم الهاتف
         const { data: userData, error: userError } = await supabase
           .from('profiles')
           .select('email')
@@ -41,7 +53,6 @@ export default function LoginPage() {
         email = (userData as any).email
       }
       
-      // محاولة تسجيل الدخول
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: email,
         password: formData.password
@@ -52,111 +63,178 @@ export default function LoginPage() {
       }
       
       if (data?.user) {
-        // إعادة التوجيه إلى الداشبورد
-        router.push('/dashboard')
-        router.refresh()
+        // تأثير النجاح قبل التوجيه
+        document.body.classList.add('login-success')
+        setTimeout(() => {
+          router.push('/')
+          router.refresh()
+        }, 800)
       }
       
     } catch (err: any) {
       console.error('Login error:', err)
       setError('البريد الإلكتروني أو رقم الهاتف أو كلمة المرور غير صحيحة')
+      document.body.classList.add('login-error')
+      setTimeout(() => document.body.classList.remove('login-error'), 1000)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
-        {/* الشعار */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-700 mb-2">محمود الديب</h1>
-          <p className="text-gray-600">منصة التعليم الإلكتروني للثانوية العامة</p>
-        </div>
-        
-        {/* بطاقة تسجيل الدخول */}
-        <div className="bg-white rounded-xl p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">تسجيل الدخول</h2>
-          <p className="text-gray-600 mb-6">سجل دخولك للوصول إلى حسابك</p>
-          
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-              {error}
+    <div className="login-container">
+      {/* الجسيمات المتحركة */}
+      <div className="particles-container">
+        {particles.map((particle, index) => (
+          <div
+            key={index}
+            className="particle"
+            style={{
+              left: `${particle.x}%`,
+              top: `${particle.y}%`,
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+              animationDelay: `${index * 0.1}s`,
+              animationDuration: `${particle.speed * 20}s`
+            }}
+          />
+        ))}
+      </div>
+
+      {/* الأيقونات العائمة */}
+      <div className="floating-icons">
+        <BookOpen className="icon-1" />
+        <GraduationCap className="icon-2" />
+        <Sparkles className="icon-3" />
+      </div>
+
+      <div className="login-card-wrapper">
+        <div className="login-card">
+          {/* الشعار مع أنيميشن */}
+          <div className="logo-section">
+            <div className="logo-container">
+              <Sparkles className="logo-sparkle" />
+              <h1 className="logo-text">
+                <span className="logo-primary">محمود</span>
+                <span className="logo-secondary">الديب</span>
+              </h1>
             </div>
-          )}
+            <p className="logo-subtitle">منصة التعليم الإلكتروني للثانوية العامة</p>
+            <div className="welcome-text">
+              <span className="welcome-char">أ</span>
+              <span className="welcome-char">ه</span>
+              <span className="welcome-char">ل</span>
+              <span className="welcome-char">ا</span>
+              <span className="welcome-char">&nbsp;</span>
+              <span className="welcome-char">ب</span>
+              <span className="welcome-char">ك</span>
+            </div>
+          </div>
           
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* حقل الإيميل/الهاتف */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                البريد الإلكتروني أو رقم الهاتف *
-              </label>
-              <div className="relative">
-                <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  value={formData.identifier}
-                  onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
-                  required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="email@example.com أو 01xxxxxxxxx"
-                />
-              </div>
+          <div className="login-form-container">
+            <div className="form-header">
+              <h2 className="form-title">تسجيل الدخول</h2>
+              <p className="form-subtitle">سجل دخولك للوصول إلى حسابك</p>
             </div>
             
-            {/* حقل كلمة المرور */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-medium text-gray-700">
-                  كلمة المرور *
+            {error && (
+              <div className="error-message" role="alert">
+                <div className="error-icon">!</div>
+                {error}
+              </div>
+            )}
+            
+            <form onSubmit={handleSubmit} className="login-form">
+              {/* حقل الإيميل/الهاتف */}
+              <div className="input-group">
+                <label className="input-label">
+                  <Mail className="input-icon" />
+                  <span>البريد الإلكتروني أو رقم الهاتف *</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={() => alert('لإعادة تعيين كلمة المرور، تواصل مع الدعم الفني')}
-                  className="text-sm text-blue-600 hover:text-blue-700"
-                >
-                  نسيت كلمة المرور؟
-                </button>
+                <div className="input-wrapper">
+                  <input
+                    type="text"
+                    value={formData.identifier}
+                    onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+                    required
+                    className="login-input"
+                    placeholder="email@example.com أو 01xxxxxxxxx"
+                  />
+                  <div className="input-border"></div>
+                </div>
               </div>
-              <div className="relative">
-                <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                  className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="أدخل كلمة المرور"
-                />
+              
+              {/* حقل كلمة المرور */}
+              <div className="input-group">
+                <div className="password-header">
+                  <label className="input-label">
+                    <Lock className="input-icon" />
+                    <span>كلمة المرور *</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => alert('لإعادة تعيين كلمة المرور، تواصل مع الدعم الفني')}
+                    className="forgot-password"
+                  >
+                    نسيت كلمة المرور؟
+                  </button>
+                </div>
+                <div className="input-wrapper">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    className="login-input password-input"
+                    placeholder="أدخل كلمة المرور"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="password-toggle"
+                  >
+                    {showPassword ? <EyeOff className="eye-icon" /> : <Eye className="eye-icon" />}
+                  </button>
+                  <div className="input-border"></div>
+                </div>
               </div>
-            </div>
-            
-            {/* زر تسجيل الدخول */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
-            </button>
-            
-            {/* رابط إنشاء حساب */}
-            <div className="text-center pt-4">
-              <p className="text-gray-600">
-                ليس لديك حساب؟{' '}
-                <Link href="/register" className="text-blue-600 hover:text-blue-700 font-semibold">
-                  أنشئ حساب الآن
-                </Link>
-              </p>
-            </div>
-          </form>
+              
+              {/* زر تسجيل الدخول */}
+              <button
+                type="submit"
+                disabled={loading}
+                className={`login-button ${loading ? 'loading' : ''}`}
+              >
+                <span className="button-text">
+                  {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+                </span>
+                <span className="button-glow"></span>
+                <span className="button-sparkles">
+                  <Sparkles className="sparkle-icon" />
+                  <Sparkles className="sparkle-icon" />
+                </span>
+              </button>
+                            <div className="forgot-password-link">
+                <p className=".forgot-password-button">
+                  <Link href="/forgot-password" className="register-cta">
+                    <span className="cta-text">نسيت كلمة المرور؟</span>
+                    <span className="cta-arrow">→</span>
+                  </Link>
+                </p>
+              </div>
+              
+              {/* رابط إنشاء حساب */}
+              <div className="register-link">
+                <p className="register-text">
+                  ليس لديك حساب؟{' '}
+                  <Link href="/register" className="register-cta">
+                    <span className="cta-text">أنشئ حساب الآن</span>
+                    <span className="cta-arrow">→</span>
+                  </Link>
+                </p>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
