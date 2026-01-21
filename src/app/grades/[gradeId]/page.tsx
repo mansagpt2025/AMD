@@ -7,7 +7,7 @@ interface GradePageProps {
   params: { gradeId: string }
 }
 
-export default async function GradePage({ params }: GradePageProps) {
+export default async function GradePage({ params }: { params: { gradeId: string } }) {
   const { gradeId } = params
   const supabase = await createClient()
   
@@ -17,6 +17,7 @@ export default async function GradePage({ params }: GradePageProps) {
   if (!session) {
     redirect('/login')
   }
+
 
   // جلب بيانات الصف
   const { data: grade, error: gradeError } = await supabase
