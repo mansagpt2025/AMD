@@ -67,7 +67,7 @@ export default function LoginPage() {
         // تأثير النجاح قبل التوجيه
         document.body.classList.add('login-success')
         setTimeout(() => {
-          router.push('/')
+          router.push('/dashboard')
           router.refresh()
         }, 800)
       }
