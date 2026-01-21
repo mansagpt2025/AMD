@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import styles from './StagesSection.module.css';
 
-const grades = [
+const stages = [
   {
     id: 1,
     name: 'الصف الأول الثانوي',
@@ -76,36 +76,39 @@ const StagesSection = () => {
         </div>
 
         <div className={styles.stagesGrid}>
-          {grades.map((grade, index) => (
+          {stages.map((stage, index) => (
             <div
-              key={grade.id}
+              key={stage.id}
               className={`${styles.stageCard} ${inView ? styles.animateIn : ''} ${
-                hoveredCard === grade.id ? styles.hovered : ''
+                hoveredCard === stage.id ? styles.hovered : ''
               }`}
               style={{ 
                 animationDelay: `${index * 0.2}s`,
-                '--card-color': grade.color
+                '--card-color': stage.color
               } as React.CSSProperties}
-              onMouseEnter={() => setHoveredCard(grade.id)}
+              onMouseEnter={() => setHoveredCard(stage.id)}
               onMouseLeave={() => setHoveredCard(null)}
-              onClick={() => setActiveCard(activeCard === grade.id ? null : grade.id)}
+              onClick={() => setActiveCard(activeCard === stage.id ? null : stage.id)}
             >
               <div className={styles.cardHeader}>
                 <div className={styles.cardImageContainer}>
                   <div 
                     className={styles.cardImage}
-                    style={{ backgroundImage: `url(${grade.image})` }}
+                    style={{ backgroundImage: `url(${stage.image})` }}
                   ></div>
                   <div className={styles.imageOverlay}></div>
                 </div>
               </div>
 
               <div className={styles.cardContent}>
+                                <div className={styles.cardtext}>
                           <h2 className={styles.cardtext}>
-{grade.name}       </h2>
+            السنوات الدراسية
+          </h2>
+                </div>
                 <div className={styles.cardActions}>
                   <Link 
-                    href={`/grades/${grade.id}`}
+                    href={`/courses/${stage.id}`}
                     className={styles.secondaryButton}
                   >
 دخول                  </Link>
