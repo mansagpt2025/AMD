@@ -8,7 +8,6 @@ import {
   ChevronRight, Package, Video, FileText, HelpCircle,
   Settings, LogOut, Home, Users, CreditCard, Shield
 } from 'lucide-react'
-import './dashboard-styles.css'
 
 // بيانات تجريبية
 const mockData = {
@@ -52,56 +51,6 @@ const mockData = {
       nextLecture: 'اليوم 6:00 م',
       color: 'purple'
     }
-  ],
-  notifications: [
-    {
-      id: 1,
-      title: 'محاضرة جديدة',
-      message: 'تم إضافة محاضرة جديدة في مادة الفيزياء',
-      time: 'قبل 5 دقائق',
-      read: false,
-      type: 'lecture'
-    },
-    {
-      id: 2,
-      title: 'باقة جديدة',
-      message: 'باقة الترم الثاني متاحة الآن للشراء',
-      time: 'قبل ساعة',
-      read: true,
-      type: 'package'
-    },
-    {
-      id: 3,
-      title: 'تنبيه الامتحان',
-      message: 'امتحان مادة الكيمياء غداً الساعة 10 صباحاً',
-      time: 'قبل يوم',
-      read: false,
-      type: 'exam'
-    }
-  ],
-  upcomingExams: [
-    {
-      id: 1,
-      subject: 'الكيمياء',
-      date: 'غداً',
-      time: '10:00 ص',
-      duration: 'ساعتين',
-      chapters: 'الفصل 1-3'
-    },
-    {
-      id: 2,
-      subject: 'الفيزياء',
-      date: 'بعد 3 أيام',
-      time: '9:00 ص',
-      duration: 'ساعة ونصف',
-      chapters: 'الفصل 4-5'
-    }
-  ],
-  quickActions: [
-    { icon: Video, label: 'المحاضرات الجديدة', color: 'blue', count: 5 },
-    { icon: FileText, label: 'الملفات المضافة', color: 'green', count: 12 },
-    { icon: Package, label: 'الباقات المتاحة', color: 'purple', count: 3 },
-    { icon: Award, label: 'الشهادات', color: 'orange', count: 2 }
   ]
 }
 
@@ -110,18 +59,6 @@ export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
-  const [floatingElements, setFloatingElements] = useState<Array<{ x: number; y: number; size: number; delay: number }>>([])
-
-  // إنشاء العناصر العائمة للخلفية
-  useEffect(() => {
-    const elements = Array.from({ length: 20 }).map(() => ({
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 40 + 20,
-      delay: Math.random() * 5
-    }))
-    setFloatingElements(elements)
-  }, [])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ar-EG', {
@@ -132,222 +69,144 @@ export default function DashboardPage() {
   }
 
   const handleLogout = () => {
-    // هنا سيكون منطق تسجيل الخروج
     router.push('/login')
   }
 
   return (
-    <div className="dashboard-container">
-      {/* العناصر العائمة للخلفية */}
-      <div className="floating-background">
-        {floatingElements.map((el, index) => (
-          <div
-            key={index}
-            className="floating-bg-element"
-            style={{
-              left: `${el.x}%`,
-              top: `${el.y}%`,
-              width: `${el.size}px`,
-              height: `${el.size}px`,
-              animationDelay: `${el.delay}s`
-            }}
-          />
-        ))}
-      </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 font-[Cairo]">
       {/* الشريط الجانبي */}
-      <aside className={`dashboard-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
-        <div className="sidebar-header">
-          <div className="sidebar-logo">
-            <Sparkles className="logo-sparkle" />
-            <div className="logo-text">
-              <span className="logo-primary">محمود</span>
-              <span className="logo-secondary">الديب</span>
+      <aside className={`fixed right-0 top-0 h-screen bg-white shadow-2xl transition-all duration-300 z-50 ${sidebarOpen ? 'w-80' : 'w-0'}`}>
+        {sidebarOpen && (
+          <>
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <Sparkles className="w-8 h-8 text-primary-500 animate-pulse" />
+                <div className="text-xl font-bold">
+                  <span className="text-primary-600">محمود</span>
+                  <span className="text-secondary-500">الديب</span>
+                </div>
+              </div>
+              <button 
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </button>
             </div>
-          </div>
+
+            <div className="p-6 border-b border-gray-100">
+              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center text-xl font-bold mb-4">
+                {mockData.student.avatar}
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-gray-800">{mockData.student.name}</h3>
+                <p className="text-sm text-gray-600">{mockData.student.grade}</p>
+                <span className="inline-block px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-xs font-medium mt-2">
+                  {mockData.student.section}
+                </span>
+              </div>
+            </div>
+
+            <nav className="p-4 space-y-2">
+              <button 
+                className={`w-full flex items-center justify-between p-3 rounded-xl text-right transition-all duration-200 ${activeTab === 'overview' ? 'bg-gradient-to-l from-primary-500 to-primary-600 text-white shadow-lg' : 'hover:bg-gradient-to-l from-primary-50 to-transparent'}`}
+                onClick={() => setActiveTab('overview')}
+              >
+                <Home className="w-5 h-5 text-gray-400" />
+                <span className="flex-1 mr-3 text-sm font-medium">الملخص العام</span>
+              </button>
+
+              <button 
+                className={`w-full flex items-center justify-between p-3 rounded-xl text-right transition-all duration-200 ${activeTab === 'packages' ? 'bg-gradient-to-l from-primary-500 to-primary-600 text-white shadow-lg' : 'hover:bg-gradient-to-l from-primary-50 to-transparent'}`}
+                onClick={() => setActiveTab('packages')}
+              >
+                <Package className="w-5 h-5 text-gray-400" />
+                <span className="flex-1 mr-3 text-sm font-medium">الباقات</span>
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                  {mockData.stats.totalPackages}
+                </span>
+              </button>
+
+              <button 
+                className={`w-full flex items-center justify-between p-3 rounded-xl text-right transition-all duration-200 ${activeTab === 'wallet' ? 'bg-gradient-to-l from-primary-500 to-primary-600 text-white shadow-lg' : 'hover:bg-gradient-to-l from-primary-50 to-transparent'}`}
+                onClick={() => setActiveTab('wallet')}
+              >
+                <Wallet className="w-5 h-5 text-gray-400" />
+                <span className="flex-1 mr-3 text-sm font-medium">المحفظة</span>
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                  {formatCurrency(mockData.wallet.balance)}
+                </span>
+              </button>
+
+              <div className="my-4 border-t border-gray-100"></div>
+
+              <button className="w-full flex items-center justify-between p-3 rounded-xl text-right hover:bg-red-50 text-red-500 mt-8">
+                <LogOut className="w-5 h-5 text-red-400" />
+                <span className="flex-1 mr-3 text-sm font-medium">تسجيل الخروج</span>
+              </button>
+            </nav>
+          </>
+        )}
+        
+        {!sidebarOpen && (
           <button 
-            className="sidebar-toggle"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center"
+            onClick={() => setSidebarOpen(true)}
           >
-            <ChevronRight className={`toggle-icon ${sidebarOpen ? 'rotated' : ''}`} />
+            <ChevronRight className="w-4 h-4 rotate-180" />
           </button>
-        </div>
-
-        <div className="sidebar-profile">
-          <div className="profile-avatar">
-            {mockData.student.avatar}
-          </div>
-          <div className="profile-info">
-            <h3 className="profile-name">{mockData.student.name}</h3>
-            <p className="profile-grade">{mockData.student.grade}</p>
-            <span className="profile-badge">{mockData.student.section}</span>
-          </div>
-        </div>
-
-        <nav className="sidebar-nav">
-          <button 
-            className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
-          >
-            <Home className="nav-icon" />
-            <span className="nav-label">الملخص العام</span>
-          </button>
-
-          <button 
-            className={`nav-item ${activeTab === 'packages' ? 'active' : ''}`}
-            onClick={() => setActiveTab('packages')}
-          >
-            <Package className="nav-icon" />
-            <span className="nav-label">الباقات</span>
-            <span className="nav-badge">{mockData.stats.totalPackages}</span>
-          </button>
-
-          <button 
-            className={`nav-item ${activeTab === 'lectures' ? 'active' : ''}`}
-            onClick={() => setActiveTab('lectures')}
-          >
-            <Video className="nav-icon" />
-            <span className="nav-label">المحاضرات</span>
-            <span className="nav-badge">{mockData.stats.completedLectures}/{mockData.stats.totalLectures}</span>
-          </button>
-
-          <button 
-            className={`nav-item ${activeTab === 'exams' ? 'active' : ''}`}
-            onClick={() => setActiveTab('exams')}
-          >
-            <BookOpen className="nav-icon" />
-            <span className="nav-label">الامتحانات</span>
-          </button>
-
-          <button 
-            className={`nav-item ${activeTab === 'wallet' ? 'active' : ''}`}
-            onClick={() => setActiveTab('wallet')}
-          >
-            <Wallet className="nav-icon" />
-            <span className="nav-label">المحفظة</span>
-            <span className="nav-badge">{formatCurrency(mockData.wallet.balance)}</span>
-          </button>
-
-          <button 
-            className={`nav-item ${activeTab === 'progress' ? 'active' : ''}`}
-            onClick={() => setActiveTab('progress')}
-          >
-            <TrendingUp className="nav-icon" />
-            <span className="nav-label">التقدم الدراسي</span>
-          </button>
-
-          <div className="nav-divider"></div>
-
-          <button className="nav-item">
-            <Settings className="nav-icon" />
-            <span className="nav-label">الإعدادات</span>
-          </button>
-
-          <button className="nav-item">
-            <HelpCircle className="nav-icon" />
-            <span className="nav-label">المساعدة</span>
-          </button>
-
-          <button className="nav-item logout-item" onClick={handleLogout}>
-            <LogOut className="nav-icon" />
-            <span className="nav-label">تسجيل الخروج</span>
-          </button>
-        </nav>
+        )}
       </aside>
 
       {/* المحتوى الرئيسي */}
-      <main className="dashboard-main">
+      <main className={`transition-all duration-300 ${sidebarOpen ? 'mr-80' : 'mr-0'}`}>
         {/* شريط التنقل العلوي */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <h1 className="page-title">
+        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 p-6 sticky top-0 z-40">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">
               {activeTab === 'overview' && 'الملخص العام'}
               {activeTab === 'packages' && 'الباقات'}
-              {activeTab === 'lectures' && 'المحاضرات'}
-              {activeTab === 'exams' && 'الامتحانات'}
               {activeTab === 'wallet' && 'المحفظة'}
-              {activeTab === 'progress' && 'التقدم الدراسي'}
             </h1>
-            <p className="page-subtitle">
+            <p className="text-gray-600">
               {activeTab === 'overview' && 'مرحباً بعودتك، تابع تقدمك الدراسي'}
               {activeTab === 'packages' && 'ادارة باقاتك التعليمية'}
-              {activeTab === 'lectures' && 'شاهد واستكمل محاضراتك'}
-              {activeTab === 'exams' && 'استعد للامتحانات القادمة'}
               {activeTab === 'wallet' && 'ادارة رصيدك المالي'}
-              {activeTab === 'progress' && 'تابع تقدمك الدراسي'}
             </p>
           </div>
 
-          <div className="header-right">
-            {/* محرك البحث */}
-            <div className="search-container">
+          <div className="flex items-center space-x-4 space-x-reverse">
+            <div className="relative flex-1 max-w-md">
               <input 
                 type="search" 
                 placeholder="ابحث عن محاضرة، امتحان، أو مادة..." 
-                className="search-input"
+                className="w-full pr-12 pl-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent text-right"
               />
-              <div className="search-icon">🔍</div>
+              <div className="absolute left-4 top-1/2 transform -translate-y-1/2">🔍</div>
             </div>
 
-            {/* إشعارات */}
-            <div className="notifications-container">
+            <div className="relative">
               <button 
-                className="notifications-button"
+                className="p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors relative"
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
               >
-                <Bell className="bell-icon" />
-                {mockData.notifications.filter(n => !n.read).length > 0 && (
-                  <span className="notification-badge">
-                    {mockData.notifications.filter(n => !n.read).length}
-                  </span>
-                )}
+                <Bell className="w-5 h-5 text-gray-600" />
+                <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">
+                  3
+                </span>
               </button>
-
-              {notificationsOpen && (
-                <div className="notifications-dropdown">
-                  <div className="notifications-header">
-                    <h3>الإشعارات</h3>
-                    <span className="unread-count">
-                      {mockData.notifications.filter(n => !n.read).length} جديد
-                    </span>
-                  </div>
-                  <div className="notifications-list">
-                    {mockData.notifications.map(notification => (
-                      <div 
-                        key={notification.id} 
-                        className={`notification-item ${!notification.read ? 'unread' : ''}`}
-                      >
-                        <div className="notification-icon">
-                          {notification.type === 'lecture' && <Video />}
-                          {notification.type === 'package' && <Package />}
-                          {notification.type === 'exam' && <BookOpen />}
-                        </div>
-                        <div className="notification-content">
-                          <h4>{notification.title}</h4>
-                          <p>{notification.message}</p>
-                          <span className="notification-time">{notification.time}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <button className="view-all-notifications">
-                    مشاهدة جميع الإشعارات
-                  </button>
-                </div>
-              )}
             </div>
 
-            {/* ملصق الوقت */}
-            <div className="time-widget">
-              <Clock className="clock-icon" />
+            <div className="flex items-center space-x-2 space-x-reverse bg-gradient-to-l from-primary-500 to-primary-600 text-white p-4 rounded-xl">
+              <Clock className="w-6 h-6" />
               <div>
-                <div className="current-time">
+                <div className="text-xl font-bold">
                   {new Date().toLocaleTimeString('ar-EG', { 
                     hour: '2-digit', 
                     minute: '2-digit' 
                   })}
                 </div>
-                <div className="current-date">
+                <div className="text-sm opacity-90">
                   {new Date().toLocaleDateString('ar-EG', { 
                     weekday: 'long', 
                     year: 'numeric', 
@@ -361,157 +220,132 @@ export default function DashboardPage() {
         </header>
 
         {/* محتوى التبويب النشط */}
-        <div className="dashboard-content">
+        <div className="p-6">
           {activeTab === 'overview' && (
             <>
               {/* بطاقة الترحيب والرصيد */}
-              <div className="welcome-card">
-                <div className="welcome-content">
+              <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl p-8 text-white mb-8 shadow-xl">
+                <div className="flex justify-between items-center">
                   <div>
-                    <h2 className="welcome-title">
-                      مرحباً بعودتك، <span className="highlight">{mockData.student.name}</span>! 👋
+                    <h2 className="text-2xl font-bold mb-2">
+                      مرحباً بعودتك، <span className="bg-white/20 px-3 py-1 rounded-lg">{mockData.student.name}</span>! 👋
                     </h2>
-                    <p className="welcome-subtitle">
+                    <p className="text-lg opacity-90">
                       استمر في رحلتك التعليمية نحو التفوق والتميز
                     </p>
                   </div>
-                  <div className="wallet-card">
-                    <div className="wallet-icon">
-                      <Wallet />
+                  <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 flex items-center space-x-4 space-x-reverse">
+                    <div className="w-12 h-12 rounded-lg bg-white/30 flex items-center justify-center">
+                      <Wallet className="w-6 h-6 text-white" />
                     </div>
-                    <div className="wallet-info">
-                      <span className="wallet-label">رصيدك المتاح</span>
-                      <span className="wallet-amount">{formatCurrency(mockData.wallet.balance)}</span>
+                    <div className="text-right">
+                      <span className="block text-sm opacity-90">رصيدك المتاح</span>
+                      <span className="block text-2xl font-bold">{formatCurrency(mockData.wallet.balance)}</span>
                     </div>
-                    <button className="add-funds-button">إضافة رصيد</button>
+                    <button className="px-6 py-3 bg-white text-primary-600 rounded-lg font-medium hover:bg-gray-100 transition-colors">
+                      إضافة رصيد
+                    </button>
                   </div>
                 </div>
               </div>
 
               {/* بطاقات الإحصائيات السريعة */}
-              <div className="stats-grid">
-                <div className="stat-card blue">
-                  <div className="stat-icon">
-                    <Package />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-1 h-full bg-blue-500"></div>
+                  <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
+                    <Package className="w-6 h-6" />
                   </div>
-                  <div className="stat-info">
-                    <span className="stat-label">الباقات المشتراة</span>
-                    <span className="stat-value">{mockData.stats.totalPackages}</span>
+                  <div className="mb-4">
+                    <span className="block text-sm text-gray-600 mb-1">الباقات المشتراة</span>
+                    <span className="block text-2xl font-bold text-gray-800">{mockData.stats.totalPackages}</span>
                   </div>
-                  <div className="stat-trend">
-                    <TrendingUp />
+                  <div className="flex items-center space-x-1 space-x-reverse text-sm text-blue-600">
+                    <TrendingUp className="w-4 h-4" />
                     <span>+2 هذا الشهر</span>
                   </div>
                 </div>
 
-                <div className="stat-card green">
-                  <div className="stat-icon">
-                    <Video />
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-1 h-full bg-green-500"></div>
+                  <div className="w-12 h-12 rounded-xl bg-green-100 text-green-600 flex items-center justify-center mb-4">
+                    <Video className="w-6 h-6" />
                   </div>
-                  <div className="stat-info">
-                    <span className="stat-label">المحاضرات المكتملة</span>
-                    <span className="stat-value">{mockData.stats.completedLectures}</span>
-                    <span className="stat-progress">
+                  <div className="mb-4">
+                    <span className="block text-sm text-gray-600 mb-1">المحاضرات المكتملة</span>
+                    <span className="block text-2xl font-bold text-gray-800">{mockData.stats.completedLectures}</span>
+                    <span className="inline-block ml-2 text-sm font-medium text-green-600">
                       {Math.round((mockData.stats.completedLectures / mockData.stats.totalLectures) * 100)}%
                     </span>
                   </div>
-                  <div className="progress-bar">
+                  <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mt-2">
                     <div 
-                      className="progress-fill" 
+                      className="h-full rounded-full bg-green-500 transition-all duration-500" 
                       style={{ width: `${(mockData.stats.completedLectures / mockData.stats.totalLectures) * 100}%` }}
                     ></div>
                   </div>
                 </div>
 
-                <div className="stat-card purple">
-                  <div className="stat-icon">
-                    <Award />
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-1 h-full bg-purple-500"></div>
+                  <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-4">
+                    <Award className="w-6 h-6" />
                   </div>
-                  <div className="stat-info">
-                    <span className="stat-label">متوسط الدرجات</span>
-                    <span className="stat-value">{mockData.stats.averageScore}%</span>
+                  <div className="mb-4">
+                    <span className="block text-sm text-gray-600 mb-1">متوسط الدرجات</span>
+                    <span className="block text-2xl font-bold text-gray-800">{mockData.stats.averageScore}%</span>
                   </div>
-                  <div className="stat-trend">
-                    <TrendingUp />
+                  <div className="flex items-center space-x-1 space-x-reverse text-sm text-purple-600">
+                    <TrendingUp className="w-4 h-4" />
                     <span>+5% عن الشهر الماضي</span>
                   </div>
                 </div>
 
-                <div className="stat-card orange">
-                  <div className="stat-icon">
-                    <Clock />
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-1 h-full bg-orange-500"></div>
+                  <div className="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center mb-4">
+                    <Clock className="w-6 h-6" />
                   </div>
-                  <div className="stat-info">
-                    <span className="stat-label">ساعات الدراسة</span>
-                    <span className="stat-value">{mockData.stats.studyHours}</span>
-                    <span className="stat-unit">ساعة</span>
+                  <div className="mb-4">
+                    <span className="block text-sm text-gray-600 mb-1">ساعات الدراسة</span>
+                    <span className="block text-2xl font-bold text-gray-800">{mockData.stats.studyHours}</span>
+                    <span className="text-sm text-gray-600">ساعة</span>
                   </div>
-                  <div className="stat-trend">
-                    <TrendingUp />
+                  <div className="flex items-center space-x-1 space-x-reverse text-sm text-orange-600">
+                    <TrendingUp className="w-4 h-4" />
                     <span>+12h هذا الأسبوع</span>
                   </div>
                 </div>
               </div>
 
-              {/* الصفوف الدراسية */}
-              <div className="grades-section">
-                <div className="section-header">
-                  <h3 className="section-title">الصفوف الدراسية</h3>
-                  <button className="view-all-button">عرض الكل</button>
-                </div>
-                <div className="grades-grid">
-                  {['الصف الأول', 'الصف الثاني', 'الصف الثالث'].map((grade, index) => (
-                    <div key={index} className="grade-card">
-                      <div className="grade-icon">
-                        <BookOpen />
-                      </div>
-                      <div className="grade-info">
-                        <h4>{grade} الثانوي</h4>
-                        <p>الباقات المتاحة: {5 + index * 3}</p>
-                        <div className="grade-progress">
-                          <div className="progress-bar">
-                            <div 
-                              className="progress-fill" 
-                              style={{ width: `${30 + index * 20}%` }}
-                            ></div>
-                          </div>
-                          <span>{30 + index * 20}%</span>
-                        </div>
-                      </div>
-                      <button className="enter-grade-button">
-                        الدخول <ChevronRight />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* الباقات النشطة */}
-              <div className="packages-section">
-                <div className="section-header">
-                  <h3 className="section-title">الباقات النشطة</h3>
-                  <button className="view-all-button">عرض الكل</button>
+              <div className="mb-8">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-bold text-gray-800">الباقات النشطة</h3>
+                  <button className="px-4 py-2 text-primary-600 hover:text-primary-700 font-medium">
+                    عرض الكل
+                  </button>
                 </div>
-                <div className="packages-grid">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {mockData.recentPackages.map((pkg) => (
-                    <div key={pkg.id} className="package-card">
-                      <div className="package-header">
-                        <div className="package-badge" data-color={pkg.color}>
+                    <div key={pkg.id} className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+                      <div className="flex justify-between items-center mb-4">
+                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${pkg.color === 'blue' ? 'bg-blue-100 text-blue-800' : pkg.color === 'green' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800'}`}>
                           {pkg.name.split(' - ')[0]}
                         </div>
-                        <div className="package-progress">
-                          <span>{pkg.progress}%</span>
+                        <div className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm">
+                          {pkg.progress}%
                         </div>
                       </div>
-                      <h4 className="package-name">{pkg.name}</h4>
-                      <p className="package-info">
+                      <h4 className="text-lg font-bold text-gray-800 mb-2">{pkg.name}</h4>
+                      <p className="text-gray-600 mb-4">
                         المحاضرة القادمة: {pkg.nextLecture}
                       </p>
-                      <div className="package-actions">
-                        <button className="continue-button">
+                      <div className="flex space-x-2 space-x-reverse">
+                        <button className="flex-1 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg font-medium hover:from-primary-600 hover:to-primary-700 transition-all">
                           استكمال المحاضرات
                         </button>
-                        <button className="details-button">
+                        <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
                           التفاصيل
                         </button>
                       </div>
@@ -520,29 +354,58 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* الإجراءات السريعة */}
-              <div className="quick-actions-section">
-                <div className="section-header">
-                  <h3 className="section-title">إجراءات سريعة</h3>
+              {/* الصفوف الدراسية */}
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-bold text-gray-800">الصفوف الدراسية</h3>
+                  <button className="px-4 py-2 text-primary-600 hover:text-primary-700 font-medium">
+                    عرض الكل
+                  </button>
                 </div>
-                <div className="actions-grid">
-                  {mockData.quickActions.map((action, index) => {
-                    const Icon = action.icon
-                    return (
-                      <button key={index} className="action-button" data-color={action.color}>
-                        <div className="action-icon">
-                          <Icon />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {['الصف الأول', 'الصف الثاني', 'الصف الثالث'].map((grade, index) => (
+                    <div key={index} className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+                      <div className="w-12 h-12 rounded-xl bg-primary-100 text-primary-600 flex items-center justify-center mb-4">
+                        <BookOpen className="w-6 h-6" />
+                      </div>
+                      <div className="mb-4">
+                        <h4 className="text-lg font-bold text-gray-800 mb-2">{grade} الثانوي</h4>
+                        <p className="text-gray-600 mb-3">الباقات المتاحة: {5 + index * 3}</p>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full rounded-full bg-primary-500" 
+                              style={{ width: `${30 + index * 20}%` }}
+                            ></div>
+                          </div>
+                          <span className="mr-2 text-sm">{30 + index * 20}%</span>
                         </div>
-                        <span className="action-label">{action.label}</span>
-                        {action.count > 0 && (
-                          <span className="action-badge">{action.count}</span>
-                        )}
+                      </div>
+                      <button className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-medium hover:from-primary-600 hover:to-primary-700 transition-all duration-300 flex items-center justify-center space-x-2 space-x-reverse">
+                        <span>الدخول</span>
+                        <ChevronRight className="w-4 h-4" />
                       </button>
-                    )
-                  })}
+                    </div>
+                  ))}
                 </div>
               </div>
             </>
+          )}
+
+          {activeTab === 'packages' && (
+            <div className="text-center py-12">
+              <Package className="w-24 h-24 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">قريباً</h3>
+              <p className="text-gray-600">صفحة الباقات قيد التطوير</p>
+            </div>
+          )}
+
+          {activeTab === 'wallet' && (
+            <div className="text-center py-12">
+              <Wallet className="w-24 h-24 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">قريباً</h3>
+              <p className="text-gray-600">صفحة المحفظة قيد التطوير</p>
+            </div>
           )}
         </div>
       </main>
