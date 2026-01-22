@@ -66,7 +66,6 @@ export default function LoginPage() {
         document.body.classList.add('login-success')
         setTimeout(() => {
           router.push('/dashboard')
-          router.refresh()
         }, 800)
       }
       
