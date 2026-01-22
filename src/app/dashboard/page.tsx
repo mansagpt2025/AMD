@@ -1,7 +1,4 @@
-// app/dashboard/page.tsx - الملف المعدل
-
-
-// app/dashboard/page.tsx - الملف المعدل
+// app/dashboard/page.tsx
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/supabase-server'
@@ -45,7 +42,7 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .single()
 
-  // جلب الباقات المشتركة
+  // جلب الباقات المشتراة
   const { data: purchasedPackages } = await supabase
     .from('user_packages')
     .select(`
@@ -69,157 +66,157 @@ export default async function DashboardPage() {
     return grades[grade] || grade
   }
 
+  // دالة للحصول على الأحرف الأولى من الاسم
+  const getInitials = (fullName: string): string => {
+    return fullName
+      .split(' ')
+      .map((n: string) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
   return (
-<div className="dashboard-container">
-      {/* Header */}
-      <header className="bg-white shadow-lg border-b border-gray-200">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center space-x-3">
-              <div className="h-12 w-12 bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl flex items-center justify-center shadow-md">
-                <span className="text-white font-bold text-lg">م</span>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">محمود الديب</h1>
-                <p className="text-gray-600">التعليم التفاعلي للثانوية العامة</p>
-              </div>
+    <div className="dashboard-container">
+      {/* الهيدر */}
+      <header className="dashboard-header">
+        <div className="header-content">
+          <div className="header-left">
+            <div className="logo-container">
+              <span className="logo-text">م</span>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3 bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-                <div className="text-right">
-                  <p className="font-bold text-gray-800">{profile.full_name}</p>
-                  <p className="text-sm text-gray-600">الصف {getGradeText(profile.grade)}</p>
-                </div>
-                <div className="h-10 w-10 bg-gradient-to-r from-blue-600 to-blue-800 rounded-full flex items-center justify-center">
-                  <span className="text-white font-medium">
-                    {profile.full_name
-                      .split(' ')
-                      .map((n: string) => n[0])
-                      .join('')}
-                  </span>
-                </div>
-              </div>
+            <div className="header-text">
+              <h1 className="platform-name">محمود الديب</h1>
+              <p className="platform-description">التعليم التفاعلي للثانوية العامة</p>
+            </div>
+          </div>
+          
+          <div className="user-profile-card">
+            <div className="user-info">
+              <p className="user-name">{profile.full_name}</p>
+              <p className="user-grade">الصف {getGradeText(profile.grade)}</p>
+            </div>
+            <div className="user-avatar">
+              <span>{getInitials(profile.full_name)}</span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* باقي الملف بدون تغيير */}
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-
-        {/* Welcome Card */}
-<div className="welcome-card">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">مرحباً بك، {profile.full_name}!</h2>
-              <p className="text-blue-100">استعد لرحلة التفوق مع أفضل المدرسين</p>
-              <div className="mt-4 flex items-center space-x-4">
-                <div className="bg-blue-500 bg-opacity-30 px-4 py-2 rounded-lg">
-                  <span className="font-bold">رصيد المحفظة: </span>
-                  <span className="text-2xl font-bold">{wallet?.balance || 0} ج.م</span>
+      {/* المحتوى الرئيسي */}
+      <main className="main-content">
+        {/* بطاقة الترحيب */}
+        <div className="welcome-card">
+          <div className="welcome-content">
+            <div className="welcome-text">
+              <h2 className="welcome-title">مرحباً بك، {profile.full_name}!</h2>
+              <p className="welcome-subtitle">استعد لرحلة التفوق مع أفضل المدرسين</p>
+              
+              <div className="welcome-actions">
+                <div className="wallet-balance">
+                  <span className="balance-label">رصيد المحفظة:</span>
+                  <span className="balance-amount">{wallet?.balance || 0} ج.م</span>
                 </div>
+                
                 <Link 
                   href={`/grades/${profile.grade}`}
-                  className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-blue-50 transition-colors"
+                  className="primary-button"
                 >
                   عرض الباقات →
                 </Link>
               </div>
             </div>
-            <div className="mt-6 md:mt-0">
-              <div className="text-6xl">🎓</div>
+            
+            <div className="welcome-emoji">
+              🎓
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-                <div className="flex justify-between items-start">
+        <div className="grid-layout">
+          {/* العمود الأيسر */}
+          <div className="left-column">
+            {/* بطاقات الإحصائيات */}
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-header">
                   <div>
-                    <p className="text-gray-600">الباقات المشتراة</p>
-                    <p className="text-3xl font-bold text-blue-600 mt-2">
-                      {purchasedPackages?.length || 0}
-                    </p>
+                    <p className="stat-title">الباقات المشتراة</p>
+                    <p className="stat-value">{purchasedPackages?.length || 0}</p>
                   </div>
-                  <div className="p-3 bg-blue-100 rounded-lg">
-                    <span className="text-2xl text-blue-600">📦</span>
+                  <div className="stat-icon packages">
+                    📦
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-                <div className="flex justify-between items-start">
+              <div className="stat-card">
+                <div className="stat-header">
                   <div>
-                    <p className="text-gray-600">المحاضرات المكتملة</p>
-                    <p className="text-3xl font-bold text-green-600 mt-2">0</p>
+                    <p className="stat-title">المحاضرات المكتملة</p>
+                    <p className="stat-value text-success">0</p>
                   </div>
-                  <div className="p-3 bg-green-100 rounded-lg">
-                    <span className="text-2xl text-green-600">✅</span>
+                  <div className="stat-icon completed">
+                    ✅
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-                <div className="flex justify-between items-start">
+              <div className="stat-card">
+                <div className="stat-header">
                   <div>
-                    <p className="text-gray-600">الساعات الدراسية</p>
-                    <p className="text-3xl font-bold text-purple-600 mt-2">0</p>
+                    <p className="stat-title">الساعات الدراسية</p>
+                    <p className="stat-value text-warning">0</p>
                   </div>
-                  <div className="p-3 bg-purple-100 rounded-lg">
-                    <span className="text-2xl text-purple-600">⏱️</span>
+                  <div className="stat-icon hours">
+                    ⏱️
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Purchased Packages */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-gray-800">اشتراكاتك النشطة</h3>
+            {/* الباقات المشتراة */}
+            <div className="packages-section">
+              <div className="section-header">
+                <h3 className="section-title">اشتراكاتك النشطة</h3>
                 <Link 
                   href={`/grades/${profile.grade}`}
-                  className="text-blue-600 hover:text-blue-800 font-medium"
+                  className="view-all-link"
                 >
                   عرض الكل →
                 </Link>
               </div>
 
               {purchasedPackages && purchasedPackages.length > 0 ? (
-                <div className="space-y-4">
+                <div className="packages-list">
                   {purchasedPackages.slice(0, 3).map((up: any) => (
                     <div 
                       key={up.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      className="package-item"
                     >
-                      <div className="flex items-center space-x-3">
-                        <div className="h-10 w-10 bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg flex items-center justify-center">
-                          <span className="text-white font-bold">ب</span>
+                      <div className="package-info">
+                        <div className="package-icon">
+                          <span>ب</span>
                         </div>
-                        <div>
-                          <h4 className="font-bold text-gray-800">{up.packages.name}</h4>
-                          <p className="text-sm text-gray-600">{up.packages.description}</p>
+                        <div className="package-details">
+                          <h4 className="package-name">{up.packages.name}</h4>
+                          <p className="package-description">{up.packages.description}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-green-600">مفعلة</p>
-                        <p className="text-sm text-gray-600">ينتهي في 30 يوم</p>
+                      <div className="package-status">
+                        <p className="status-active text-success">مفعلة</p>
+                        <p className="status-expiry">ينتهي في 30 يوم</p>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <div className="text-5xl mb-4">📚</div>
-                  <p className="text-gray-600 mb-4">لا توجد باقات مشتركة بعد</p>
+                <div className="empty-state">
+                  <div className="empty-icon">📚</div>
+                  <p className="empty-text">لا توجد باقات مشتركة بعد</p>
                   <Link
                     href={`/grades/${profile.grade}`}
-                    className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                    className="secondary-button"
                   >
                     ابدأ بالاشتراك الآن
                   </Link>
@@ -228,50 +225,50 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Right Column */}
-          <div className="space-y-8">
-            {/* Grade Card */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">صفك الدراسي</h3>
-              <div className="text-center p-6 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
-                <div className="text-5xl mb-4">🎯</div>
-                <h4 className="text-2xl font-bold text-blue-800 mb-2">
+          {/* العمود الأيمن */}
+          <div className="right-column">
+            {/* بطاقة الصف الدراسي */}
+            <div className="grade-card">
+              <h3 className="grade-title">صفك الدراسي</h3>
+              <div className="grade-display">
+                <div className="grade-icon">🎯</div>
+                <h4 className="grade-name">
                   {getGradeText(profile.grade)}
                 </h4>
-                <p className="text-gray-600">عام دراسي مميز بانتظارك</p>
+                <p className="grade-description">عام دراسي مميز بانتظارك</p>
                 <Link
                   href={`/grades/${profile.grade}`}
-                  className="inline-block mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                  className="secondary-button"
                 >
                   دخول الصف
                 </Link>
               </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">إجراءات سريعة</h3>
-              <div className="space-y-3">
+            {/* الإجراءات السريعة */}
+            <div className="quick-actions">
+              <h3 className="actions-title">إجراءات سريعة</h3>
+              <div className="actions-list">
                 <Link
                   href={`/grades/${profile.grade}`}
-                  className="flex items-center justify-between p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                  className="action-item primary"
                 >
-                  <span className="font-medium text-blue-700">شراء باقة جديدة</span>
-                  <span className="text-blue-600">→</span>
+                  <span className="action-text">شراء باقة جديدة</span>
+                  <span className="action-arrow">→</span>
                 </Link>
                 <Link
                   href="/profile"
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="action-item"
                 >
-                  <span className="font-medium text-gray-700">تعديل الملف الشخصي</span>
-                  <span className="text-gray-600">→</span>
+                  <span className="action-text">تعديل الملف الشخصي</span>
+                  <span className="action-arrow">→</span>
                 </Link>
                 <Link
                   href="/support"
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="action-item"
                 >
-                  <span className="font-medium text-gray-700">الدعم الفني</span>
-                  <span className="text-gray-600">→</span>
+                  <span className="action-text">الدعم الفني</span>
+                  <span className="action-arrow">→</span>
                 </Link>
               </div>
             </div>

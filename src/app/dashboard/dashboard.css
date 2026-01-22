@@ -1,4 +1,4 @@
-/* نظام ألوان منصة التعليم التفاعلي */
+/* نظام ألوان منصة التعليم التفاعلي - محمود الديب */
 :root {
   /* الألوان الأساسية - أزرق فاتح وأنيق */
   --primary-50: #eff6ff;
@@ -73,11 +73,23 @@
 }
 
 /* إعادة تعيين وتنسيقات عامة */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(to bottom, var(--gray-50), var(--gray-100));
+  min-height: 100vh;
+  direction: rtl;
+}
+
+/* تنسيقات الحاويات */
 .dashboard-container {
   min-height: 100vh;
   background: linear-gradient(to bottom, var(--gray-50), var(--gray-100));
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  direction: rtl;
 }
 
 /* الهيدر */
@@ -88,19 +100,37 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  width: 100%;
 }
 
 .header-content {
   max-width: 1280px;
   margin: 0 auto;
   padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .header-content {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .logo-container {
   background: var(--gradient-primary);
   border-radius: 0.75rem;
-  width: 3rem;
-  height: 3rem;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -113,10 +143,16 @@
   font-size: 1.25rem;
 }
 
+.header-text {
+  display: flex;
+  flex-direction: column;
+}
+
 .platform-name {
   color: var(--gray-800);
   font-weight: 700;
   font-size: 1.5rem;
+  line-height: 1.2;
 }
 
 .platform-description {
@@ -133,28 +169,42 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  align-self: flex-start;
+}
+
+.user-info {
+  text-align: right;
+}
+
+.user-name {
+  color: var(--gray-800);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.user-grade {
+  color: var(--gray-600);
+  font-size: 0.875rem;
 }
 
 .user-avatar {
   background: var(--gradient-primary);
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 40px;
+  height: 40px;
   border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
-.user-name {
-  color: var(--gray-800);
-  font-weight: 700;
-}
-
-.user-grade {
-  color: var(--gray-600);
-  font-size: 0.875rem;
+/* المحتوى الرئيسي */
+.main-content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
 }
 
 /* بطاقة الترحيب */
@@ -167,6 +217,24 @@
   margin-bottom: 2rem;
 }
 
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .welcome-content {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.welcome-text {
+  flex: 1;
+}
+
 .welcome-title {
   font-size: 1.875rem;
   font-weight: 700;
@@ -176,27 +244,57 @@
 .welcome-subtitle {
   color: rgba(255, 255, 255, 0.9);
   font-size: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.welcome-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+@media (min-width: 768px) {
+  .welcome-actions {
+    flex-direction: row;
+    align-items: center;
+  }
 }
 
 .wallet-balance {
   background: rgba(255, 255, 255, 0.2);
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
   backdrop-filter: blur(10px);
-  margin-top: 1rem;
 }
 
 .balance-label {
   font-weight: 700;
   color: rgba(255, 255, 255, 0.9);
+  font-size: 0.875rem;
 }
 
 .balance-amount {
   font-size: 1.5rem;
   font-weight: 700;
   color: white;
+  display: block;
+  margin-top: 0.25rem;
 }
 
+.welcome-emoji {
+  font-size: 4rem;
+  text-align: center;
+  margin-top: 1rem;
+}
+
+@media (min-width: 768px) {
+  .welcome-emoji {
+    margin-top: 0;
+  }
+}
+
+/* الأزرار */
 .primary-button {
   background: white;
   color: var(--primary-600);
@@ -208,6 +306,8 @@
   transition: all 0.3s ease;
   text-decoration: none;
   display: inline-block;
+  text-align: center;
+  font-size: 1rem;
 }
 
 .primary-button:hover {
@@ -216,12 +316,50 @@
   box-shadow: var(--shadow-md);
 }
 
+.secondary-button {
+  background: var(--primary-600);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.secondary-button:hover {
+  background: var(--primary-700);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* تخطيط الشبكة */
+.grid-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .grid-layout {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
 /* بطاقات الإحصائيات */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(1, 1fr);
   gap: 1.5rem;
-  margin-bottom: 2rem;
 }
 
 @media (min-width: 768px) {
@@ -244,20 +382,48 @@
   box-shadow: var(--shadow-md);
 }
 
+.stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.stat-title {
+  color: var(--gray-600);
+  font-size: 0.875rem;
+}
+
 .stat-value {
   font-size: 1.875rem;
   font-weight: 700;
-  margin-top: 0.5rem;
+  color: var(--primary-600);
 }
 
 .stat-icon {
   padding: 0.75rem;
   border-radius: 0.5rem;
-  width: 3rem;
-  height: 3rem;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 1.25rem;
+}
+
+.stat-icon.packages {
+  background: var(--primary-100);
+  color: var(--primary-600);
+}
+
+.stat-icon.completed {
+  background: var(--success-100);
+  color: var(--success-600);
+}
+
+.stat-icon.hours {
+  background: var(--warning-100);
+  color: var(--warning-600);
 }
 
 /* الباقات المشتراة */
@@ -286,43 +452,65 @@
   color: var(--primary-600);
   font-weight: 500;
   text-decoration: none;
+  font-size: 0.875rem;
 }
 
 .view-all-link:hover {
   color: var(--primary-800);
+  text-decoration: underline;
+}
+
+.packages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .package-item {
   background: var(--gray-50);
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   padding: 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
   transition: all 0.3s ease;
+  border: 1px solid var(--gray-200);
 }
 
 .package-item:hover {
   background: var(--gray-100);
   transform: translateX(-2px);
+  border-color: var(--primary-200);
+}
+
+.package-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .package-icon {
   background: var(--gradient-primary);
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 40px;
+  height: 40px;
   border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: 700;
+  flex-shrink: 0;
+}
+
+.package-details {
+  display: flex;
+  flex-direction: column;
 }
 
 .package-name {
   font-weight: 700;
   color: var(--gray-800);
+  font-size: 1rem;
 }
 
 .package-description {
@@ -331,28 +519,43 @@
 }
 
 .package-status {
-  font-weight: 700;
-  color: var(--success-500);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
-.package-expiry {
+.status-active {
+  font-weight: 700;
+  color: var(--success-500);
   font-size: 0.875rem;
+}
+
+.status-expiry {
+  font-size: 0.75rem;
   color: var(--gray-600);
 }
 
 .empty-state {
   text-align: center;
-  padding: 2rem;
+  padding: 3rem 1rem;
 }
 
 .empty-icon {
   font-size: 3rem;
   margin-bottom: 1rem;
+  opacity: 0.5;
 }
 
 .empty-text {
   color: var(--gray-600);
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* العمود الأيمن */
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 /* بطاقة الصف الدراسي */
@@ -362,19 +565,26 @@
   padding: 1.5rem;
   border: 1px solid var(--gray-200);
   box-shadow: var(--shadow-sm);
-  margin-bottom: 1.5rem;
+}
+
+.grade-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 1rem;
 }
 
 .grade-display {
   background: var(--gradient-light);
-  border-radius: 0.5rem;
-  padding: 1.5rem;
+  border-radius: 0.75rem;
+  padding: 2rem 1.5rem;
   text-align: center;
 }
 
 .grade-icon {
   font-size: 3rem;
   margin-bottom: 1rem;
+  opacity: 0.8;
 }
 
 .grade-name {
@@ -386,6 +596,7 @@
 
 .grade-description {
   color: var(--gray-600);
+  margin-bottom: 1.5rem;
 }
 
 /* الإجراءات السريعة */
@@ -397,30 +608,66 @@
   box-shadow: var(--shadow-sm);
 }
 
+.actions-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 1rem;
+}
+
+.actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .action-item {
   background: var(--gray-50);
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   padding: 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
   text-decoration: none;
   transition: all 0.3s ease;
+  border: 1px solid var(--gray-200);
 }
 
 .action-item:hover {
   background: var(--gray-100);
   transform: translateX(-2px);
+  border-color: var(--primary-200);
 }
 
-.action-primary {
+.action-item.primary {
   background: var(--primary-50);
+  border-color: var(--primary-200);
+}
+
+.action-item.primary:hover {
+  background: var(--primary-100);
+}
+
+.action-text {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.action-item.primary .action-text {
   color: var(--primary-700);
 }
 
-.action-primary:hover {
-  background: var(--primary-100);
+.action-item:not(.primary) .action-text {
+  color: var(--gray-700);
+}
+
+.action-arrow {
+  color: var(--gray-400);
+  font-size: 1.25rem;
+}
+
+.action-item.primary .action-arrow {
+  color: var(--primary-500);
 }
 
 /* تنسيقات النصوص */
@@ -461,12 +708,16 @@
   background: var(--error-50);
 }
 
+/* هوامش وتفاصيل */
+.mt-4 { margin-top: 1rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mb-6 { margin-bottom: 1.5rem; }
+.mt-6 { margin-top: 1.5rem; }
+
 /* تنسيقات الاستجابة */
 @media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    gap: 1rem;
-    text-align: center;
+  .main-content {
+    padding: 1.5rem 1rem;
   }
   
   .welcome-card {
@@ -477,21 +728,33 @@
     font-size: 1.5rem;
   }
   
-  .stats-grid {
-    grid-template-columns: 1fr;
+  .section-title,
+  .grade-title,
+  .actions-title {
+    font-size: 1.125rem;
   }
 }
 
 @media (max-width: 640px) {
-  .dashboard-container {
-    padding: 0 1rem;
+  .header-content {
+    padding: 1rem;
   }
   
-  .welcome-card {
-    text-align: center;
+  .main-content {
+    padding: 1rem;
   }
   
-  .wallet-balance {
-    margin-top: 1rem;
+  .platform-name {
+    font-size: 1.25rem;
+  }
+  
+  .welcome-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .primary-button,
+  .secondary-button {
+    width: 100%;
   }
 }
