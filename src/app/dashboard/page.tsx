@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/supabase-server'
 import type { Metadata } from 'next'
+import './dashboard.css'
 
 // إضافة Viewport بشكل صحيح
 export const viewport = {
@@ -69,7 +70,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+<div className="dashboard-container">
       {/* Header */}
       <header className="bg-white shadow-lg border-b border-gray-200">
         <div className="container mx-auto px-4 py-4">
@@ -109,7 +110,7 @@ export default async function DashboardPage() {
       <main className="container mx-auto px-4 py-8">
 
         {/* Welcome Card */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl shadow-xl p-8 mb-8 text-white">
+<div className="welcome-card">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div>
               <h2 className="text-3xl font-bold mb-2">مرحباً بك، {profile.full_name}!</h2>
