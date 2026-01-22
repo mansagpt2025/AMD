@@ -103,8 +103,7 @@ const StagesSection = () => {
               <div className={styles.cardContent}>
                                 <div className={styles.cardtext}>
                           <h2 className={styles.cardtext}>
-            السنوات الدراسية
-          </h2>
+{grade.name}          </h2>
                 </div>
                 <div className={styles.cardActions}>
                   <Link 

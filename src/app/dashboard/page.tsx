@@ -159,20 +159,6 @@ export default function DashboardPage() {
               <PackagesSection />
             </>
           )}
-          
-          {activeTab === 'packages' && (
-            <div className="tab-content">
-              <h2>الباقات المشتراة</h2>
-              {/* محتوى الباقات */}
-            </div>
-          )}
-          
-          {activeTab === 'wallet' && (
-            <div className="tab-content">
-              <h2>المحفظة المالية</h2>
-              {/* محتوى المحفظة */}
-            </div>
-          )}
         </div>
       </main>
     </div>
