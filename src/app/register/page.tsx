@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Mail, User, School, MapPin, Building, Sparkles, BookOpen, GraduationCap, Phone } from 'lucide-react'
-import { supabase } from '@/lib/supabase/supabase-client'
 import './register-styles.css'
 
 const governorates = [
@@ -36,8 +35,8 @@ export default function RegisterPage() {
     grade: '',
     section: '',
     email: '',
-    phone: '', // تغيير من studentPhone إلى phone
-    parent_phone: '', // تغيير من parentPhone إلى parent_phone
+    phone: '',
+    parent_phone: '',
     governorate: '',
     city: '',
     school: '',
@@ -93,6 +92,7 @@ export default function RegisterPage() {
     e.preventDefault()
     setError(null)
     
+    // التحقق من البيانات
     if (formData.password !== formData.confirmPassword) {
       setError('كلمات المرور غير متطابقة')
       return
@@ -103,57 +103,46 @@ export default function RegisterPage() {
       return
     }
     
+    if (!formData.full_name || !formData.email || !formData.phone) {
+      setError('الاسم الكامل والبريد الإلكتروني ورقم الهاتف مطلوبة')
+      return
+    }
+    
     setLoading(true)
     
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.full_name,
-            phone: formData.phone
-          }
-        }
-      })
-      
-      if (authError) throw authError
-      
-      if (authData.user) {
-        const profileData = {
-          id: authData.user.id,
-          full_name: formData.full_name,
-          grade: formData.grade,
-          section: formData.section,
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           email: formData.email,
+          password: formData.password,
+          full_name: formData.full_name,
           phone: formData.phone,
           parent_phone: formData.parent_phone,
           governorate: formData.governorate,
           city: formData.city,
-          school: formData.school
-        }
+          school: formData.school,
+          grade: formData.grade,
+          section: formData.section
+        })
+      })
 
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert(profileData)
-        
-        if (profileError) throw profileError
-        
-        // إنشاء محفظة للمستخدم الجديد
-        const { error: walletError } = await supabase
-          .from('wallets')
-          .insert({
-            user_id: authData.user.id,
-            balance: 0
-          })
-        
-        if (walletError) throw walletError
-        
-        setSuccess(true)
-        setTimeout(() => {
-          router.push('/login')
-        }, 2000)
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'فشل إنشاء الحساب')
       }
+
+      setSuccess(true)
+      
+      // الانتظار قليلاً ثم التوجيه إلى صفحة تسجيل الدخول
+      setTimeout(() => {
+        router.push('/login')
+      }, 3000)
+      
     } catch (err: any) {
       console.error('Registration error:', err)
       setError(err.message || 'حدث خطأ أثناء إنشاء الحساب')
@@ -217,9 +206,15 @@ export default function RegisterPage() {
           {success && (
             <div className="success-overlay">
               <div className="success-content">
-                <Sparkles className="success-sparkle" />
+                <div className="success-animation">
+                  <Sparkles className="success-sparkle" />
+                  <div className="checkmark">✓</div>
+                </div>
                 <h3 className="success-title">!تم إنشاء الحساب بنجاح</h3>
-                <p className="success-message">يتم توجيهك إلى صفحة تسجيل الدخول...</p>
+                <p className="success-message">سيتم توجيهك إلى صفحة تسجيل الدخول خلال 3 ثواني...</p>
+                <div className="success-timer">
+                  <div className="timer-bar"></div>
+                </div>
               </div>
             </div>
           )}
@@ -245,7 +240,16 @@ export default function RegisterPage() {
             {error && (
               <div className="register-error-message" role="alert">
                 <div className="error-icon">!</div>
-                {error}
+                <div className="error-content">
+                  <p className="error-title">خطأ في التسجيل</p>
+                  <p className="error-detail">{error}</p>
+                </div>
+                <button 
+                  onClick={() => setError(null)}
+                  className="error-close"
+                >
+                  ✕
+                </button>
               </div>
             )}
             
@@ -256,12 +260,14 @@ export default function RegisterPage() {
                   <div className="step-title">
                     <User className="step-icon" />
                     <h3>المعلومات الشخصية</h3>
+                    <p className="step-description">أدخل معلوماتك الشخصية الأساسية</p>
                   </div>
                   
                   <div className="input-grid">
                     <div className="input-group">
                       <label className="input-label">
-                        <span>الاسم الكامل *</span>
+                        <span className="label-text">الاسم الكامل *</span>
+                        <span className="label-hint">كما سيظهر في شهادة الإتمام</span>
                       </label>
                       <div className="input-wrapper">
                         <input
@@ -271,7 +277,7 @@ export default function RegisterPage() {
                           onChange={handleChange}
                           required
                           className="register-input"
-                          placeholder="أدخل الاسم الكامل"
+                          placeholder="أحمد محمد علي"
                         />
                         <div className="input-border"></div>
                       </div>
@@ -279,7 +285,8 @@ export default function RegisterPage() {
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span>البريد الإلكتروني *</span>
+                        <span className="label-text">البريد الإلكتروني *</span>
+                        <span className="label-hint">لن نشاركه مع أي جهة خارجية</span>
                       </label>
                       <div className="input-wrapper">
                         <Mail className="field-icon" />
@@ -298,7 +305,8 @@ export default function RegisterPage() {
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span>رقم هاتف الطالب *</span>
+                        <span className="label-text">رقم هاتف الطالب *</span>
+                        <span className="label-hint">يبدأ بـ 01</span>
                       </label>
                       <div className="input-wrapper">
                         <Phone className="field-icon" />
@@ -308,8 +316,9 @@ export default function RegisterPage() {
                           value={formData.phone}
                           onChange={handleChange}
                           required
+                          pattern="01[0-9]{9}"
                           className="register-input with-icon"
-                          placeholder="01xxxxxxxxx"
+                          placeholder="01123456789"
                         />
                         <div className="input-border"></div>
                       </div>
@@ -317,7 +326,8 @@ export default function RegisterPage() {
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span>رقم ولي الأمر *</span>
+                        <span className="label-text">رقم ولي الأمر *</span>
+                        <span className="label-hint">للاتصال في حالة الطوارئ</span>
                       </label>
                       <div className="input-wrapper">
                         <Phone className="field-icon" />
@@ -327,8 +337,9 @@ export default function RegisterPage() {
                           value={formData.parent_phone}
                           onChange={handleChange}
                           required
+                          pattern="01[0-9]{9}"
                           className="register-input with-icon"
-                          placeholder="01xxxxxxxxx"
+                          placeholder="01123456789"
                         />
                         <div className="input-border"></div>
                       </div>
@@ -340,6 +351,7 @@ export default function RegisterPage() {
                       type="button"
                       onClick={nextStep}
                       className="next-button"
+                      disabled={!formData.full_name || !formData.email || !formData.phone || !formData.parent_phone}
                     >
                       <span>التالي</span>
                       <span className="button-arrow">→</span>
@@ -354,12 +366,13 @@ export default function RegisterPage() {
                   <div className="step-title">
                     <School className="step-icon" />
                     <h3>المعلومات الدراسية</h3>
+                    <p className="step-description">أدخل معلوماتك الدراسية الحالية</p>
                   </div>
                   
                   <div className="input-grid">
                     <div className="input-group">
                       <label className="input-label">
-                        <span>الصف الدراسي *</span>
+                        <span className="label-text">الصف الدراسي *</span>
                       </label>
                       <div className="select-wrapper">
                         <select
@@ -377,12 +390,13 @@ export default function RegisterPage() {
                           ))}
                         </select>
                         <div className="select-border"></div>
+                        <div className="select-arrow">▼</div>
                       </div>
                     </div>
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span>الشعبة *</span>
+                        <span className="label-text">الشعبة *</span>
                       </label>
                       <div className="select-wrapper">
                         <select
@@ -401,12 +415,13 @@ export default function RegisterPage() {
                           ))}
                         </select>
                         <div className="select-border"></div>
+                        <div className="select-arrow">▼</div>
                       </div>
                     </div>
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span>المحافظة *</span>
+                        <span className="label-text">المحافظة *</span>
                       </label>
                       <div className="select-wrapper">
                         <select
@@ -424,12 +439,14 @@ export default function RegisterPage() {
                           ))}
                         </select>
                         <div className="select-border"></div>
+                        <div className="select-arrow">▼</div>
                       </div>
                     </div>
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span>المدينة *</span>
+                        <span className="label-text">المدينة *</span>
+                        <span className="label-hint">المدينة التابع لها مدرستك</span>
                       </label>
                       <div className="input-wrapper">
                         <MapPin className="field-icon" />
@@ -448,7 +465,8 @@ export default function RegisterPage() {
                     
                     <div className="input-group full-width">
                       <label className="input-label">
-                        <span>المدرسة *</span>
+                        <span className="label-text">المدرسة *</span>
+                        <span className="label-hint">الاسم الرسمي للمدرسة</span>
                       </label>
                       <div className="input-wrapper">
                         <Building className="field-icon" />
@@ -479,6 +497,7 @@ export default function RegisterPage() {
                       type="button"
                       onClick={nextStep}
                       className="next-button"
+                      disabled={!formData.grade || !formData.section || !formData.governorate || !formData.city || !formData.school}
                     >
                       <span>التالي</span>
                       <span className="button-arrow">→</span>
@@ -493,12 +512,14 @@ export default function RegisterPage() {
                   <div className="step-title">
                     <Sparkles className="step-icon" />
                     <h3>إنشاء الحساب</h3>
+                    <p className="step-description">اختر كلمة مرور قوية لحسابك</p>
                   </div>
                   
                   <div className="input-grid">
                     <div className="input-group">
                       <label className="input-label">
-                        <span>كلمة المرور *</span>
+                        <span className="label-text">كلمة المرور *</span>
+                        <span className="label-hint">6 أحرف على الأقل</span>
                       </label>
                       <div className="input-wrapper">
                         <input
@@ -507,13 +528,15 @@ export default function RegisterPage() {
                           value={formData.password}
                           onChange={handleChange}
                           required
+                          minLength={6}
                           className="register-input password-input"
-                          placeholder="6 أحرف على الأقل"
+                          placeholder="أدخل كلمة مرور قوية"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="password-toggle"
+                          aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                         >
                           {showPassword ? <EyeOff className="eye-icon" /> : <Eye className="eye-icon" />}
                         </button>
@@ -531,7 +554,8 @@ export default function RegisterPage() {
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span>تأكيد كلمة المرور *</span>
+                        <span className="label-text">تأكيد كلمة المرور *</span>
+                        <span className="label-hint">أعد إدخال كلمة المرور للتأكيد</span>
                       </label>
                       <div className="input-wrapper">
                         <input
@@ -547,17 +571,28 @@ export default function RegisterPage() {
                           type="button"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                           className="password-toggle"
+                          aria-label={showConfirmPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                         >
                           {showConfirmPassword ? <EyeOff className="eye-icon" /> : <Eye className="eye-icon" />}
                         </button>
                         <div className="input-border"></div>
                       </div>
+                      {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                        <div className="password-match-error">
+                          ✗ كلمات المرور غير متطابقة
+                        </div>
+                      )}
                     </div>
                   </div>
                   
                   <div className="terms-section">
                     <label className="terms-label">
-                      <input type="checkbox" required className="terms-checkbox" />
+                      <input 
+                        type="checkbox" 
+                        required 
+                        className="terms-checkbox" 
+                        id="terms-agreement"
+                      />
                       <span className="terms-text">
                         أوافق على <Link href="/terms" className="terms-link">الشروط والأحكام</Link> و <Link href="/privacy" className="terms-link">سياسة الخصوصية</Link>
                       </span>
@@ -575,14 +610,21 @@ export default function RegisterPage() {
                     </button>
                     <button
                       type="submit"
-                      disabled={loading}
+                      disabled={loading || formData.password !== formData.confirmPassword}
                       className={`register-button ${loading ? 'loading' : ''}`}
                     >
-                      <span className="button-text">
-                        {loading ? 'جاري إنشاء الحساب...' : 'إنشاء حساب'}
-                      </span>
+                      {loading ? (
+                        <>
+                          <span className="loading-spinner"></span>
+                          <span className="button-text">جاري إنشاء الحساب...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="button-text">إنشاء حساب</span>
+                          <Sparkles className="button-sparkle" />
+                        </>
+                      )}
                       <span className="button-glow"></span>
-                      <Sparkles className="button-sparkle" />
                     </button>
                   </div>
                 </div>
