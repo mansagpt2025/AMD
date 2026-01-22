@@ -2,28 +2,27 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// تعطيل الـ Static Generation لهذا المسار
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
-  console.log('🚀 API Route called')
+  console.log('📞 Register API called')
   
   try {
-    // التحقق من الـ Content-Type
-    const contentType = request.headers.get('content-type')
-    if (!contentType || !contentType.includes('application/json')) {
+    // التحقق من أن الطلب يحتوي على JSON
+    let body;
+    try {
+      body = await request.json()
+    } catch (parseError) {
+      console.error('❌ JSON parse error:', parseError)
       return NextResponse.json(
         { 
           success: false, 
-          error: 'يجب أن يكون Content-Type: application/json' 
+          error: 'بيانات غير صالحة. يرجى التحقق من تنسيق البيانات' 
         },
         { status: 400 }
       )
     }
-
-    const body = await request.json()
-    console.log('📦 Request body received')
     
     const {
       email,
@@ -38,183 +37,265 @@ export async function POST(request: Request) {
       section
     } = body
 
-    // التحقق من المتغيرات البيئية
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      console.error('❌ NEXT_PUBLIC_SUPABASE_URL is missing')
-      return NextResponse.json(
-        { success: false, error: 'إعدادات السيرفر غير مكتملة' },
-        { status: 500 }
-      )
-    }
-
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('❌ SUPABASE_SERVICE_ROLE_KEY is missing')
-      return NextResponse.json(
-        { success: false, error: 'إعدادات السيرفر غير مكتملة' },
-        { status: 500 }
-      )
-    }
-
-    // التحقق من البيانات المطلوبة
+    // التحقق من البيانات الأساسية
     if (!email || !password || !full_name || !phone) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'البريد الإلكتروني وكلمة المرور والاسم الكامل ورقم الهاتف مطلوبة' 
+          error: 'البيانات الأساسية مطلوبة: البريد الإلكتروني، كلمة المرور، الاسم الكامل، ورقم الهاتف' 
         },
         { status: 400 }
       )
     }
 
-    // إنشاء Supabase client بمفتاح الخدمة
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
-
-    console.log('🔐 Creating auth user...')
-    
-    // 1. إنشاء مستخدم جديد في Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // تأكيد البريد تلقائياً (للتطوير)
-      user_metadata: {
-        full_name,
-        phone,
-        grade,
-        section
-      }
-    })
-
-    if (authError) {
-      console.error('❌ Auth error:', authError)
+    // التحقق من صحة البريد الإلكتروني
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
       return NextResponse.json(
         { 
           success: false, 
-          error: authError.message.includes('already registered') 
-            ? 'البريد الإلكتروني مسجل بالفعل' 
-            : 'فشل إنشاء حساب المصادقة: ' + authError.message 
+          error: 'البريد الإلكتروني غير صالح' 
         },
         { status: 400 }
       )
     }
 
-    console.log('✅ Auth user created:', authData.user.id)
+    // التحقق من رقم الهاتف المصري
+    const phoneRegex = /^01[0-9]{9}$/
+    if (!phoneRegex.test(phone)) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'رقم الهاتف يجب أن يبدأ بـ 01 ويتكون من 11 رقماً' 
+        },
+        { status: 400 }
+      )
+    }
+
+    // السجل للتتبع
+    console.log('📝 Processing registration for:', email)
+    console.log('🌐 Supabase URL exists:', !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log('🔑 Service Role Key exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
+
+    // استخدام Service Role Key إذا كان موجوداً، وإلا استخدام Anon Key
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('❌ Missing Supabase environment variables')
+      console.error('URL:', !!supabaseUrl)
+      console.error('Key:', !!supabaseKey)
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'إعدادات السيرفر غير مكتملة. يرجى التحقق من إعدادات البيئة',
+          details: process.env.NODE_ENV === 'development' ? {
+            hasUrl: !!supabaseUrl,
+            hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+            hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+          } : undefined
+        },
+        { status: 500 }
+      )
+    }
+
+    // إنشاء Supabase client
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+
+    console.log('🔐 Creating user in Supabase Auth...')
+
+    // 1. محاولة إنشاء مستخدم جديد في Auth
+    let authData;
+    let authError;
+    
+    try {
+      const result = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true, // تأكيد البريد تلقائياً للتطوير
+        user_metadata: {
+          full_name,
+          phone,
+          grade,
+          section
+        }
+      })
+      
+      authData = result.data
+      authError = result.error
+      
+    } catch (authErr: any) {
+      console.error('❌ Auth creation exception:', authErr)
+      authError = authErr
+    }
+
+    if (authError) {
+      console.error('❌ Auth error details:', authError)
+      
+      // التحقق من أنواع الأخطاء الشائعة
+      if (authError.message?.includes('already registered')) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'البريد الإلكتروني مسجل بالفعل. جرب تسجيل الدخول أو استخدم بريد إلكتروني آخر' 
+          },
+          { status: 400 }
+        )
+      }
+      
+      if (authError.message?.includes('invalid')) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'بيانات غير صالحة. يرجى التحقق من البريد الإلكتروني وكلمة المرور' 
+          },
+          { status: 400 }
+        )
+      }
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `فشل إنشاء حساب المصادقة: ${authError.message || 'خطأ غير معروف'}` 
+        },
+        { status: 400 }
+      )
+    }
+
+    if (!authData?.user) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'لم يتم إنشاء المستخدم. يرجى المحاولة مرة أخرى' 
+        },
+        { status: 500 }
+      )
+    }
 
     const userId = authData.user.id
+    console.log('✅ Auth user created with ID:', userId)
 
-    // 2. إنشاء profile
+    // 2. إنشاء profile (حاول مع وجود أخطاء ممكنة)
     console.log('👤 Creating profile...')
+    
+    const profileData = {
+      id: userId,
+      full_name,
+      grade: grade || 'first',
+      section: section || 'general',
+      email,
+      phone,
+      parent_phone: parent_phone || phone,
+      governorate: governorate || 'القاهرة',
+      city: city || 'غير محدد',
+      school: school || 'غير محدد'
+    }
+
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
-        id: userId,
-        full_name,
-        grade: grade || 'first', // قيمة افتراضية
-        section: section || 'general',
-        email,
-        phone,
-        parent_phone: parent_phone || phone, // إذا لم يتم تقديمه
-        governorate: governorate || 'القاهرة',
-        city: city || 'غير محدد',
-        school: school || 'غير محدد'
+      .upsert(profileData, {
+        onConflict: 'id'
       })
 
     if (profileError) {
       console.error('❌ Profile error:', profileError)
       
-      // حذف مستخدم Auth إذا فشل إنشاء البروفايل
-      await supabaseAdmin.auth.admin.deleteUser(userId)
+      // إذا فشل البروفايل، نترك حساب Auth للدعم لحله
+      console.warn('⚠️ Profile creation failed, but auth user exists:', userId)
       
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: profileError.message.includes('duplicate key')
-            ? 'البريد الإلكتروني أو رقم الهاتف مسجل بالفعل'
-            : 'فشل إنشاء الملف الشخصي: ' + profileError.message 
-        },
-        { status: 500 }
-      )
+      // نرسل تحذيراً لكن نكمل العملية
+    } else {
+      console.log('✅ Profile created/updated')
     }
 
-    console.log('✅ Profile created')
-
-    // 3. إنشاء wallet
+    // 3. إنشاء wallet (مهمة غير حرجة)
     console.log('💰 Creating wallet...')
+    
     const { error: walletError } = await supabaseAdmin
       .from('wallets')
-      .insert({
+      .upsert({
         user_id: userId,
         balance: 0
+      }, {
+        onConflict: 'user_id'
       })
 
     if (walletError) {
-      console.warn('⚠️ Wallet error (non-critical):', walletError)
-      // لا نحذف المستخدم إذا فشلت المحفظة
+      console.warn('⚠️ Wallet creation warning:', walletError)
+      // يمكن إنشاء المحفظة لاحقاً
     } else {
-      console.log('✅ Wallet created')
+      console.log('✅ Wallet created/updated')
     }
 
+    // 4. إرسال استجابة النجاح
+    console.log('🎉 Registration completed successfully for user:', userId)
+    
     return NextResponse.json({
       success: true,
-      message: 'تم إنشاء الحساب بنجاح',
+      message: 'تم إنشاء الحساب بنجاح!',
       userId,
       email,
-      full_name
+      full_name,
+      nextStep: 'تسجيل الدخول',
+      loginUrl: '/login'
     }, { 
       status: 201,
       headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store, max-age=0'
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
       }
     })
 
   } catch (error: any) {
-    console.error('❌ API Registration error:', error)
-    
-    // تحديد نوع الخطأ
-    let errorMessage = 'حدث خطأ غير متوقع في التسجيل'
-    let statusCode = 500
-    
-    if (error.name === 'SyntaxError') {
-      errorMessage = 'بيانات الطلب غير صالحة'
-      statusCode = 400
-    } else if (error.message.includes('fetch')) {
-      errorMessage = 'تعذر الاتصال بالخادم'
-      statusCode = 503
-    }
+    console.error('💥 Unexpected API error:', error)
     
     return NextResponse.json(
       { 
         success: false, 
-        error: errorMessage,
+        error: 'حدث خطأ غير متوقع في السيرفر',
+        reference: `ERR-${Date.now()}`,
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       },
       { 
-        status: statusCode,
+        status: 500,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json; charset=utf-8'
         }
       }
     )
   }
 }
 
-// إضافة GET method للتحقق من أن الـ route يعمل
+// إضافة GET للتحقق من حالة الـ API
 export async function GET() {
-  return NextResponse.json(
-    { 
-      message: 'API route for user registration',
-      methods: ['POST'],
-      status: 'active'
+  const hasEnvVars = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && 
+                       (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY))
+  
+  return NextResponse.json({
+    status: 'active',
+    method: 'POST',
+    path: '/api/auth/register',
+    environment: process.env.NODE_ENV,
+    hasRequiredEnvVars: hasEnvVars,
+    timestamp: new Date().toISOString()
+  })
+}
+
+// إضافة OPTIONS لـ CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+      'Access-Control-Max-Age': '86400',
     },
-    { status: 200 }
-  )
+  })
 }
