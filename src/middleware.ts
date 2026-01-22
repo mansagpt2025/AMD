@@ -1,7 +1,6 @@
-// middleware.ts
+// app/middleware.ts - الملف المعدل
 import { createServerClient } from '@supabase/ssr'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -19,10 +18,13 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: any) {
+          // لم تعد بحاجة لمعالجة الكوكيز هنا
+          // ستتعامل معها supabase تلقائياً
           response.cookies.set({
             name,
             value,
             ...options,
+            path: '/',
           })
         },
         remove(name: string, options: any) {
@@ -30,33 +32,40 @@ export async function middleware(request: NextRequest) {
             name,
             value: '',
             ...options,
+            path: '/',
           })
         },
       },
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  // تحديث الجلسة
+  await supabase.auth.getSession()
 
-  // المسارات المحمية
-  const protectedPaths = ['/dashboard', '/grades', '/packages', '/lectures']
+  // الحصول على حالة المستخدم (بدلاً من الجلسة)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // مسارات عامة مسموح بها للجميع
+  const publicPaths = ['/', '/login', '/register', '/contact', '/forgot-password']
+  const isPublicPath = publicPaths.some(path => 
+    request.nextUrl.pathname === path
+  )
+
+  // مسارات محمية
+  const protectedPaths = ['/dashboard', '/grades', '/package']
   const isProtectedPath = protectedPaths.some(path => 
     request.nextUrl.pathname.startsWith(path)
   )
 
-  // المسارات العامة
-  const authPaths = ['/login', '/register', '/forgot-password']
-  const isAuthPath = authPaths.includes(request.nextUrl.pathname)
-
-  // توجيه للمسارات المحمية بدون جلسة
-  if (isProtectedPath && !session) {
-    const redirectUrl = new URL('/login', request.url)
-    redirectUrl.searchParams.set('redirect', request.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
+  // إذا كان المستخدم غير مسجل ويحاول الوصول لمسار محمي
+  if (!user && isProtectedPath) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // توجيه للمسارات العامة مع جلسة
-  if (isAuthPath && session) {
+  // إذا كان المستخدم مسجل ويحاول الوصول لصفحات الدخول/التسجيل
+  if (user && ['/login', '/register', '/forgot-password'].includes(request.nextUrl.pathname)) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
@@ -65,6 +74,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    // استثني ملفات الستاتيك وAPI routes
+    '/((?!_next/static|_next/image|favicon.ico|public|api).*)',
   ],
 }

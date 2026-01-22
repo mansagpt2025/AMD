@@ -1,9 +1,10 @@
-// app/grades/[grade]/page.tsx
+// app/grades/[grade]/page.tsx - الملف المعدل
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/supabase-server'
 import PackageCard from '@/components/grades/PackageCard'
+import type { Metadata } from 'next'
 
 interface GradePageProps {
   params: {
@@ -11,26 +12,43 @@ interface GradePageProps {
   }
 }
 
+// إضافة Viewport بشكل صحيح
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+}
+
+// إضافة Metadata
+export const metadata: Metadata = {
+  title: 'باقات الصفوف | محمود الديب',
+  description: 'اختر الباقة المناسبة لصفك الدراسي',
+}
+
 export default async function GradePage({ params }: GradePageProps) {
   const supabase = await createClient()
   
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  // استخدام getUser بدلاً من getSession
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect('/login')
   }
 
   // التحقق من أن المستخدم في نفس الصف
   const { data: profile } = await supabase
     .from('profiles')
-    .select('grade')
-    .eq('id', session.user.id)
+    .select('grade, full_name')
+    .eq('id', user.id)
     .single()
 
-  if (profile?.grade !== params.grade) {
-    redirect(`/grades/${profile?.grade}`)
+  if (!profile) {
+    redirect('/complete-profile')
+  }
+
+  // إذا حاول الدخول لصف غير صفه، توجيهه لصفه
+  if (profile.grade !== params.grade) {
+    redirect(`/grades/${profile.grade}`)
   }
 
   // جلب جميع الباقات للصف
@@ -45,21 +63,21 @@ export default async function GradePage({ params }: GradePageProps) {
   const { data: purchasedPackages } = await supabase
     .from('user_packages')
     .select('package_id')
-    .eq('user_id', session.user.id)
+    .eq('user_id', user.id)
     .eq('is_active', true)
 
-  const purchasedPackageIds = purchasedPackages?.map((p: { package_id: string }) => p.package_id) || []
+  const purchasedPackageIds = purchasedPackages?.map(p => p.package_id) || []
 
   // تصنيف الباقات
-  const purchased = allPackages?.filter((p: { id: string }) => purchasedPackageIds.includes(p.id)) || []
-  const regular = allPackages?.filter((p: { type: string, id: string }) => p.type === 'weekly' && !purchasedPackageIds.includes(p.id)) || []
-  const offers = allPackages?.filter((p: { type: string, id: string }) => p.type !== 'weekly' && !purchasedPackageIds.includes(p.id)) || []
+  const purchased = allPackages?.filter(p => purchasedPackageIds.includes(p.id)) || []
+  const regular = allPackages?.filter(p => p.type === 'weekly' && !purchasedPackageIds.includes(p.id)) || []
+  const offers = allPackages?.filter(p => p.type !== 'weekly' && !purchasedPackageIds.includes(p.id)) || []
 
   // جلب رصيد المحفظة
   const { data: wallet } = await supabase
     .from('wallets')
     .select('balance')
-    .eq('user_id', session.user.id)
+    .eq('user_id', user.id)
     .single()
 
   const getGradeText = (grade: string): string => {
@@ -84,7 +102,7 @@ export default async function GradePage({ params }: GradePageProps) {
             </div>
             <Link
               href="/dashboard"
-              className="flex items-center space-x-2 text-blue-600 hover:text-blue-800"
+              className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors"
             >
               <span>←</span>
               <span>العودة للرئيسية</span>
@@ -103,12 +121,12 @@ export default async function GradePage({ params }: GradePageProps) {
             الأستاذ/ محمود الديب
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            "التفوق ليس صدفة، بل نتيجة التخطيط الجاد والعمل الدؤوب"
+            &quot;التفوق ليس صدفة، بل نتيجة التخطيط الجاد والعمل الدؤوب&quot;
           </p>
         </div>
 
         {/* Wallet Balance */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-8 border border-gray-200">
           <div className="flex justify-between items-center">
             <div>
               <h3 className="font-bold text-gray-800">رصيد محفظتك</h3>
@@ -127,10 +145,10 @@ export default async function GradePage({ params }: GradePageProps) {
           <section className="mb-12">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">اشتراكاتك النشطة</h2>
-              <div className="h-1 flex-1 max-w-md mx-4 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+              <div className="h-1 flex-1 max-w-md mx-4 bg-gradient-to-r from-transparent via-green-300 to-transparent"></div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {purchased.map((pkg: any) => (
+              {purchased.map((pkg) => (
                 <PackageCard
                   key={pkg.id}
                   pkg={pkg}
@@ -149,7 +167,7 @@ export default async function GradePage({ params }: GradePageProps) {
             <div className="h-1 flex-1 max-w-md mx-4 bg-gradient-to-r from-transparent via-blue-300 to-transparent"></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {regular.map((pkg: any) => (
+            {regular.map((pkg) => (
               <PackageCard
                 key={pkg.id}
                 pkg={pkg}
@@ -168,7 +186,7 @@ export default async function GradePage({ params }: GradePageProps) {
               <div className="h-1 flex-1 max-w-md mx-4 bg-gradient-to-r from-transparent via-yellow-300 to-transparent"></div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {offers.map((pkg: any) => (
+              {offers.map((pkg) => (
                 <PackageCard
                   key={pkg.id}
                   pkg={pkg}

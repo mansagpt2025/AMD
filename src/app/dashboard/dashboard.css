@@ -1,49 +1,12 @@
-/* dashboard-styles.css */
-@reference tailwindcss;
+/* app/dashboard/dashboard-styles.css - الملف المعدل */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
 
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
 
-.dashboard-container {
-
-  background: linear-gradient(135deg, #f9fafb, #f3f4f6);
-  font-family: 'Cairo', sans-serif;
-  direction: rtl;
-}
-
-
-.floating-bg-element {
-  background: linear-gradient(135deg, var(--primary-400) 0%, var(--primary-600) 100%);
-  animation: float 20s infinite ease-in-out;
-  filter: blur(20px);
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translate(0, 0) rotate(0deg);
-  }
-  33% {
-    transform: translate(30px, -50px) rotate(120deg);
-  }
-  66% {
-    transform: translate(-20px, 20px) rotate(240deg);
-  }
-}
-
-/* الشريط الجانبي */
-.dashboard-sidebar {
-  width: 280px;
-}
-
-.dashboard-sidebar.closed {
-  transform: translateX(100%);
-}
-
-.toggle-icon.rotated {
-  transform: rotate(180deg);
-}
-
-/* تأثيرات تفاعلية */
-.dashboard-container {
+/* متغيرات الألوان */
+:root {
   --primary-50: #eff6ff;
   --primary-100: #dbeafe;
   --primary-200: #bfdbfe;
@@ -67,52 +30,35 @@
   --secondary-900: #78350f;
 }
 
-/* تأثيرات النصوص */
-.text-gradient {
-  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-800) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+/* الأنماط الأساسية */
+body {
+  font-family: 'Cairo', sans-serif;
+  direction: rtl;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
 }
 
-/* تحسينات للجوال */
-@media (max-width: 768px) {
-  .dashboard-sidebar {
-    width: 100%;
+/* تأثيرات متحركة */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
   }
-  
-  .dashboard-main {
-    margin-right: 0;
+  33% {
+    transform: translateY(-10px) rotate(120deg);
   }
-  
-  .dashboard-sidebar.closed {
-    transform: translateX(100%);
+  66% {
+    transform: translateY(5px) rotate(240deg);
   }
-  
-  .dashboard-sidebar.open {
-    transform: translateX(0);
-  }
-  
 }
 
-/* تأثيرات الـ Hover */
-.nav-item,
-.action-button,
-.grade-card,
-.package-card,
-.stat-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
 }
 
-.nav-item:hover,
-.action-button:hover,
-.grade-card:hover,
-.package-card:hover {
-  transform: translateY(-2px);
-}
-
-/* تأثيرات الـ Loading */
-
-/* أنيميشن للظهور */
 @keyframes slideIn {
   from {
     opacity: 0;
@@ -124,17 +70,19 @@
   }
 }
 
-.dashboard-content > * {
-  animation: slideIn 0.5s ease-out;
+/* كلاسيس خاصة */
+.floating-element {
+  animation: float 20s infinite ease-in-out;
 }
 
-/* تأثيرات خاصة للرصيد */
-.wallet-card {
-  position: relative;
-  overflow: hidden;
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-800) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.wallet-card::before {
+.shine-effect::before {
   content: '';
   position: absolute;
   top: -50%;
@@ -145,11 +93,62 @@
   animation: shine 3s infinite linear;
 }
 
-@keyframes shine {
-  0% {
-    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+.slide-in {
+  animation: slideIn 0.5s ease-out;
+}
+
+/* تحسينات للبطاقات */
+.dashboard-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dashboard-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* زر الإجراء */
+.action-button {
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-800) 100%);
+  transition: all 0.3s ease;
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+}
+
+/* تحسينات الجوال */
+@media (max-width: 768px) {
+  .mobile-stack {
+    flex-direction: column;
   }
-  100% {
-    transform: translateX(100%) translateY(100%) rotate(45deg);
+  
+  .mobile-center {
+    text-align: center;
+    align-items: center;
   }
+  
+  .mobile-padding {
+    padding: 1rem;
+  }
+}
+
+/* تخصيص scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-500);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-700);
 }
