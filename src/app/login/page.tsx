@@ -1,11 +1,9 @@
 'use client'
-import Image from 'next/image';
-
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Mail, Lock, Sparkles, BookOpen, GraduationCap } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/supabase-client'
 import './login-styles.css'
 
 export default function LoginPage() {
@@ -44,7 +42,7 @@ export default function LoginPage() {
         const { data: userData, error: userError } = await supabase
           .from('profiles')
           .select('email')
-          .eq('student_phone', formData.identifier)
+          .eq('phone', formData.identifier) // تغيير من student_phone إلى phone
           .single()
         
         if (userError || !userData) {
@@ -206,8 +204,9 @@ export default function LoginPage() {
                   <Sparkles className="sparkle-icon" />
                 </span>
               </button>
-                            <div className="forgot-password-link">
-                <p className=".forgot-password-button">
+              
+              <div className="forgot-password-link">
+                <p className="forgot-password-button">
                   <Link href="/forgot-password" className="register-cta">
                     <span className="cta-text">نسيت كلمة المرور؟</span>
                     <span className="cta-arrow">→</span>

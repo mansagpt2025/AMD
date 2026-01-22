@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Mail, User, School, MapPin, Building, Sparkles, BookOpen, GraduationCap, Phone } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/supabase-client'
 import './register-styles.css'
 
 const governorates = [
@@ -32,12 +32,12 @@ export default function RegisterPage() {
   const [floatingElements, setFloatingElements] = useState<Array<{ x: number; y: number; size: number; delay: number }>>([])
   
   const [formData, setFormData] = useState({
-    name: '',
+    full_name: '',
     grade: '',
     section: '',
     email: '',
-    studentPhone: '',
-    parentPhone: '',
+    phone: '', // تغيير من studentPhone إلى phone
+    parent_phone: '', // تغيير من parentPhone إلى parent_phone
     governorate: '',
     city: '',
     school: '',
@@ -63,8 +63,8 @@ export default function RegisterPage() {
       { id: 'literary', name: 'أدبي' }
     ],
     third: [
-      { id: 'science_science', name: 'علمي علوم' },
-      { id: 'science_math', name: 'علمي رياضة' },
+      { id: 'science', name: 'علمي علوم' },
+      { id: 'math', name: 'علمي رياضة' },
       { id: 'literary', name: 'أدبي' }
     ]
   }
@@ -111,8 +111,8 @@ export default function RegisterPage() {
         password: formData.password,
         options: {
           data: {
-            name: formData.name,
-            phone: formData.studentPhone
+            full_name: formData.full_name,
+            phone: formData.phone
           }
         }
       })
@@ -122,17 +122,15 @@ export default function RegisterPage() {
       if (authData.user) {
         const profileData = {
           id: authData.user.id,
-          name: formData.name,
+          full_name: formData.full_name,
           grade: formData.grade,
           section: formData.section,
           email: formData.email,
-          student_phone: formData.studentPhone,
-          parent_phone: formData.parentPhone,
+          phone: formData.phone,
+          parent_phone: formData.parent_phone,
           governorate: formData.governorate,
           city: formData.city,
-          school: formData.school,
-          wallet_balance: 0,
-          role: 'student'
+          school: formData.school
         }
 
         const { error: profileError } = await supabase
@@ -140,6 +138,16 @@ export default function RegisterPage() {
           .insert(profileData)
         
         if (profileError) throw profileError
+        
+        // إنشاء محفظة للمستخدم الجديد
+        const { error: walletError } = await supabase
+          .from('wallets')
+          .insert({
+            user_id: authData.user.id,
+            balance: 0
+          })
+        
+        if (walletError) throw walletError
         
         setSuccess(true)
         setTimeout(() => {
@@ -258,8 +266,8 @@ export default function RegisterPage() {
                       <div className="input-wrapper">
                         <input
                           type="text"
-                          name="name"
-                          value={formData.name}
+                          name="full_name"
+                          value={formData.full_name}
                           onChange={handleChange}
                           required
                           className="register-input"
@@ -296,8 +304,8 @@ export default function RegisterPage() {
                         <Phone className="field-icon" />
                         <input
                           type="tel"
-                          name="studentPhone"
-                          value={formData.studentPhone}
+                          name="phone"
+                          value={formData.phone}
                           onChange={handleChange}
                           required
                           className="register-input with-icon"
@@ -315,8 +323,8 @@ export default function RegisterPage() {
                         <Phone className="field-icon" />
                         <input
                           type="tel"
-                          name="parentPhone"
-                          value={formData.parentPhone}
+                          name="parent_phone"
+                          value={formData.parent_phone}
                           onChange={handleChange}
                           required
                           className="register-input with-icon"
