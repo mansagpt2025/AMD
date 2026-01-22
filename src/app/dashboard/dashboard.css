@@ -10,10 +10,6 @@
   direction: rtl;
 }
 
-/* الخلفية العائمة */
-.floating-background {
-  @apply fixed inset-0 overflow-hidden pointer-events-none;
-}
 
 .floating-bg-element {
   @apply absolute rounded-full opacity-5;
@@ -36,7 +32,6 @@
 
 /* الشريط الجانبي */
 .dashboard-sidebar {
-  @apply fixed right-0 top-0 h-screen bg-white shadow-2xl transition-all duration-300 z-50;
   width: 280px;
 }
 
