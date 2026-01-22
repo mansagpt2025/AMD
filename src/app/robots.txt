@@ -1,0 +1,10 @@
+// app/robots.txt
+User-agent: *
+Allow: /
+Sitemap: https://mahmoud-eldeeb.com/sitemap.xml
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
