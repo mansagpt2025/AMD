@@ -1,9 +1,8 @@
-// lib/supabase/supabase-server.ts
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 export async function createClient() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,11 +12,34 @@ export async function createClient() {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
-        set() {
-          // Next.js App Router لا يحتاج set هنا
+
+        set(name: string, value: string, options: any) {
+          try {
+            cookieStore.set({
+              name,
+              value,
+              ...options,
+              path: '/', // ✅ مهم جداً
+            })
+          } catch (error) {
+            // Server Component — ignore
+            console.warn('Cookie set ignored:', name)
+          }
         },
-        remove() {
-          // Next.js App Router لا يحتاج remove هنا
+
+        remove(name: string, options: any) {
+          try {
+            cookieStore.set({
+              name,
+              value: '',
+              ...options,
+              path: '/', // ✅ مهم جداً
+              maxAge: 0, // ✅ الحذف الصحيح
+            })
+          } catch (error) {
+            // Server Component — ignore
+            console.warn('Cookie remove ignored:', name)
+          }
         },
       },
     }

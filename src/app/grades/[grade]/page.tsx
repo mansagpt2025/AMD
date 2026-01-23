@@ -1,3 +1,4 @@
+// app/grades/[grade]/page.tsx
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/supabase-server'
 
@@ -9,22 +10,19 @@ interface GradePageProps {
 
 export default async function GradePage({ params }: GradePageProps) {
   const supabase = await createClient()
-
   const grade = params.grade
 
   console.log('GRADE PARAM:', grade)
 
   if (!grade) {
-    console.error('Grade param is missing')
     notFound()
   }
 
-  // جلب الصف من قاعدة البيانات
   const { data: gradeData, error } = await supabase
     .from('grades')
     .select('*')
     .eq('slug', grade)
-    .single()
+    .maybeSingle() // ✅ مهم جداً
 
   if (error) {
     console.error('Supabase error:', error)
@@ -46,22 +44,6 @@ export default async function GradePage({ params }: GradePageProps) {
         <p className="text-gray-600 mb-6">
           مرحباً بك في صفحة {gradeData.name}
         </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-6 border rounded-lg">
-            <h2 className="text-xl font-semibold mb-2">الباقات</h2>
-            <p className="text-gray-500">
-              سيتم إضافة الباقات الخاصة بهذا الصف قريباً
-            </p>
-          </div>
-
-          <div className="p-6 border rounded-lg">
-            <h2 className="text-xl font-semibold mb-2">المحاضرات</h2>
-            <p className="text-gray-500">
-              سيتم إضافة المحاضرات الخاصة بهذا الصف قريباً
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   )

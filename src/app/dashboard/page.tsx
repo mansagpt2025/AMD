@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/supabase-server'
@@ -27,21 +28,24 @@ export default async function DashboardPage() {
   }
 
   // =========================
-  // PROFILE
+  // PROFILE (SAFE)
   // =========================
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   if (profileError) {
     console.error('Profile error:', profileError)
+  }
+
+  if (!profile) {
     redirect('/complete-profile')
   }
 
   // =========================
-  // WALLET
+  // WALLET (SAFE)
   // =========================
   const { data: wallet, error: walletError } = await supabase
     .from('wallets')
@@ -54,7 +58,7 @@ export default async function DashboardPage() {
   }
 
   // =========================
-  // PURCHASED PACKAGES
+  // PURCHASED PACKAGES (SAFE)
   // =========================
   const { data: purchasedPackages, error: packagesError } = await supabase
     .from('user_packages')
@@ -87,7 +91,7 @@ export default async function DashboardPage() {
   const getInitials = (fullName: string): string => {
     return fullName
       .split(' ')
-      .map((n: string) => n[0])
+      .map((n) => n[0])
       .join('')
       .toUpperCase()
       .slice(0, 2)
@@ -95,7 +99,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="dashboard-container">
-      {/* الهيدر */}
       <header className="dashboard-header">
         <div className="header-content">
           <div className="header-left">
@@ -124,18 +127,13 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      {/* المحتوى الرئيسي */}
       <main className="main-content">
-        {/* بطاقة الترحيب */}
         <div className="welcome-card">
           <div className="welcome-content">
             <div className="welcome-text">
               <h2 className="welcome-title">
                 مرحباً بك، {profile.full_name}!
               </h2>
-              <p className="welcome-subtitle">
-                استعد لرحلة التفوق مع أفضل المدرسين
-              </p>
 
               <div className="welcome-actions">
                 <div className="wallet-balance">
@@ -155,121 +153,6 @@ export default async function DashboardPage() {
             </div>
 
             <div className="welcome-emoji">🎓</div>
-          </div>
-        </div>
-
-        <div className="grid-layout">
-          {/* العمود الأيسر */}
-          <div className="left-column">
-            {/* الإحصائيات */}
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="stat-header">
-                  <div>
-                    <p className="stat-title">الباقات المشتراة</p>
-                    <p className="stat-value">
-                      {purchasedPackages?.length ?? 0}
-                    </p>
-                  </div>
-                  <div className="stat-icon packages">📦</div>
-                </div>
-              </div>
-            </div>
-
-            {/* الباقات المشتراة */}
-            <div className="packages-section">
-              <div className="section-header">
-                <h3 className="section-title">اشتراكاتك النشطة</h3>
-                <Link
-                  href={`/grades/${profile.grade}`}
-                  className="view-all-link"
-                >
-                  عرض الكل →
-                </Link>
-              </div>
-
-              {purchasedPackages && purchasedPackages.length > 0 ? (
-                <div className="packages-list">
-                  {purchasedPackages.slice(0, 3).map((up: any) => (
-                    <div key={up.id} className="package-item">
-                      <div className="package-info">
-                        <div className="package-icon">
-                          <span>ب</span>
-                        </div>
-                        <div className="package-details">
-                          <h4 className="package-name">
-                            {up.packages?.name || 'باقة'}
-                          </h4>
-                          <p className="package-description">
-                            {up.packages?.description || ''}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="package-status">
-                        <p className="status-active text-success">مفعلة</p>
-                        <p className="status-expiry">نشطة</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <div className="empty-icon">📚</div>
-                  <p className="empty-text">لا توجد باقات مشتركة بعد</p>
-                  <Link
-                    href={`/grades/${profile.grade}`}
-                    className="secondary-button"
-                  >
-                    ابدأ بالاشتراك الآن
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* العمود الأيمن */}
-          <div className="right-column">
-            <div className="grade-card">
-              <h3 className="grade-title">صفك الدراسي</h3>
-              <div className="grade-display">
-                <div className="grade-icon">🎯</div>
-                <h4 className="grade-name">
-                  {getGradeText(profile.grade)}
-                </h4>
-                <p className="grade-description">
-                  عام دراسي مميز بانتظارك
-                </p>
-                <Link
-                  href={`/grades/${profile.grade}`}
-                  className="secondary-button"
-                >
-                  دخول الصف
-                </Link>
-              </div>
-            </div>
-
-            <div className="quick-actions">
-              <h3 className="actions-title">إجراءات سريعة</h3>
-              <div className="actions-list">
-                <Link
-                  href={`/grades/${profile.grade}`}
-                  className="action-item primary"
-                >
-                  <span className="action-text">شراء باقة جديدة</span>
-                  <span className="action-arrow">→</span>
-                </Link>
-
-                <Link href="/profile" className="action-item">
-                  <span className="action-text">تعديل الملف الشخصي</span>
-                  <span className="action-arrow">→</span>
-                </Link>
-
-                <Link href="/support" className="action-item">
-                  <span className="action-text">الدعم الفني</span>
-                  <span className="action-arrow">→</span>
-                </Link>
-              </div>
-            </div>
           </div>
         </div>
       </main>
