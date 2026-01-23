@@ -1,7 +1,18 @@
 // app/grades/[grade]/page.tsx
 
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/supabase-server'
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+}
+
+export const metadata: Metadata = {
+  title: 'الصف الدراسي',
+  description: 'محتوى الصف الدراسي',
+}
 
 interface GradePageProps {
   params: {
@@ -13,16 +24,41 @@ export default async function GradePage({ params }: GradePageProps) {
   const supabase = await createClient()
   const { grade } = params
 
-  // جلب الصف من قاعدة البيانات
-  const { data: gradeData, error } = await supabase
-    .from('grades')
-    .select('*')
-    .eq('slug', grade)
-    .single()
+  let gradeData: any = null
 
-  if (error || !gradeData) {
-    console.error('Grade not found:', grade, error)
-    notFound()
+  try {
+    const { data, error } = await supabase
+      .from('grades') // ⚠️ لازم الجدول ده يكون موجود
+      .select('*')
+      .eq('slug', grade)
+      .single()
+
+    if (error) {
+      console.error('Supabase error fetching grade:', error)
+    } else {
+      gradeData = data
+    }
+  } catch (err) {
+    console.error('Unexpected error fetching grade:', err)
+  }
+
+  // لو مفيش جدول أو مفيش صف → اعرض صفحة واضحة بدل بيضا
+  if (!gradeData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50" dir="rtl">
+        <div className="bg-white p-8 rounded-xl shadow max-w-md text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">
+            الصف غير موجود
+          </h1>
+          <p className="text-gray-600 mb-4">
+            لم يتم العثور على هذا الصف في قاعدة البيانات.
+          </p>
+          <p className="text-sm text-gray-400">
+            تأكد من إنشاء جدول <code>grades</code> وإضافة البيانات الصحيحة.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
