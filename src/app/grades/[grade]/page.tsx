@@ -2,27 +2,32 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 
-interface PageProps {
-  params: {
-    grade: string
-  }
-}
+// مهم علشان يمنع caching الغلط
+export const dynamic = 'force-dynamic'
 
-export default async function GradePage({ params }: PageProps) {
+export default async function GradePage(props: {
+  params: { grade?: string } | Promise<{ grade?: string }>
+}) {
   const supabase = await createClient()
 
-  const gradeSlug = params.grade
+  // دعم الحالتين: params عادي أو Promise
+  const resolvedParams =
+    typeof (props.params as any)?.then === 'function'
+      ? await props.params
+      : props.params
+
+  const gradeSlug = resolvedParams?.grade
 
   console.log('GRADE SLUG:', gradeSlug)
 
   if (!gradeSlug) {
-    console.error('Grade slug is missing')
+    console.error('Grade slug is missing:', resolvedParams)
     notFound()
   }
 
   const { data: grade, error } = await supabase
     .from('grades')
-    .select('*')
+    .select('id, name, slug')
     .eq('slug', gradeSlug)
     .maybeSingle()
 
@@ -31,7 +36,7 @@ export default async function GradePage({ params }: PageProps) {
   }
 
   if (!grade) {
-    console.error('Grade not found:', gradeSlug)
+    console.error('Grade not found:', gradeSlug, error)
     notFound()
   }
 
