@@ -1,158 +1,137 @@
-// app/grades/[grade]/page.tsx - الملف المعدل
-import { cookies } from 'next/headers'
+// app/grades/[grade]/page.tsx
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/supabase-server'
 import PackageCard from '@/components/grades/PackageCard'
-import type { Metadata } from 'next'
+import RedeemCodeButton from '@/components/grades/RedeemCodeButton'
+
+export const dynamic = 'force-dynamic'
 
 interface GradePageProps {
-  params: {
-    grade: string
-  }
+  params: { grade: string }
 }
 
-// إضافة Viewport بشكل صحيح
-export const viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
+const gradeTextMap: Record<string, string> = {
+  first: 'الأول الثانوي',
+  second: 'الثاني الثانوي',
+  third: 'الثالث الثانوي',
 }
 
-// إضافة Metadata
-export const metadata: Metadata = {
-  title: 'باقات الصفوف | محمود الديب',
-  description: 'اختر الباقة المناسبة لصفك الدراسي',
+const gradeThemes: Record<string, { gradient: string; accent: string }> = {
+  first: { gradient: 'from-blue-600 to-blue-800', accent: 'text-blue-600' },
+  second: { gradient: 'from-emerald-600 to-emerald-800', accent: 'text-emerald-600' },
+  third: { gradient: 'from-purple-600 to-purple-800', accent: 'text-purple-600' },
 }
 
 export default async function GradePage({ params }: GradePageProps) {
   const supabase = await createClient()
-  
-  // استخدام getUser بدلاً من getSession
+
+  // ========== Auth ==========
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-  if (!user) {
-    redirect('/login')
-  }
-
-  // التحقق من أن المستخدم في نفس الصف
-  const { data: profile } = await supabase
+  // ========== Profile ==========
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('grade, full_name')
     .eq('id', user.id)
     .single()
 
-  if (!profile) {
+  if (profileError || !profile?.grade) {
+    console.error('PROFILE ERROR:', profileError)
     redirect('/complete-profile')
   }
 
-  // إذا حاول الدخول لصف غير صفه، توجيهه لصفه
+  // حماية الصف
   if (profile.grade !== params.grade) {
     redirect(`/grades/${profile.grade}`)
   }
 
-  // جلب جميع الباقات للصف
-  const { data: allPackages } = await supabase
+  // ========== Packages ==========
+  const { data: allPackages, error: packagesError } = await supabase
     .from('packages')
     .select('*')
     .eq('grade', params.grade)
     .eq('is_active', true)
     .order('price', { ascending: true })
 
-  // جلب الباقات المشتركة
-  const { data: purchasedPackages } = await supabase
+  if (packagesError) {
+    console.error('PACKAGES ERROR:', packagesError)
+  }
+
+  // ========== Purchased ==========
+  const { data: purchasedPackages, error: purchasedError } = await supabase
     .from('user_packages')
     .select('package_id')
     .eq('user_id', user.id)
     .eq('is_active', true)
 
-  const purchasedPackageIds = purchasedPackages?.map(p => p.package_id) || []
+  if (purchasedError) {
+    console.error('PURCHASED ERROR:', purchasedError)
+  }
 
-  // تصنيف الباقات
-  const purchased = allPackages?.filter(p => purchasedPackageIds.includes(p.id)) || []
-  const regular = allPackages?.filter(p => p.type === 'weekly' && !purchasedPackageIds.includes(p.id)) || []
-  const offers = allPackages?.filter(p => p.type !== 'weekly' && !purchasedPackageIds.includes(p.id)) || []
+  const purchasedIds = purchasedPackages?.map(p => p.package_id) || []
 
-  // جلب رصيد المحفظة
-  const { data: wallet } = await supabase
+  const purchased = allPackages?.filter(p => purchasedIds.includes(p.id)) || []
+  const regular = allPackages?.filter(p => p.type === 'weekly' && !purchasedIds.includes(p.id)) || []
+  const offers = allPackages?.filter(p => p.type !== 'weekly' && !purchasedIds.includes(p.id)) || []
+
+  // ========== Wallet ==========
+  const { data: wallet, error: walletError } = await supabase
     .from('wallets')
     .select('balance')
     .eq('user_id', user.id)
     .single()
 
-  const getGradeText = (grade: string): string => {
-    const grades: Record<string, string> = {
-      'first': 'الأول الثانوي',
-      'second': 'الثاني الثانوي',
-      'third': 'الثالث الثانوي'
-    }
-    return grades[grade] || grade
+  if (walletError) {
+    console.error('WALLET ERROR:', walletError)
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800">
-                باقات {getGradeText(params.grade)}
-              </h1>
-              <p className="text-gray-600 mt-2">اختر الباقة المناسبة لك وابدأ رحلة التفوق</p>
-            </div>
-            <Link
-              href="/dashboard"
-              className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors"
-            >
-              <span>←</span>
-              <span>العودة للرئيسية</span>
-            </Link>
-          </div>
-        </div>
-      </header>
+  const theme = gradeThemes[params.grade] || gradeThemes.first
+  const gradeText = gradeTextMap[params.grade] || params.grade
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="inline-block p-3 bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl mb-6">
-            <span className="text-4xl">🌟</span>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            الأستاذ/ محمود الديب
-          </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            &quot;التفوق ليس صدفة، بل نتيجة التخطيط الجاد والعمل الدؤوب&quot;
+  return (
+    <div className="min-h-screen bg-gray-50">
+
+      {/* ===== Hero ===== */}
+      <section className={`bg-gradient-to-r ${theme.gradient} text-white p-8`}>
+        <div className="container mx-auto">
+          <h1 className="text-4xl font-extrabold mb-2">
+            باقات {gradeText}
+          </h1>
+          <p className="text-lg opacity-90">
+            مع الأستاذ محمود الديب — طريقك للتفوق يبدأ من هنا 🚀
           </p>
         </div>
+      </section>
 
-        {/* Wallet Balance */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8 border border-gray-200">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="font-bold text-gray-800">رصيد محفظتك</h3>
-              <p className="text-3xl font-bold text-blue-600 mt-2">
-                {wallet?.balance || 0} ج.م
-              </p>
-            </div>
-            <div className="p-4 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl">
-              <span className="text-2xl">💰</span>
-            </div>
+      <main className="container mx-auto px-4 py-8">
+
+        {/* ===== Wallet + Redeem Code ===== */}
+        <div className="bg-white rounded-2xl shadow p-6 mb-10 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+          <div>
+            <p className="text-gray-500">رصيد محفظتك</p>
+            <p className={`text-3xl font-bold ${theme.accent}`}>
+              {wallet?.balance || 0} ج.م
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="text-3xl">💳</div>
+            <RedeemCodeButton />
           </div>
         </div>
 
-        {/* Purchased Packages */}
+        {/* ===== Purchased ===== */}
         {purchased.length > 0 && (
           <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">اشتراكاتك النشطة</h2>
-              <div className="h-1 flex-1 max-w-md mx-4 bg-gradient-to-r from-transparent via-green-300 to-transparent"></div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {purchased.map((pkg) => (
+            <h2 className="text-2xl font-bold mb-6">اشتراكاتك</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {purchased.map(pkg => (
                 <PackageCard
                   key={pkg.id}
                   pkg={pkg}
-                  isPurchased={true}
+                  isPurchased
                   walletBalance={wallet?.balance || 0}
                 />
               ))}
@@ -160,14 +139,11 @@ export default async function GradePage({ params }: GradePageProps) {
           </section>
         )}
 
-        {/* Regular Packages */}
+        {/* ===== Weekly ===== */}
         <section className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">الباقات الأسبوعية</h2>
-            <div className="h-1 flex-1 max-w-md mx-4 bg-gradient-to-r from-transparent via-blue-300 to-transparent"></div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {regular.map((pkg) => (
+          <h2 className="text-2xl font-bold mb-6">الباقات الأسبوعية</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {regular.map(pkg => (
               <PackageCard
                 key={pkg.id}
                 pkg={pkg}
@@ -178,26 +154,29 @@ export default async function GradePage({ params }: GradePageProps) {
           </div>
         </section>
 
-        {/* Offers */}
+        {/* ===== Offers ===== */}
         {offers.length > 0 && (
           <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">عروض خاصة</h2>
-              <div className="h-1 flex-1 max-w-md mx-4 bg-gradient-to-r from-transparent via-yellow-300 to-transparent"></div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {offers.map((pkg) => (
+            <h2 className="text-2xl font-bold mb-6">العروض</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {offers.map(pkg => (
                 <PackageCard
                   key={pkg.id}
                   pkg={pkg}
                   isPurchased={false}
                   walletBalance={wallet?.balance || 0}
-                  isOffer={true}
+                  isOffer
                 />
               ))}
             </div>
           </section>
         )}
+
+        <div className="mt-12">
+          <Link href="/dashboard" className="text-blue-600 hover:underline">
+            ← العودة للرئيسية
+          </Link>
+        </div>
       </main>
     </div>
   )
