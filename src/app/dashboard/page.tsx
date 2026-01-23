@@ -5,14 +5,14 @@ import { createClient } from '@/lib/supabase/supabase-server'
 import type { Metadata } from 'next'
 import './dashboard.css'
 
-// إضافة Viewport بشكل صحيح
+// Viewport
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
 }
 
-// إضافة Metadata
+// Metadata
 export const metadata: Metadata = {
   title: 'لوحة التحكم | محمود الديب',
   description: 'لوحة تحكم الطالب',
@@ -20,53 +20,74 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-  
-  // استخدام getUser بدلاً من getSession
+
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     redirect('/login')
   }
 
-  // جلب بيانات المستخدم
-  const { data: profile } = await supabase
+  // =========================
+  // PROFILE (آمن)
+  // =========================
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
-  // جلب رصيد المحفظة
-  const { data: wallet } = await supabase
-    .from('wallets')
-    .select('balance')
-    .eq('user_id', user.id)
-    .single()
-
-  // جلب الباقات المشتراة
-  const { data: purchasedPackages } = await supabase
-    .from('user_packages')
-    .select(`
-      *,
-      packages (*)
-    `)
-    .eq('user_id', user.id)
-    .eq('is_active', true)
+  if (profileError) {
+    console.error('Profile error:', profileError)
+  }
 
   if (!profile) {
     redirect('/complete-profile')
   }
 
-  // دالة مساعدة للحصول على نص الصف
+  // =========================
+  // WALLET (آمن)
+  // =========================
+  const { data: wallet, error: walletError } = await supabase
+    .from('wallets')
+    .select('balance')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (walletError) {
+    console.error('Wallet error:', walletError)
+  }
+
+  // =========================
+  // PURCHASED PACKAGES (آمن)
+  // =========================
+  const { data: purchasedPackages, error: packagesError } = await supabase
+    .from('user_packages')
+    .select(`
+      id,
+      is_active,
+      packages (
+        id,
+        name,
+        description
+      )
+    `)
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+
+  if (packagesError) {
+    console.error('Packages error:', packagesError)
+  }
+
+  // Helpers
   const getGradeText = (grade: string): string => {
     const grades: Record<string, string> = {
       first: 'الأول الثانوي',
       second: 'الثاني الثانوي',
-      third: 'الثالث الثانوي'
+      third: 'الثالث الثانوي',
     }
     return grades[grade] || grade
   }
 
-  // دالة للحصول على الأحرف الأولى من الاسم
   const getInitials = (fullName: string): string => {
     return fullName
       .split(' ')
@@ -90,7 +111,7 @@ export default async function DashboardPage() {
               <p className="platform-description">التعليم التفاعلي للثانوية العامة</p>
             </div>
           </div>
-          
+
           <div className="user-profile-card">
             <div className="user-info">
               <p className="user-name">{profile.full_name}</p>
@@ -111,14 +132,16 @@ export default async function DashboardPage() {
             <div className="welcome-text">
               <h2 className="welcome-title">مرحباً بك، {profile.full_name}!</h2>
               <p className="welcome-subtitle">استعد لرحلة التفوق مع أفضل المدرسين</p>
-              
+
               <div className="welcome-actions">
                 <div className="wallet-balance">
                   <span className="balance-label">رصيد المحفظة:</span>
-                  <span className="balance-amount">{wallet?.balance || 0} ج.م</span>
+                  <span className="balance-amount">
+                    {wallet?.balance ?? 0} ج.م
+                  </span>
                 </div>
-                
-                <Link 
+
+                <Link
                   href={`/grades/${profile.grade}`}
                   className="primary-button"
                 >
@@ -126,51 +149,25 @@ export default async function DashboardPage() {
                 </Link>
               </div>
             </div>
-            
-            <div className="welcome-emoji">
-              🎓
-            </div>
+
+            <div className="welcome-emoji">🎓</div>
           </div>
         </div>
 
         <div className="grid-layout">
           {/* العمود الأيسر */}
           <div className="left-column">
-            {/* بطاقات الإحصائيات */}
+            {/* الإحصائيات */}
             <div className="stats-grid">
               <div className="stat-card">
                 <div className="stat-header">
                   <div>
                     <p className="stat-title">الباقات المشتراة</p>
-                    <p className="stat-value">{purchasedPackages?.length || 0}</p>
+                    <p className="stat-value">
+                      {purchasedPackages?.length ?? 0}
+                    </p>
                   </div>
-                  <div className="stat-icon packages">
-                    📦
-                  </div>
-                </div>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-header">
-                  <div>
-                    <p className="stat-title">المحاضرات المكتملة</p>
-                    <p className="stat-value text-success">0</p>
-                  </div>
-                  <div className="stat-icon completed">
-                    ✅
-                  </div>
-                </div>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-header">
-                  <div>
-                    <p className="stat-title">الساعات الدراسية</p>
-                    <p className="stat-value text-warning">0</p>
-                  </div>
-                  <div className="stat-icon hours">
-                    ⏱️
-                  </div>
+                  <div className="stat-icon packages">📦</div>
                 </div>
               </div>
             </div>
@@ -179,7 +176,7 @@ export default async function DashboardPage() {
             <div className="packages-section">
               <div className="section-header">
                 <h3 className="section-title">اشتراكاتك النشطة</h3>
-                <Link 
+                <Link
                   href={`/grades/${profile.grade}`}
                   className="view-all-link"
                 >
@@ -190,22 +187,23 @@ export default async function DashboardPage() {
               {purchasedPackages && purchasedPackages.length > 0 ? (
                 <div className="packages-list">
                   {purchasedPackages.slice(0, 3).map((up: any) => (
-                    <div 
-                      key={up.id}
-                      className="package-item"
-                    >
+                    <div key={up.id} className="package-item">
                       <div className="package-info">
                         <div className="package-icon">
                           <span>ب</span>
                         </div>
                         <div className="package-details">
-                          <h4 className="package-name">{up.packages.name}</h4>
-                          <p className="package-description">{up.packages.description}</p>
+                          <h4 className="package-name">
+                            {up.packages?.name || 'باقة'}
+                          </h4>
+                          <p className="package-description">
+                            {up.packages?.description || ''}
+                          </p>
                         </div>
                       </div>
                       <div className="package-status">
                         <p className="status-active text-success">مفعلة</p>
-                        <p className="status-expiry">ينتهي في 30 يوم</p>
+                        <p className="status-expiry">نشطة</p>
                       </div>
                     </div>
                   ))}
@@ -227,7 +225,6 @@ export default async function DashboardPage() {
 
           {/* العمود الأيمن */}
           <div className="right-column">
-            {/* بطاقة الصف الدراسي */}
             <div className="grade-card">
               <h3 className="grade-title">صفك الدراسي</h3>
               <div className="grade-display">
@@ -245,7 +242,6 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            {/* الإجراءات السريعة */}
             <div className="quick-actions">
               <h3 className="actions-title">إجراءات سريعة</h3>
               <div className="actions-list">
@@ -256,17 +252,11 @@ export default async function DashboardPage() {
                   <span className="action-text">شراء باقة جديدة</span>
                   <span className="action-arrow">→</span>
                 </Link>
-                <Link
-                  href="/profile"
-                  className="action-item"
-                >
+                <Link href="/profile" className="action-item">
                   <span className="action-text">تعديل الملف الشخصي</span>
                   <span className="action-arrow">→</span>
                 </Link>
-                <Link
-                  href="/support"
-                  className="action-item"
-                >
+                <Link href="/support" className="action-item">
                   <span className="action-text">الدعم الفني</span>
                   <span className="action-arrow">→</span>
                 </Link>
