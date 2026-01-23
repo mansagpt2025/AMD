@@ -1,4 +1,3 @@
-// app/dashboard/page.tsx
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/supabase-server'
@@ -28,24 +27,21 @@ export default async function DashboardPage() {
   }
 
   // =========================
-  // PROFILE (آمن)
+  // PROFILE
   // =========================
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
-    .maybeSingle()
+    .single()
 
   if (profileError) {
     console.error('Profile error:', profileError)
-  }
-
-  if (!profile) {
     redirect('/complete-profile')
   }
 
   // =========================
-  // WALLET (آمن)
+  // WALLET
   // =========================
   const { data: wallet, error: walletError } = await supabase
     .from('wallets')
@@ -58,7 +54,7 @@ export default async function DashboardPage() {
   }
 
   // =========================
-  // PURCHASED PACKAGES (آمن)
+  // PURCHASED PACKAGES
   // =========================
   const { data: purchasedPackages, error: packagesError } = await supabase
     .from('user_packages')
@@ -108,14 +104,18 @@ export default async function DashboardPage() {
             </div>
             <div className="header-text">
               <h1 className="platform-name">محمود الديب</h1>
-              <p className="platform-description">التعليم التفاعلي للثانوية العامة</p>
+              <p className="platform-description">
+                التعليم التفاعلي للثانوية العامة
+              </p>
             </div>
           </div>
 
           <div className="user-profile-card">
             <div className="user-info">
               <p className="user-name">{profile.full_name}</p>
-              <p className="user-grade">الصف {getGradeText(profile.grade)}</p>
+              <p className="user-grade">
+                الصف {getGradeText(profile.grade)}
+              </p>
             </div>
             <div className="user-avatar">
               <span>{getInitials(profile.full_name)}</span>
@@ -130,8 +130,12 @@ export default async function DashboardPage() {
         <div className="welcome-card">
           <div className="welcome-content">
             <div className="welcome-text">
-              <h2 className="welcome-title">مرحباً بك، {profile.full_name}!</h2>
-              <p className="welcome-subtitle">استعد لرحلة التفوق مع أفضل المدرسين</p>
+              <h2 className="welcome-title">
+                مرحباً بك، {profile.full_name}!
+              </h2>
+              <p className="welcome-subtitle">
+                استعد لرحلة التفوق مع أفضل المدرسين
+              </p>
 
               <div className="welcome-actions">
                 <div className="wallet-balance">
@@ -232,7 +236,9 @@ export default async function DashboardPage() {
                 <h4 className="grade-name">
                   {getGradeText(profile.grade)}
                 </h4>
-                <p className="grade-description">عام دراسي مميز بانتظارك</p>
+                <p className="grade-description">
+                  عام دراسي مميز بانتظارك
+                </p>
                 <Link
                   href={`/grades/${profile.grade}`}
                   className="secondary-button"
@@ -252,10 +258,12 @@ export default async function DashboardPage() {
                   <span className="action-text">شراء باقة جديدة</span>
                   <span className="action-arrow">→</span>
                 </Link>
+
                 <Link href="/profile" className="action-item">
                   <span className="action-text">تعديل الملف الشخصي</span>
                   <span className="action-arrow">→</span>
                 </Link>
+
                 <Link href="/support" className="action-item">
                   <span className="action-text">الدعم الفني</span>
                   <span className="action-arrow">→</span>
