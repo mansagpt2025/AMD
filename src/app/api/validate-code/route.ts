@@ -1,5 +1,5 @@
 // app/api/validate-code/route.ts
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/sf-server'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {

@@ -2,8 +2,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/sf-client'
 import styles from './styles.module.css'
 
 // تعريف الأنواع
@@ -50,19 +50,23 @@ export default function GradePage({ params }: { params: { grade: string } }) {
   const [purchaseSuccess, setPurchaseSuccess] = useState('')
 
   const router = useRouter()
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  )
+  const supabase = createClient() // استخدام العميل مرة واحدة فقط
 
   useEffect(() => {
-    fetchData()
-    checkUser()
+    if (params.grade) {
+      fetchData()
+      checkUser()
+    }
   }, [params.grade])
 
   const fetchData = async () => {
     try {
       setLoading(true)
+      
+      if (!params.grade) {
+        console.error('Grade slug is missing')
+        return
+      }
       
       // جلب بيانات الصف
       const { data: gradeData, error: gradeError } = await supabase
@@ -71,7 +75,10 @@ export default function GradePage({ params }: { params: { grade: string } }) {
         .eq('slug', params.grade)
         .single()
 
-      if (gradeError) throw gradeError
+      if (gradeError) {
+        console.error('Error fetching grade:', gradeError)
+        return
+      }
       setGrade(gradeData)
 
       // جلب الباقات المتاحة للصف
@@ -80,50 +87,58 @@ export default function GradePage({ params }: { params: { grade: string } }) {
         .select('*')
         .eq('grade', params.grade)
         .eq('is_active', true)
+        .order('created_at', { ascending: false })
 
-      if (packagesError) throw packagesError
+      if (packagesError) {
+        console.error('Error fetching packages:', packagesError)
+        return
+      }
       setPackages(packagesData || [])
 
-      // جلب رصيد المحفظة إذا كان المستخدم مسجل دخول
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: walletData } = await supabase
-          .from('wallets')
-          .select('balance')
-          .eq('user_id', user.id)
-          .single()
-
-        if (walletData) setWalletBalance(walletData.balance)
-      }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      console.error('Error in fetchData:', error)
     } finally {
       setLoading(false)
     }
   }
 
   const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      setUser(user)
-      
-      // جلب الباقات المشتراة
-      const { data: userPackagesData } = await supabase
-        .from('user_packages')
-        .select(`
-          *,
-          packages (*)
-        `)
-        .eq('user_id', user.id)
-        .eq('is_active', true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUser(user)
+        
+        // جلب رصيد المحفظة
+        const { data: walletData, error: walletError } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', user.id)
+          .single()
 
-      if (userPackagesData) {
-        // تصفية الباقات للصف الحالي فقط
-        const filtered = userPackagesData.filter(
-          (up: any) => up.packages.grade === params.grade
-        )
-        setUserPackages(filtered)
+        if (!walletError && walletData) {
+          setWalletBalance(walletData.balance)
+        }
+
+        // جلب الباقات المشتراة
+        const { data: userPackagesData, error: userPackagesError } = await supabase
+          .from('user_packages')
+          .select(`
+            *,
+            packages (*)
+          `)
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+
+        if (!userPackagesError && userPackagesData) {
+          // تصفية الباقات للصف الحالي فقط
+          const filtered = userPackagesData.filter(
+            (up: any) => up.packages?.grade === params.grade
+          )
+          setUserPackages(filtered)
+        }
       }
+    } catch (error) {
+      console.error('Error in checkUser:', error)
     }
   }
 
@@ -157,7 +172,10 @@ export default function GradePage({ params }: { params: { grade: string } }) {
         // خصم الرصيد
         const { error: walletError } = await supabase
           .from('wallets')
-          .update({ balance: walletBalance - selectedPackage.price })
+          .update({ 
+            balance: walletBalance - selectedPackage.price,
+            updated_at: new Date().toISOString()
+          })
           .eq('user_id', user.id)
 
         if (walletError) throw walletError
@@ -169,7 +187,8 @@ export default function GradePage({ params }: { params: { grade: string } }) {
             user_id: user.id,
             package_id: selectedPackage.id,
             expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
-            source: 'wallet'
+            source: 'wallet',
+            is_active: true
           })
 
         if (purchaseError) throw purchaseError
@@ -239,7 +258,8 @@ export default function GradePage({ params }: { params: { grade: string } }) {
             user_id: user.id,
             package_id: selectedPackage.id,
             expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
-            source: 'code'
+            source: 'code',
+            is_active: true
           })
 
         if (purchaseError) throw purchaseError
@@ -251,9 +271,9 @@ export default function GradePage({ params }: { params: { grade: string } }) {
           checkUser()
         }, 2000)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Purchase error:', error)
-      setPurchaseError('حدث خطأ أثناء عملية الشراء')
+      setPurchaseError(error.message || 'حدث خطأ أثناء عملية الشراء')
     }
   }
 
@@ -261,6 +281,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.loader}></div>
+        <p>جاري التحميل...</p>
       </div>
     )
   }
@@ -269,6 +290,12 @@ export default function GradePage({ params }: { params: { grade: string } }) {
     return (
       <div className={styles.notFound}>
         <h1>الصف غير موجود</h1>
+        <button 
+          onClick={() => router.push('/')}
+          className={styles.backButton}
+        >
+          العودة للرئيسية
+        </button>
       </div>
     )
   }
@@ -333,7 +360,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
       )}
 
       {/* القسم 3: العروض */}
-      {(monthlyPackages.length > 0 || termPackages.length > 0 || offerPackages.length > 0) && (
+      {[...monthlyPackages, ...termPackages, ...offerPackages].length > 0 && (
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>العروض</h2>
           <div className={styles.packagesGrid}>
@@ -356,6 +383,13 @@ export default function GradePage({ params }: { params: { grade: string } }) {
       {showPurchaseModal && selectedPackage && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
+            <button 
+              className={styles.closeButton}
+              onClick={() => setShowPurchaseModal(false)}
+            >
+              ×
+            </button>
+            
             <h3 className={styles.modalTitle}>شراء باقة {selectedPackage.name}</h3>
             <p className={styles.modalPrice}>السعر: {selectedPackage.price} جنيه</p>
             
@@ -389,36 +423,47 @@ export default function GradePage({ params }: { params: { grade: string } }) {
                 />
                 <span>الدفع عن طريق كود</span>
                 {paymentMethod === 'code' && (
-                  <input
-                    type="text"
-                    className={styles.codeInput}
-                    placeholder="أدخل الكود هنا"
-                    value={codeInput}
-                    onChange={(e) => setCodeInput(e.target.value)}
-                  />
+                  <div className={styles.codeInputContainer}>
+                    <input
+                      type="text"
+                      className={styles.codeInput}
+                      placeholder="أدخل الكود هنا"
+                      value={codeInput}
+                      onChange={(e) => setCodeInput(e.target.value)}
+                    />
+                    <small className={styles.codeHint}>أدخل الكود المكون من 6-8 أحرف</small>
+                  </div>
                 )}
               </label>
             </div>
 
             {purchaseError && (
-              <div className={styles.errorMessage}>{purchaseError}</div>
+              <div className={styles.errorMessage}>
+                <span>⚠️</span>
+                {purchaseError}
+              </div>
             )}
 
             {purchaseSuccess && (
-              <div className={styles.successMessage}>{purchaseSuccess}</div>
+              <div className={styles.successMessage}>
+                <span>✓</span>
+                {purchaseSuccess}
+              </div>
             )}
 
             <div className={styles.modalActions}>
               <button
                 className={styles.cancelButton}
                 onClick={() => setShowPurchaseModal(false)}
+                disabled={!!purchaseSuccess}
               >
                 إلغاء
               </button>
               <button
                 className={styles.purchaseButton}
                 onClick={handlePurchase}
-                disabled={!!purchaseSuccess}
+                disabled={!!purchaseSuccess || 
+                  (paymentMethod === 'wallet' && walletBalance < selectedPackage.price)}
               >
                 {purchaseSuccess ? 'تم الشراء' : 'تأكيد الشراء'}
               </button>
@@ -448,6 +493,9 @@ function PackageCard({
         <img 
           src={pkg.image_url || '/default-package.jpg'} 
           alt={pkg.name}
+          onError={(e) => {
+            e.currentTarget.src = '/default-package.jpg'
+          }}
         />
       </div>
       <div className={styles.packageContent}>

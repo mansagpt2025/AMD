@@ -431,7 +431,40 @@
 }
 
 .grade-second .sectionTitle {
+
   color: #10b981;
+}
+/* إضافة هذه الأنماط للتصحيح */
+.backButton {
+  background: var(--primary-500);
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+.closeButton {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--gray-500);
+}
+
+.codeInputContainer {
+  margin-top: 10px;
+}
+
+.codeHint {
+  display: block;
+  margin-top: 5px;
+  color: var(--gray-500);
+  font-size: 0.8rem;
 }
 
 .grade-third .sectionTitle {
