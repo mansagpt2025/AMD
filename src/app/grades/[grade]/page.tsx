@@ -1,9 +1,8 @@
-// app/grades/[grade]/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/sf-client'
 import styles from './styles.module.css'
 
 // تعريف الأنواع
@@ -35,17 +34,6 @@ interface Grade {
   slug: string
 }
 
-// هذه دالة لجلب metadata ديناميكي
-export async function generateMetadata({ params }: { params: { grade: string } }) {
-  const gradeName = params.grade === 'first' ? 'الأول الثانوي' : 
-                   params.grade === 'second' ? 'الثاني الثانوي' : 'الثالث الثانوي'
-  
-  return {
-    title: `صف ${gradeName} - بارع محمود الديب`,
-    description: `باقات تعليمية متكاملة لصف ${gradeName}`,
-  }
-}
-
 export default function GradePage({ params }: { params: { grade: string } }) {
   const [grade, setGrade] = useState<Grade | null>(null)
   const [packages, setPackages] = useState<Package[]>([])
@@ -74,7 +62,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
     try {
       setLoading(true)
       
-      // جلب بيانات الصف
       const { data: gradeData, error: gradeError } = await supabase
         .from('grades')
         .select('*')
@@ -87,7 +74,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
       }
       setGrade(gradeData)
 
-      // جلب الباقات المتاحة للصف
       const { data: packagesData, error: packagesError } = await supabase
         .from('packages')
         .select('*')
@@ -114,7 +100,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
       if (user) {
         setUser(user)
         
-        // جلب رصيد المحفظة
         const { data: walletData } = await supabase
           .from('wallets')
           .select('balance')
@@ -125,7 +110,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
           setWalletBalance(walletData.balance)
         }
 
-        // جلب الباقات المشتراة
         const { data: userPackagesData } = await supabase
           .from('user_packages')
           .select(`
@@ -136,7 +120,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
           .eq('is_active', true)
 
         if (userPackagesData) {
-          // تصفية الباقات للصف الحالي فقط
           const filtered = userPackagesData.filter(
             (up: any) => up.packages?.grade === params.grade
           )
@@ -169,13 +152,11 @@ export default function GradePage({ params }: { params: { grade: string } }) {
 
     try {
       if (paymentMethod === 'wallet') {
-        // الشراء برصيد المحفظة
         if (walletBalance < selectedPackage.price) {
           setPurchaseError('رصيد المحفظة غير كافي')
           return
         }
 
-        // خصم الرصيد
         const { error: walletError } = await supabase
           .from('wallets')
           .update({ 
@@ -186,7 +167,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
 
         if (walletError) throw walletError
 
-        // إضافة الباقة للمستخدم
         const { error: purchaseError } = await supabase
           .from('user_packages')
           .insert({
@@ -207,13 +187,11 @@ export default function GradePage({ params }: { params: { grade: string } }) {
         }, 2000)
 
       } else if (paymentMethod === 'code') {
-        // الشراء باستخدام كود
         if (!codeInput.trim()) {
           setPurchaseError('يجب إدخال كود')
           return
         }
 
-        // التحقق من الكود
         const { data: codeData, error: codeError } = await supabase
           .from('codes')
           .select('*')
@@ -232,7 +210,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
           return
         }
 
-        // التحقق إذا كان المستخدم قد اشترى الباقة مسبقاً
         const { data: existingPurchase } = await supabase
           .from('user_packages')
           .select('*')
@@ -245,7 +222,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
           return
         }
 
-        // تحديث حالة الكود
         const { error: updateCodeError } = await supabase
           .from('codes')
           .update({
@@ -257,7 +233,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
 
         if (updateCodeError) throw updateCodeError
 
-        // إضافة الباقة للمستخدم
         const { error: purchaseError } = await supabase
           .from('user_packages')
           .insert({
@@ -306,11 +281,29 @@ export default function GradePage({ params }: { params: { grade: string } }) {
     )
   }
 
-  // تصنيف الباقات
   const weeklyPackages = packages.filter(p => p.type === 'weekly')
   const monthlyPackages = packages.filter(p => p.type === 'monthly')
   const termPackages = packages.filter(p => p.type === 'term')
   const offerPackages = packages.filter(p => p.type === 'offer')
+
+// مكون بطاقة الباقة
+function PackageCard({ 
+  pkg, 
+  isPurchased, 
+  onPurchase, 
+  onEnter 
+}: { 
+  pkg: Package
+  isPurchased: boolean
+  onPurchase?: () => void
+  onEnter?: () => void
+}) {
+  return (
+    <div className={styles.packageCard}>
+      {/* نفس الكود */}
+    </div>
+  )
+}
 
   return (
     <div className={`${styles.container} ${styles[`grade-${grade.slug}`]}`}>
