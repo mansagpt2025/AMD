@@ -1,0 +1,497 @@
+/* app/grades/[grade]/styles.module.css */
+
+/* أنماط عامة */
+.container {
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.loader {
+  border: 4px solid var(--primary-200);
+  border-top: 4px solid var(--primary-600);
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.notFound {
+  text-align: center;
+  padding: 100px 20px;
+  color: var(--error-500);
+}
+
+/* الهيدر */
+.header {
+  text-align: center;
+  padding: 40px 20px;
+  background: var(--gradient-primary);
+  border-radius: 20px;
+  margin-bottom: 40px;
+  color: white;
+}
+
+.brandTitle {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.encouragement {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  max-width: 800px;
+  margin: 0 auto 20px;
+}
+
+.walletInfo {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 10px 20px;
+  border-radius: 50px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.walletLabel {
+  font-weight: 500;
+}
+
+.walletBalance {
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: var(--secondary-400);
+}
+
+/* الأقسام */
+.section {
+  margin-bottom: 50px;
+}
+
+.sectionTitle {
+  font-size: 1.8rem;
+  color: var(--primary-800);
+  margin-bottom: 30px;
+  padding-bottom: 10px;
+  border-bottom: 3px solid var(--primary-200);
+  position: relative;
+}
+
+.sectionTitle::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: 100px;
+  height: 3px;
+  background: var(--secondary-500);
+}
+
+/* شبكة الباقات */
+.packagesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 30px;
+  padding: 10px;
+}
+
+/* بطاقة الباقة */
+.packageCard {
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.packageCard:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.packageImage {
+  height: 200px;
+  overflow: hidden;
+}
+
+.packageImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.packageCard:hover .packageImage img {
+  transform: scale(1.1);
+}
+
+.packageContent {
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.packageName {
+  font-size: 1.3rem;
+  color: var(--primary-800);
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.packageDescription {
+  color: var(--gray-600);
+  margin-bottom: 15px;
+  line-height: 1.6;
+  flex: 1;
+}
+
+.packageDetails {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 10px 0;
+  border-top: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.lectureCount, .price {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+}
+
+.price {
+  color: var(--secondary-600);
+  font-weight: bold;
+}
+
+.packageType {
+  margin-bottom: 20px;
+}
+
+.typeBadge {
+  display: inline-block;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: white;
+}
+
+.typeBadge.weekly {
+  background: var(--primary-500);
+}
+
+.typeBadge.monthly {
+  background: var(--secondary-500);
+}
+
+.typeBadge.term {
+  background: var(--success-500);
+}
+
+.typeBadge.offer {
+  background: var(--gradient-gold);
+}
+
+.actionButton {
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  width: 100%;
+}
+
+.purchaseButton {
+  background: var(--gradient-primary);
+  color: white;
+}
+
+.purchaseButton:hover {
+  background: var(--gradient-primary);
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.enterButton {
+  background: var(--success-500);
+  color: white;
+}
+
+.enterButton:hover {
+  background: var(--success-600);
+  transform: scale(1.02);
+}
+
+/* مودال الشراء */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(5px);
+}
+
+.modal {
+  background: white;
+  border-radius: 20px;
+  padding: 30px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modalTitle {
+  color: var(--primary-800);
+  margin-bottom: 15px;
+  font-size: 1.5rem;
+}
+
+.modalPrice {
+  color: var(--secondary-600);
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--primary-100);
+}
+
+.paymentMethods {
+  margin-bottom: 30px;
+}
+
+.paymentMethod {
+  display: block;
+  padding: 15px;
+  margin-bottom: 15px;
+  border: 2px solid var(--gray-300);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.paymentMethod:hover {
+  border-color: var(--primary-400);
+  background: var(--primary-50);
+}
+
+.paymentMethod input[type="radio"] {
+  margin-right: 10px;
+}
+
+.walletInfoModal {
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--primary-50);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.insufficientBalance {
+  color: var(--error-500);
+  font-weight: 500;
+  margin-top: 5px;
+}
+
+.codeInput {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border: 2px solid var(--primary-300);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.codeInput:focus {
+  outline: none;
+  border-color: var(--primary-500);
+}
+
+.errorMessage {
+  background: var(--error-500);
+  color: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.successMessage {
+  background: var(--success-500);
+  color: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.modalActions {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.cancelButton, .purchaseButton {
+  flex: 1;
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cancelButton {
+  background: var(--gray-200);
+  color: var(--gray-700);
+}
+
+.cancelButton:hover {
+  background: var(--gray-300);
+}
+
+.purchaseButton {
+  background: var(--gradient-primary);
+  color: white;
+}
+
+.purchaseButton:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.purchaseButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ألوان خاصة بكل صف */
+.grade-first {
+  --grade-color: var(--primary-500);
+  --grade-gradient: var(--gradient-primary);
+}
+
+.grade-second {
+  --grade-color: #10b981;
+  --grade-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.grade-third {
+  --grade-color: #8b5cf6;
+  --grade-gradient: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+/* تطبيق الألوان الخاصة على العناصر */
+.grade-first .sectionTitle {
+  color: var(--primary-700);
+}
+
+.grade-second .sectionTitle {
+  color: #10b981;
+}
+
+.grade-third .sectionTitle {
+  color: #8b5cf6;
+}
+
+.grade-first .purchaseButton {
+  background: var(--gradient-primary);
+}
+
+.grade-second .purchaseButton {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.grade-third .purchaseButton {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+/* تحسينات للجوال */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+  
+  .header {
+    padding: 20px 10px;
+    margin-bottom: 20px;
+  }
+  
+  .brandTitle {
+    font-size: 1.8rem;
+  }
+  
+  .encouragement {
+    font-size: 1rem;
+  }
+  
+  .packagesGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .modal {
+    padding: 20px;
+    margin: 10px;
+  }
+  
+  .modalActions {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .packageDetails {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .modalOverlay {
+    padding: 10px;
+  }
+}
