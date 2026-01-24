@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/sf-client'
+import { createClient } from '@/lib/supabase/client'
 import styles from './styles.module.css'
 
 // تعريف الأنواع
@@ -35,6 +35,17 @@ interface Grade {
   slug: string
 }
 
+// هذه دالة لجلب metadata ديناميكي
+export async function generateMetadata({ params }: { params: { grade: string } }) {
+  const gradeName = params.grade === 'first' ? 'الأول الثانوي' : 
+                   params.grade === 'second' ? 'الثاني الثانوي' : 'الثالث الثانوي'
+  
+  return {
+    title: `صف ${gradeName} - بارع محمود الديب`,
+    description: `باقات تعليمية متكاملة لصف ${gradeName}`,
+  }
+}
+
 export default function GradePage({ params }: { params: { grade: string } }) {
   const [grade, setGrade] = useState<Grade | null>(null)
   const [packages, setPackages] = useState<Package[]>([])
@@ -50,7 +61,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
   const [purchaseSuccess, setPurchaseSuccess] = useState('')
 
   const router = useRouter()
-  const supabase = createClient() // استخدام العميل مرة واحدة فقط
+  const supabase = createClient()
 
   useEffect(() => {
     if (params.grade) {
@@ -62,11 +73,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
   const fetchData = async () => {
     try {
       setLoading(true)
-      
-      if (!params.grade) {
-        console.error('Grade slug is missing')
-        return
-      }
       
       // جلب بيانات الصف
       const { data: gradeData, error: gradeError } = await supabase
@@ -109,18 +115,18 @@ export default function GradePage({ params }: { params: { grade: string } }) {
         setUser(user)
         
         // جلب رصيد المحفظة
-        const { data: walletData, error: walletError } = await supabase
+        const { data: walletData } = await supabase
           .from('wallets')
           .select('balance')
           .eq('user_id', user.id)
           .single()
 
-        if (!walletError && walletData) {
+        if (walletData) {
           setWalletBalance(walletData.balance)
         }
 
         // جلب الباقات المشتراة
-        const { data: userPackagesData, error: userPackagesError } = await supabase
+        const { data: userPackagesData } = await supabase
           .from('user_packages')
           .select(`
             *,
@@ -129,7 +135,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
           .eq('user_id', user.id)
           .eq('is_active', true)
 
-        if (!userPackagesError && userPackagesData) {
+        if (userPackagesData) {
           // تصفية الباقات للصف الحالي فقط
           const filtered = userPackagesData.filter(
             (up: any) => up.packages?.grade === params.grade
@@ -281,7 +287,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.loader}></div>
-        <p>جاري التحميل...</p>
+        <p>جاري تحميل بيانات الصف...</p>
       </div>
     )
   }
@@ -360,7 +366,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
       )}
 
       {/* القسم 3: العروض */}
-      {[...monthlyPackages, ...termPackages, ...offerPackages].length > 0 && (
+      {(monthlyPackages.length > 0 || termPackages.length > 0 || offerPackages.length > 0) && (
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>العروض</h2>
           <div className={styles.packagesGrid}>
@@ -381,11 +387,12 @@ export default function GradePage({ params }: { params: { grade: string } }) {
 
       {/* مودال الشراء */}
       {showPurchaseModal && selectedPackage && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modal}>
+        <div className={styles.modalOverlay} onClick={() => setShowPurchaseModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <button 
               className={styles.closeButton}
               onClick={() => setShowPurchaseModal(false)}
+              aria-label="إغلاق"
             >
               ×
             </button>
@@ -430,6 +437,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
                       placeholder="أدخل الكود هنا"
                       value={codeInput}
                       onChange={(e) => setCodeInput(e.target.value)}
+                      dir="ltr"
                     />
                     <small className={styles.codeHint}>أدخل الكود المكون من 6-8 أحرف</small>
                   </div>
@@ -471,6 +479,14 @@ export default function GradePage({ params }: { params: { grade: string } }) {
           </div>
         </div>
       )}
+
+      {/* رسالة إذا لم يكن هناك باقات */}
+      {packages.length === 0 && !loading && (
+        <div className={styles.noPackages}>
+          <h3>لا توجد باقات متاحة حاليًا</h3>
+          <p>سيتم إضافة باقات قريبًا، يرجى متابعتنا.</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -496,6 +512,7 @@ function PackageCard({
           onError={(e) => {
             e.currentTarget.src = '/default-package.jpg'
           }}
+          loading="lazy"
         />
       </div>
       <div className={styles.packageContent}>
@@ -518,6 +535,7 @@ function PackageCard({
         <button
           className={`${styles.actionButton} ${isPurchased ? styles.enterButton : styles.purchaseButton}`}
           onClick={isPurchased ? onEnter : onPurchase}
+          aria-label={isPurchased ? `الدخول إلى باقة ${pkg.name}` : `شراء باقة ${pkg.name}`}
         >
           {isPurchased ? 'الدخول' : 'شراء'}
         </button>
