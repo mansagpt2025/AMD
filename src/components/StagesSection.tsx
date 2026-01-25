@@ -6,19 +6,19 @@ import styles from './StagesSection.module.css';
 
 const grades = [
   {
-    id: 1,
+    id: first,
     name: 'الصف الأول الثانوي',
     color: '#d40000',
     image: '/images/stage-1.jpg'
   },
   {
-    id: 2,
+    id: second,
     name: 'الصف الثاني الثانوي',
     color: '#009519',
     image: '/images/stage-2.jpg'
   },
   {
-    id: 3,
+    id: third,
     name: 'الصف الثالث الثانوي',
     color: '#ff5e00',
     image: '/images/stage-3.jpg'
