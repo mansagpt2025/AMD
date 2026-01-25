@@ -125,12 +125,13 @@ const modalVariants: Variants = {
   }
 }
 
+// الأنيميشن المعدلة مع Types الصحيحة
 const floatAnimation = {
   y: [0, -10, 0],
   transition: {
     duration: 3,
     repeat: Infinity,
-    ease: "easeInOut"
+    ease: "easeInOut" as const
   }
 }
 
@@ -139,7 +140,7 @@ const pulseAnimation = {
   transition: {
     duration: 2,
     repeat: Infinity,
-    ease: "easeInOut"
+    ease: "easeInOut" as const
   }
 }
 
@@ -341,7 +342,14 @@ function PackageCard({
               <>
                 <span>اشترك الآن</span>
                 <motion.div
-                  animate={pulseAnimation}
+                  animate={{
+                    scale: [1, 1.1, 1],
+                    transition: {
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }
+                  }}
                 >
                   <Sparkles className="w-4 h-4" />
                 </motion.div>
@@ -623,7 +631,14 @@ export default function GradePage() {
             >
               <motion.div 
                 className={styles.gradeIcon}
-                animate={floatAnimation}
+                animate={{
+                  y: [0, -10, 0],
+                  transition: {
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }
+                }}
               >
                 <GraduationCap className="w-8 h-8 text-white" />
               </motion.div>
@@ -641,7 +656,14 @@ export default function GradePage() {
               >
                 <motion.div 
                   className={styles.walletIcon}
-                  animate={pulseAnimation}
+                  animate={{
+                    scale: [1, 1.05, 1],
+                    transition: {
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }
+                  }}
                 >
                   <Wallet className="w-6 h-6 text-white" />
                 </motion.div>
