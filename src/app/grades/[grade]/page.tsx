@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { createClientBrowser } from '@/lib/supabase/sf-client'
 import styles from './styles.module.css'
 
@@ -35,8 +35,9 @@ interface Grade {
 }
 
 // ================== Page ==================
-export default function GradePage({ params }: { params: { grade: string } }) {
+export default function GradePage() {
   const router = useRouter()
+  const params = useParams() // 🔥 الحل هنا
   
   // State
   const [grade, setGrade] = useState<Grade | null>(null)
@@ -59,22 +60,28 @@ export default function GradePage({ params }: { params: { grade: string } }) {
   // Initialize Supabase Client
   const [supabase] = useState(() => createClientBrowser())
 
+  // 🔥 الحل: استخرج grade من params
+  const gradeSlug = params?.grade as string
+
   useEffect(() => {
-    console.log('🚀 Page mounted, grade:', params?.grade)
+    console.log('🚀 Page mounted')
+    console.log('🔍 Params from useParams:', params)
+    console.log('🔍 Grade slug:', gradeSlug)
     
-    if (!params?.grade) {
-      setError('معرف الصف غير موجود')
+    if (!gradeSlug) {
+      console.error('❌ No grade slug found in URL')
+      setError('معرف الصف غير موجود في الرابط')
       setLoading(false)
       return
     }
 
     fetchData()
     checkUser()
-  }, [params?.grade])
+  }, [gradeSlug]) // 🔥 Dependency على gradeSlug
 
   // ================== Data Fetching ==================
   const fetchData = async () => {
-    console.log('📡 Starting fetchData...')
+    console.log('📡 Starting fetchData for grade:', gradeSlug)
     setLoading(true)
     setError(null)
 
@@ -83,7 +90,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
       const { data: gradeData, error: gradeError } = await supabase
         .from('grades')
         .select('*')
-        .eq('slug', params.grade)
+        .eq('slug', gradeSlug)
         .maybeSingle()
 
       if (gradeError) {
@@ -92,7 +99,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
       }
 
       if (!gradeData) {
-        console.log('⚠️ Grade not found')
+        console.log('⚠️ Grade not found in DB for slug:', gradeSlug)
         setGrade(null)
       } else {
         console.log('✅ Grade loaded:', gradeData.name)
@@ -103,7 +110,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
       const { data: packagesData, error: packagesError } = await supabase
         .from('packages')
         .select('*')
-        .eq('grade', params.grade)
+        .eq('grade', gradeSlug)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
 
@@ -159,7 +166,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
 
       if (userPackagesData) {
         const filtered = userPackagesData.filter(
-          (up: any) => up.packages?.grade === params.grade
+          (up: any) => up.packages?.grade === gradeSlug
         )
         setUserPackages(filtered)
       }
@@ -195,7 +202,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
           throw new Error('رصيد المحفظة غير كافٍ')
         }
 
-        // Call purchase API
         const response = await fetch('/api/purchase', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -213,16 +219,11 @@ export default function GradePage({ params }: { params: { grade: string } }) {
 
         setPurchaseSuccess('تم الشراء بنجاح!')
         setWalletBalance(prev => prev - selectedPackage.price)
-        
-        // Refresh user packages
         await checkUser()
         
-        setTimeout(() => {
-          setShowPurchaseModal(false)
-        }, 2000)
+        setTimeout(() => setShowPurchaseModal(false), 2000)
 
       } else {
-        // Code validation
         if (!codeInput.trim()) {
           throw new Error('يرجى إدخال الكود')
         }
@@ -244,10 +245,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
 
         setPurchaseSuccess('تم تفعيل الباقة بنجاح!')
         await checkUser()
-        
-        setTimeout(() => {
-          setShowPurchaseModal(false)
-        }, 2000)
+        setTimeout(() => setShowPurchaseModal(false), 2000)
       }
     } catch (err: any) {
       setPurchaseError(err.message)
@@ -274,7 +272,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
               pkg={pkg}
               isPurchased={isPackagePurchased(pkg.id)}
               onPurchase={() => handlePurchaseClick(pkg)}
-              onEnter={() => router.push(`/grades/${params.grade}/packages/${pkg.id}`)}
+              onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
             />
           ))}
         </div>
@@ -289,7 +287,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
         <div className={styles.loader}></div>
         <p>جاري تحميل بيانات الصف...</p>
         <p className={styles.debugText}>
-          إذا استمر التحميل أكثر من 10 ثواني، افتح Console (F12)
+          Grade: {gradeSlug || 'غير معروف'}
         </p>
       </div>
     )
@@ -301,6 +299,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
       <div className={styles.errorContainer}>
         <h2>❌ حدث خطأ</h2>
         <p>{error}</p>
+        <p className={styles.debugInfo}>المحاولة: {gradeSlug}</p>
         <button 
           onClick={() => fetchData()}
           className={styles.retryButton}
@@ -322,7 +321,8 @@ export default function GradePage({ params }: { params: { grade: string } }) {
     return (
       <div className={styles.notFound}>
         <h1>الصف غير موجود</h1>
-        <p>الصف {params.grade} غير موجود في قاعدة البيانات</p>
+        <p>الصف "{gradeSlug}" غير موجود في قاعدة البيانات</p>
+        <p className={styles.debugInfo}>تأكد من إضافة هذا الصف في جدول grades</p>
         <button 
           onClick={() => router.push('/')}
           className={styles.backButton}
@@ -341,7 +341,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
 
   return (
     <div className={`${styles.container} ${styles[`grade-${grade.slug}`]}`}>
-      {/* Header */}
       <header className={styles.header}>
         <h1 className={styles.title}>{grade.name}</h1>
         {user && (
@@ -352,7 +351,6 @@ export default function GradePage({ params }: { params: { grade: string } }) {
         )}
       </header>
 
-      {/* Content */}
       <main className={styles.main}>
         {renderPackageSection('📚 الباقات الأسبوعية', weeklyPackages)}
         {renderPackageSection('📅 الباقات الشهرية', monthlyPackages)}
