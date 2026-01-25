@@ -125,13 +125,13 @@ const modalVariants: Variants = {
   }
 }
 
-// الأنيميشن المعدلة مع Types الصحيحة
+// إصلاح مشاكل TypeScript في الأنيميشن
 const floatAnimation = {
   y: [0, -10, 0],
   transition: {
     duration: 3,
     repeat: Infinity,
-    ease: "easeInOut" as const
+    ease: "easeInOut"
   }
 }
 
@@ -140,7 +140,7 @@ const pulseAnimation = {
   transition: {
     duration: 2,
     repeat: Infinity,
-    ease: "easeInOut" as const
+    ease: "easeInOut"
   }
 }
 
