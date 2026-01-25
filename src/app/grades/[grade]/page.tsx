@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/sf-client'
+import { createClientBrowser } from '@/lib/supabase/sf-client'
 import styles from './styles.module.css'
 
 // ================== Types ==================
@@ -50,7 +50,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
   const [purchaseSuccess, setPurchaseSuccess] = useState('')
 
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createClientBrowser()
 
   useEffect(() => {
     if (params.grade) {
@@ -172,7 +172,7 @@ export default function GradePage({ params }: { params: { grade: string } }) {
 
   return (
     <div className={`${styles.container} ${styles[`grade-${grade.slug}`]}`}>
-      {/* كل JSX كما هو عندك بدون أي تغيير */}
+      {/* كل JSX كما هو بدون تغيير */}
     </div>
   )
 }
@@ -192,8 +192,6 @@ function PackageCard({
   return (
     <div className={styles.packageCard}>
       {/* نفس كود الكارت كما هو */}
-
-
       <div className={styles.packageImage}>
         <img 
           src={pkg.image_url || '/default-package.jpg'} 
