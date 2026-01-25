@@ -6,19 +6,22 @@ import styles from './StagesSection.module.css';
 
 const grades = [
   {
-    id: first,
+    id: 1,
+    slug: 'first',
     name: 'الصف الأول الثانوي',
     color: '#d40000',
     image: '/images/stage-1.jpg'
   },
   {
-    id: second,
+    id: 2,
+    slug: 'second',
     name: 'الصف الثاني الثانوي',
     color: '#009519',
     image: '/images/stage-2.jpg'
   },
   {
-    id: third,
+    id: 3,
+    slug: 'third',
     name: 'الصف الثالث الثانوي',
     color: '#ff5e00',
     image: '/images/stage-3.jpg'
@@ -107,7 +110,7 @@ const StagesSection = () => {
                 </div>
                 <div className={styles.cardActions}>
                   <Link 
-                    href={`/grades/${grade.id}`}
+                    href={`/grades/${grade.slug}`}
                     className={styles.secondaryButton}
                   >
 دخول                  </Link>
