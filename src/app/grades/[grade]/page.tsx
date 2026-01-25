@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { createClientBrowser } from '@/lib/supabase/sf-client'
@@ -17,7 +17,12 @@ import {
   Loader2,
   ArrowRight,
   GraduationCap,
-  PlayCircle
+  PlayCircle,
+  Users,
+  Zap,
+  Star,
+  Shield,
+  TrendingUp
 } from 'lucide-react'
 import styles from './styles.module.css'
 
@@ -63,12 +68,12 @@ const containerVariants: Variants = {
 }
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 30 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      type: "spring" as const,
+      type: "spring",
       stiffness: 100,
       damping: 15
     }
@@ -76,21 +81,24 @@ const itemVariants: Variants = {
 }
 
 const cardVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.9 },
+  hidden: { opacity: 0, scale: 0.95, y: 20 },
   visible: {
     opacity: 1,
     scale: 1,
+    y: 0,
     transition: {
-      type: "spring" as const,
-      stiffness: 100,
+      type: "spring",
+      stiffness: 120,
       damping: 20
     }
   },
   hover: {
     scale: 1.03,
     y: -10,
+    rotateX: 5,
+    rotateY: 5,
     transition: {
-      type: "spring" as const,
+      type: "spring",
       stiffness: 400,
       damping: 25
     }
@@ -98,26 +106,255 @@ const cardVariants: Variants = {
 }
 
 const modalVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.8, y: 50 },
+  hidden: { opacity: 0, scale: 0.9, y: 50 },
   visible: {
     opacity: 1,
     scale: 1,
     y: 0,
     transition: {
-      type: "spring" as const,
+      type: "spring",
       stiffness: 300,
       damping: 25
     }
   },
   exit: {
     opacity: 0,
-    scale: 0.8,
+    scale: 0.9,
     y: 50,
     transition: { duration: 0.2 }
   }
 }
 
-// ================== Page ==================
+const floatAnimation = {
+  y: [0, -10, 0],
+  transition: {
+    duration: 3,
+    repeat: Infinity,
+    ease: "easeInOut"
+  }
+}
+
+const pulseAnimation = {
+  scale: [1, 1.05, 1],
+  transition: {
+    duration: 2,
+    repeat: Infinity,
+    ease: "easeInOut"
+  }
+}
+
+// ================== Particle Background Component ==================
+const ParticleBackground = () => {
+  const particles = Array.from({ length: 30 }, (_, i) => ({
+    id: i,
+    size: Math.random() * 8 + 2,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    duration: Math.random() * 20 + 10,
+    delay: Math.random() * 5
+  }))
+
+  return (
+    <div className={styles.particleSystem}>
+      {particles.map((particle) => (
+        <motion.div
+          key={particle.id}
+          className={styles.particle}
+          initial={{ x: `${particle.x}%`, y: `${particle.y}%` }}
+          animate={{
+            x: [`${particle.x}%`, `${particle.x + 10}%`, `${particle.x}%`],
+            y: [`${particle.y}%`, `${particle.y - 15}%`, `${particle.y}%`],
+            rotate: 360
+          }}
+          transition={{
+            duration: particle.duration,
+            repeat: Infinity,
+            ease: "linear",
+            delay: particle.delay
+          }}
+          style={{
+            width: particle.size,
+            height: particle.size,
+            background: particle.id % 3 === 0 
+              ? 'var(--primary-400)' 
+              : particle.id % 3 === 1 
+                ? 'var(--accent-400)' 
+                : 'var(--primary-200)',
+            opacity: 0.15
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ================== Package Card Component ==================
+function PackageCard({ 
+  pkg, 
+  index,
+  isPurchased, 
+  onPurchase, 
+  onEnter,
+  highlight = false
+}: { 
+  pkg: Package
+  index: number
+  isPurchased: boolean
+  onPurchase?: () => void
+  onEnter?: () => void
+  highlight?: boolean
+}) {
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return
+    const rect = cardRef.current.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    setMousePosition({ x, y })
+  }
+
+  const getPackageIcon = () => {
+    switch (pkg.type) {
+      case 'weekly': return <Clock className="w-4 h-4" />
+      case 'monthly': return <Calendar className="w-4 h-4" />
+      case 'term': return <BookOpen className="w-4 h-4" />
+      case 'offer': return <Sparkles className="w-4 h-4" />
+      default: return <Star className="w-4 h-4" />
+    }
+  }
+
+  return (
+    <motion.div
+      ref={cardRef}
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      whileHover="hover"
+      transition={{ delay: index * 0.1 }}
+      className={`${styles.card} ${highlight ? styles.cardHighlight : ''} ${isPurchased ? styles.cardPurchased : ''}`}
+      onMouseMove={handleMouseMove}
+      style={{
+        '--mouse-x': `${mousePosition.x}%`,
+        '--mouse-y': `${mousePosition.y}%`,
+      } as React.CSSProperties}
+    >
+      {highlight && (
+        <div className={styles.cardBadge}>
+          <Sparkles className="w-3 h-3" />
+          عرض خاص محدود
+        </div>
+      )}
+
+      <div className={styles.typeBadge}>
+        {getPackageIcon()}
+        <span>{pkg.type === 'weekly' ? 'أسبوعي' : 
+               pkg.type === 'monthly' ? 'شهري' : 
+               pkg.type === 'term' ? 'ترم كامل' : 'عرض خاص'}</span>
+      </div>
+
+      {isPurchased && (
+        <div className={`${styles.purchasedOverlay} ${isPurchased ? styles.active : ''}`}>
+          <motion.div 
+            className={styles.purchasedBadge}
+            initial={{ scale: 0, rotate: -10 }}
+            animate={{ scale: 1, rotate: -5 }}
+            transition={{ type: "spring", stiffness: 200 }}
+          >
+            <CheckCircle2 className="w-5 h-5" />
+            <span>تم الشراء</span>
+          </motion.div>
+        </div>
+      )}
+
+      <div className={styles.cardImage}>
+        {pkg.image_url ? (
+          <img 
+            src={pkg.image_url} 
+            alt={pkg.name}
+            className={styles.image}
+            loading="lazy"
+          />
+        ) : (
+          <motion.div 
+            className={styles.imagePlaceholder}
+            animate={{ backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'] }}
+            transition={{ duration: 10, repeat: Infinity }}
+          >
+            <GraduationCap className="w-16 h-16 text-white/50" />
+          </motion.div>
+        )}
+        <div className={styles.imageOverlay}></div>
+      </div>
+
+      <div className={styles.cardContent}>
+        <h3 className={styles.cardTitle}>{pkg.name}</h3>
+        <p className={styles.cardDescription}>{pkg.description}</p>
+
+        <div className={styles.cardMeta}>
+          <div className={styles.metaItem}>
+            <div className={styles.metaIcon}>
+              <PlayCircle className="w-4 h-4 text-primary-400" />
+            </div>
+            <span>{pkg.lecture_count} محاضرة</span>
+          </div>
+          <div className={styles.metaItem}>
+            <div className={styles.metaIcon}>
+              <Clock className="w-4 h-4 text-accent-400" />
+            </div>
+            <span>{pkg.duration_days} يوم</span>
+          </div>
+          <div className={styles.metaItem}>
+            <div className={styles.metaIcon}>
+              <Shield className="w-4 h-4 text-success-500" />
+            </div>
+            <span>ضمان الاسترجاع</span>
+          </div>
+        </div>
+
+        <div className={styles.cardFooter}>
+          <div className={styles.priceInfo}>
+            <p className={styles.priceLabel}>السعر</p>
+            <p className={`${styles.price} ${highlight ? styles.priceHighlight : ''}`}>
+              {pkg.price} <span className={styles.currency}>جنيه</span>
+            </p>
+          </div>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={isPurchased ? onEnter : onPurchase}
+            className={`${styles.actionButton} ${
+              isPurchased ? styles.enterButton : 
+              highlight ? styles.offerButton : 
+              styles.buyButton
+            }`}
+            disabled={isPurchased}
+          >
+            {isPurchased ? (
+              <>
+                <span>دخول للمحاضرات</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            ) : (
+              <>
+                <span>اشترك الآن</span>
+                <motion.div
+                  animate={pulseAnimation}
+                >
+                  <Sparkles className="w-4 h-4" />
+                </motion.div>
+              </>
+            )}
+          </motion.button>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ================== Page Component ==================
 export default function GradePage() {
   const router = useRouter()
   const params = useParams()
@@ -143,11 +380,18 @@ export default function GradePage() {
   const [purchaseSuccess, setPurchaseSuccess] = useState('')
   const [isPurchasing, setIsPurchasing] = useState(false)
 
+  // Stats
+  const [stats, setStats] = useState({
+    totalStudents: 1250,
+    successRate: 94,
+    activeCourses: 42
+  })
+
   // ================== Load Data ==================
   useEffect(() => {
     if (gradeSlug) {
       fetchData()
-      checkUser() // نحتفظ بجلب بيانات المستخدم لو كان مسجل دخول، لكن مش شرط
+      checkUser()
     }
   }, [gradeSlug])
 
@@ -163,6 +407,7 @@ export default function GradePage() {
         .maybeSingle()
 
       if (gradeError) throw new Error('خطأ في تحميل بيانات الصف')
+      if (!gradeData) throw new Error('الصف غير موجود')
       setGrade(gradeData)
 
       const { data: packagesData, error: packagesError } = await supabase
@@ -170,7 +415,7 @@ export default function GradePage() {
         .select('*')
         .eq('grade', gradeSlug)
         .eq('is_active', true)
-        .order('created_at', { ascending: false })
+        .order('price', { ascending: true })
 
       if (packagesError) throw new Error('خطأ في تحميل الباقات')
       setPackages(packagesData || [])
@@ -188,6 +433,7 @@ export default function GradePage() {
       
       if (currentUser) {
         setUser(currentUser)
+        
         // Fetch Wallet
         const { data: walletData } = await supabase
           .from('wallets')
@@ -217,7 +463,6 @@ export default function GradePage() {
   // ================== Purchase Handlers ==================
   const handlePurchaseClick = (pkg: Package) => {
     if (!user) {
-      // لو مش مسجل دخول، نوديه لصفحة تسجيل الدخول مع العودة للصفحة الحالية
       router.push(`/login?returnUrl=/grades/${gradeSlug}`)
       return
     }
@@ -304,8 +549,18 @@ export default function GradePage() {
           animate={{ opacity: 1 }}
           className={styles.loadingContent}
         >
-          <div className={styles.spinner}></div>
-          <p className={styles.loadingText}>جاري تحميل البيانات...</p>
+          <motion.div
+            className={styles.loadingSpinner}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          />
+          <motion.p
+            className={styles.loadingText}
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            جاري تحميل بيانات الصف...
+          </motion.p>
         </motion.div>
       </div>
     )
@@ -321,22 +576,24 @@ export default function GradePage() {
           className={styles.errorCard}
         >
           <div className={styles.errorIcon}>
-            <X className="w-10 h-10 text-red-400" />
+            <X className="w-10 h-10 text-error-500" />
           </div>
           <h2 className={styles.errorTitle}>عذراً</h2>
           <p className={styles.errorMessage}>{error || 'الصف غير موجود'}</p>
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => router.push('/')}
             className={styles.backButton}
           >
             العودة للرئيسية
-          </button>
+          </motion.button>
         </motion.div>
       </div>
     )
   }
 
-  // ================== Main Content ==================
+  // ================== Filter Packages ==================
   const weeklyPackages = packages.filter(p => p.type === 'weekly')
   const monthlyPackages = packages.filter(p => p.type === 'monthly')
   const termPackages = packages.filter(p => p.type === 'term')
@@ -346,8 +603,9 @@ export default function GradePage() {
     <div className={styles.container}>
       {/* Background Effects */}
       <div className={styles.bgEffects}>
-        <div className={`${styles.bgOrb} ${styles.bgOrb1}`}></div>
-        <div className={`${styles.bgOrb} ${styles.bgOrb2}`}></div>
+        <div className={styles.animatedLines} />
+        <div className={styles.gridDots} />
+        <ParticleBackground />
       </div>
 
       <div className={styles.content}>
@@ -355,6 +613,7 @@ export default function GradePage() {
         <motion.header 
           initial={{ opacity: 0, y: -50 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 100 }}
           className={styles.header}
         >
           <div className={styles.headerContent}>
@@ -362,29 +621,68 @@ export default function GradePage() {
               className={styles.headerTitle}
               whileHover={{ scale: 1.02 }}
             >
-              <div className={styles.iconWrapper}>
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
-              <div>
+              <motion.div 
+                className={styles.gradeIcon}
+                animate={floatAnimation}
+              >
+                <GraduationCap className="w-8 h-8 text-white" />
+              </motion.div>
+              <div className={styles.titleWrapper}>
                 <h1 className={styles.title}>{grade.name}</h1>
-                <p className={styles.subtitle}>اختر باقتك وابدأ رحلة التعلم</p>
+                <p className={styles.subtitle}>اختر باقتك وابدأ رحلة التعلم معنا</p>
               </div>
             </motion.div>
 
             {user && (
               <motion.div 
-                className={styles.walletBadge}
+                className={styles.walletBalance}
                 whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <Wallet className="w-5 h-5 text-purple-400" />
-                <div>
-                  <p className={styles.walletLabel}>رصيدك</p>
-                  <p className={styles.walletAmount}>{walletBalance} جنيه</p>
+                <motion.div 
+                  className={styles.walletIcon}
+                  animate={pulseAnimation}
+                >
+                  <Wallet className="w-6 h-6 text-white" />
+                </motion.div>
+                <div className={styles.walletInfo}>
+                  <p className={styles.walletLabel}>رصيد المحفظة</p>
+                  <p className={styles.walletAmount}>{walletBalance.toLocaleString()} جنيه</p>
                 </div>
               </motion.div>
             )}
           </div>
         </motion.header>
+
+        {/* Stats Section */}
+        <motion.div 
+          className={styles.statsContainer}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className={styles.statCard}>
+            <Users className="w-8 h-8 text-primary-400" />
+            <div>
+              <h3>{stats.totalStudents.toLocaleString()}+</h3>
+              <p>طالب</p>
+            </div>
+          </div>
+          <div className={styles.statCard}>
+            <TrendingUp className="w-8 h-8 text-accent-400" />
+            <div>
+              <h3>{stats.successRate}%</h3>
+              <p>نسبة النجاح</p>
+            </div>
+          </div>
+          <div className={styles.statCard}>
+            <Zap className="w-8 h-8 text-success-500" />
+            <div>
+              <h3>{stats.activeCourses}+</h3>
+              <p>دورة نشطة</p>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Main Content */}
         <main className={styles.main}>
@@ -398,10 +696,13 @@ export default function GradePage() {
             {offerPackages.length > 0 && (
               <section className={styles.section}>
                 <motion.div variants={itemVariants} className={styles.sectionHeader}>
-                  <Sparkles className="w-6 h-6 text-yellow-400" />
-                  <h2 className={`${styles.sectionTitle} ${styles.gradientText}`}>
-                    عروض خاصة محدودة
-                  </h2>
+                  <div className={styles.sectionIcon}>
+                    <Sparkles className="w-6 h-6 text-accent-400" />
+                  </div>
+                  <div>
+                    <h2 className={styles.sectionTitle}>عروض حصرية محدودة</h2>
+                    <p className={styles.sectionSubtitle}>استغل العروض قبل انتهاء المدة</p>
+                  </div>
                 </motion.div>
                 <div className={styles.grid}>
                   {offerPackages.map((pkg, index) => (
@@ -423,8 +724,13 @@ export default function GradePage() {
             {termPackages.length > 0 && (
               <section className={styles.section}>
                 <motion.div variants={itemVariants} className={styles.sectionHeader}>
-                  <BookOpen className="w-6 h-6 text-blue-400" />
-                  <h2 className={styles.sectionTitle}>باقات الترم الكامل</h2>
+                  <div className={styles.sectionIcon}>
+                    <BookOpen className="w-6 h-6 text-primary-400" />
+                  </div>
+                  <div>
+                    <h2 className={styles.sectionTitle}>باقات الترم الكامل</h2>
+                    <p className={styles.sectionSubtitle}>تعلم بلا حدود طوال الترم</p>
+                  </div>
                 </motion.div>
                 <div className={styles.grid}>
                   {termPackages.map((pkg, index) => (
@@ -445,8 +751,13 @@ export default function GradePage() {
             {monthlyPackages.length > 0 && (
               <section className={styles.section}>
                 <motion.div variants={itemVariants} className={styles.sectionHeader}>
-                  <Calendar className="w-6 h-6 text-green-400" />
-                  <h2 className={styles.sectionTitle}>الباقات الشهرية</h2>
+                  <div className={styles.sectionIcon}>
+                    <Calendar className="w-6 h-6 text-success-500" />
+                  </div>
+                  <div>
+                    <h2 className={styles.sectionTitle}>الباقات الشهرية</h2>
+                    <p className={styles.sectionSubtitle}>مرونة في التعلم شهرياً</p>
+                  </div>
                 </motion.div>
                 <div className={styles.grid}>
                   {monthlyPackages.map((pkg, index) => (
@@ -467,8 +778,13 @@ export default function GradePage() {
             {weeklyPackages.length > 0 && (
               <section className={styles.section}>
                 <motion.div variants={itemVariants} className={styles.sectionHeader}>
-                  <Clock className="w-6 h-6 text-purple-400" />
-                  <h2 className={styles.sectionTitle}>الباقات الأسبوعية</h2>
+                  <div className={styles.sectionIcon}>
+                    <Clock className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <div>
+                    <h2 className={styles.sectionTitle}>الباقات الأسبوعية</h2>
+                    <p className={styles.sectionSubtitle}>ابدأ رحلتك هذا الأسبوع</p>
+                  </div>
                 </motion.div>
                 <div className={styles.grid}>
                   {weeklyPackages.map((pkg, index) => (
@@ -494,6 +810,7 @@ export default function GradePage() {
                   <BookOpen className="w-12 h-12 text-gray-400" />
                 </div>
                 <p className={styles.emptyText}>لا توجد باقات متاحة حالياً</p>
+                <p className={styles.emptySubtext}>سيتم إضافة باقات جديدة قريباً</p>
               </motion.div>
             )}
           </motion.div>
@@ -508,7 +825,7 @@ export default function GradePage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className={styles.modalOverlay}
-            onClick={() => setShowPurchaseModal(false)}
+            onClick={() => !purchaseSuccess && setShowPurchaseModal(false)}
           >
             <motion.div
               variants={modalVariants}
@@ -527,27 +844,38 @@ export default function GradePage() {
                   <motion.div 
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    transition={{ type: "spring" as const, stiffness: 200 }}
+                    transition={{ type: "spring", stiffness: 200 }}
                     className={styles.successIcon}
                   >
-                    <CheckCircle2 className="w-10 h-10 text-green-400" />
+                    <CheckCircle2 className="w-12 h-12 text-success-500" />
                   </motion.div>
                   <h3 className={styles.successTitle}>تهانينا!</h3>
                   <p className={styles.successMessage}>{purchaseSuccess}</p>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowPurchaseModal(false)}
+                    className={styles.closeButton}
+                    style={{ marginTop: '1.5rem' }}
+                  >
+                    إغلاق
+                  </motion.button>
                 </motion.div>
               ) : (
                 <>
                   <div className={styles.modalHeader}>
                     <div>
                       <h3 className={styles.modalTitle}>{selectedPackage.name}</h3>
-                      <p className={styles.modalPrice}>{selectedPackage.price} جنيه</p>
+                      <p className={styles.modalPrice}>{selectedPackage.price.toLocaleString()} جنيه</p>
                     </div>
-                    <button 
+                    <motion.button 
+                      whileHover={{ rotate: 90 }}
+                      whileTap={{ scale: 0.9 }}
                       onClick={() => setShowPurchaseModal(false)}
                       className={styles.closeButton}
                     >
                       <X className="w-5 h-5 text-gray-400" />
-                    </button>
+                    </motion.button>
                   </div>
 
                   <div className={styles.paymentMethods}>
@@ -557,10 +885,10 @@ export default function GradePage() {
                       onClick={() => setPaymentMethod('wallet')}
                       className={`${styles.paymentMethod} ${paymentMethod === 'wallet' ? styles.paymentMethodActive : ''}`}
                     >
-                      <CreditCard className={`w-6 h-6 ${paymentMethod === 'wallet' ? 'text-purple-400' : 'text-gray-400'}`} />
+                      <CreditCard className={`w-6 h-6 ${paymentMethod === 'wallet' ? 'text-primary-500' : 'text-gray-400'}`} />
                       <div className={styles.paymentMethodInfo}>
                         <p className={styles.paymentMethodTitle}>الدفع من المحفظة</p>
-                        <p className={styles.paymentMethodSubtitle}>رصيدك: {walletBalance} جنيه</p>
+                        <p className={styles.paymentMethodSubtitle}>رصيدك: {walletBalance.toLocaleString()} جنيه</p>
                       </div>
                       {paymentMethod === 'wallet' && <div className={styles.checkIndicator}></div>}
                     </motion.button>
@@ -571,7 +899,7 @@ export default function GradePage() {
                       onClick={() => setPaymentMethod('code')}
                       className={`${styles.paymentMethod} ${paymentMethod === 'code' ? styles.paymentMethodActive : ''}`}
                     >
-                      <Ticket className={`w-6 h-6 ${paymentMethod === 'code' ? 'text-purple-400' : 'text-gray-400'}`} />
+                      <Ticket className={`w-6 h-6 ${paymentMethod === 'code' ? 'text-primary-500' : 'text-gray-400'}`} />
                       <div className={styles.paymentMethodInfo}>
                         <p className={styles.paymentMethodTitle}>كود تفعيل</p>
                         <p className={styles.paymentMethodSubtitle}>أدخل كود الشراء</p>
@@ -581,15 +909,20 @@ export default function GradePage() {
                   </div>
 
                   {paymentMethod === 'code' && (
-                    <motion.input
+                    <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
-                      type="text"
-                      placeholder="أدخل كود التفعيل هنا"
-                      value={codeInput}
-                      onChange={(e) => setCodeInput(e.target.value)}
-                      className={styles.codeInput}
-                    />
+                      className={styles.codeInputContainer}
+                    >
+                      <input
+                        type="text"
+                        placeholder="أدخل كود التفعيل هنا"
+                        value={codeInput}
+                        onChange={(e) => setCodeInput(e.target.value)}
+                        className={styles.codeInput}
+                        dir="ltr"
+                      />
+                    </motion.div>
                   )}
 
                   {purchaseError && (
@@ -629,108 +962,5 @@ export default function GradePage() {
         )}
       </AnimatePresence>
     </div>
-  )
-}
-
-// ================== Package Card Component ==================
-function PackageCard({ 
-  pkg, 
-  index,
-  isPurchased, 
-  onPurchase, 
-  onEnter,
-  highlight = false
-}: { 
-  pkg: Package
-  index: number
-  isPurchased: boolean
-  onPurchase?: () => void
-  onEnter?: () => void
-  highlight?: boolean
-}) {
-  return (
-    <motion.div
-      variants={cardVariants}
-      initial="hidden"
-      animate="visible"
-      whileHover="hover"
-      transition={{ delay: index * 0.1 }}
-      className={`${styles.card} ${highlight ? styles.cardHighlight : ''} ${isPurchased ? styles.cardPurchased : ''}`}
-    >
-      {highlight && (
-        <div className={styles.badge}>
-          <Sparkles className="w-3 h-3" />
-          عرض خاص
-        </div>
-      )}
-
-      {isPurchased && (
-        <div className={styles.purchasedOverlay}>
-          <div className={styles.purchasedBadge}>
-            <CheckCircle2 className="w-5 h-5" />
-            تم الشراء
-          </div>
-        </div>
-      )}
-
-      <div className={styles.cardImage}>
-        {pkg.image_url ? (
-          <img 
-            src={pkg.image_url} 
-            alt={pkg.name}
-            className={styles.image}
-          />
-        ) : (
-          <div className={styles.imagePlaceholder}>
-            <BookOpen className="w-16 h-16 text-white/50" />
-          </div>
-        )}
-        <div className={styles.imageOverlay}></div>
-      </div>
-
-      <div className={styles.cardContent}>
-        <h3 className={styles.cardTitle}>{pkg.name}</h3>
-        <p className={styles.cardDescription}>{pkg.description}</p>
-
-        <div className={styles.cardMeta}>
-          <div className={styles.metaItem}>
-            <PlayCircle className="w-4 h-4 text-purple-400" />
-            <span>{pkg.lecture_count} محاضرة</span>
-          </div>
-          <div className={styles.metaItem}>
-            <Clock className="w-4 h-4 text-purple-400" />
-            <span>{pkg.duration_days} يوم</span>
-          </div>
-        </div>
-
-        <div className={styles.cardFooter}>
-          <div>
-            <p className={styles.priceLabel}>السعر</p>
-            <p className={`${styles.price} ${highlight ? styles.priceHighlight : ''}`}>
-              {pkg.price} <span className={styles.currency}>جنيه</span>
-            </p>
-          </div>
-
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={isPurchased ? onEnter : onPurchase}
-            className={`${styles.actionButton} ${isPurchased ? styles.enterButton : highlight ? styles.offerButton : styles.buyButton}`}
-          >
-            {isPurchased ? (
-              <>
-                دخول
-                <ArrowRight className="w-4 h-4" />
-              </>
-            ) : (
-              <>
-                اشترك الآن
-                <Sparkles className="w-4 h-4" />
-              </>
-            )}
-          </motion.button>
-        </div>
-      </div>
-    </motion.div>
   )
 }
