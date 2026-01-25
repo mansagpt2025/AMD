@@ -1,232 +1,130 @@
-'use client'
+// src/app/grades/[grade]/page.tsx
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClientBrowser } from '@/lib/supabase/sf-client'
-import styles from './styles.module.css'
+import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
+import { createClient } from '@/lib/supabase/sf-client'
 
-// ================== Types ==================
-interface Package {
-  id: string
-  name: string
-  description: string
-  price: number
-  image_url: string
-  type: 'weekly' | 'monthly' | 'term' | 'offer'
-  lecture_count: number
-  grade: string
-  duration_days: number
-  is_active: boolean
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
-interface UserPackage {
-  id: string
-  package_id: string
-  purchased_at: string
-  expires_at: string
-  is_active: boolean
-  packages: Package
+export const metadata: Metadata = {
+  title: 'الصف الدراسي',
+  description: 'محتوى الصف الدراسي',
 }
 
-interface Grade {
-  id: string
-  name: string
-  slug: string
+interface GradePageProps {
+  params: {
+    grade: string
+  }
 }
 
-// ================== Page ==================
-export default function GradePage({ params }: { params: { grade: string } }) {
-  const [grade, setGrade] = useState<Grade | null>(null)
-  const [packages, setPackages] = useState<Package[]>([])
-  const [userPackages, setUserPackages] = useState<UserPackage[]>([])
-  const [user, setUser] = useState<any>(null)
-  const [walletBalance, setWalletBalance] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'code'>('wallet')
-  const [codeInput, setCodeInput] = useState('')
-  const [purchaseError, setPurchaseError] = useState('')
-  const [purchaseSuccess, setPurchaseSuccess] = useState('')
+// ✅ Helper صحيح للـ timeout
+async function withTimeout<T>(fn: () => Promise<T>, ms = 10000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Supabase request timeout'))
+    }, ms)
 
-  const router = useRouter()
-  const supabase = createClientBrowser()
+    fn()
+      .then((res) => {
+        clearTimeout(timer)
+        resolve(res)
+      })
+      .catch((err) => {
+        clearTimeout(timer)
+        reject(err)
+      })
+  })
+}
 
-  useEffect(() => {
-    if (params.grade) {
-      fetchData()
-      checkUser()
-    }
-  }, [params.grade])
+export default async function GradePage({ params }: GradePageProps) {
+  const supabase = createClient()
 
-  // ================== Data ==================
-  const fetchData = async () => {
-    setLoading(true)
+  console.log('Grade Slug:', params.grade)
 
-    try {
-      // ----- Grade -----
-      const { data: gradeData, error: gradeError } = await supabase
-        .from('grades')
-        .select('*')
-        .eq('slug', params.grade)
-        .maybeSingle()
-
-      if (gradeError) {
-        console.error('Error fetching grade:', gradeError)
-        setGrade(null)
-      } else {
-        setGrade(gradeData)
-      }
-
-      // ----- Packages -----
-      const { data: packagesData, error: packagesError } = await supabase
-        .from('packages')
-        .select('*')
-        .eq('grade', params.grade)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-
-      if (packagesError) {
-        console.error('Error fetching packages:', packagesError)
-        setPackages([])
-      } else {
-        setPackages(packagesData || [])
-      }
-
-    } catch (error) {
-      console.error('Error in fetchData:', error)
-      setGrade(null)
-      setPackages([])
-    } finally {
-      // 🔥 يمنع التحميل للأبد
-      setLoading(false)
-    }
-  }
-
-  const checkUser = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      setUser(user)
-
-      const { data: walletData } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      if (walletData) {
-        setWalletBalance(walletData.balance)
-      }
-
-      const { data: userPackagesData } = await supabase
-        .from('user_packages')
-        .select(`
-          *,
-          packages (*)
-        `)
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-
-      if (userPackagesData) {
-        const filtered = userPackagesData.filter(
-          (up: any) => up.packages?.grade === params.grade
-        )
-        setUserPackages(filtered)
-      }
-
-    } catch (error) {
-      console.error('Error in checkUser:', error)
-    }
-  }
-
-  // ================== UI ==================
-  if (loading) {
-    return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loader}></div>
-        <p>جاري تحميل بيانات الصف...</p>
-      </div>
-    )
-  }
-
-  if (!grade) {
-    return (
-      <div className={styles.notFound}>
-        <h1>الصف غير موجود</h1>
-        <button 
-          onClick={() => router.push('/')}
-          className={styles.backButton}
-        >
-          العودة للرئيسية
-        </button>
-      </div>
-    )
-  }
-
-  const weeklyPackages = packages.filter(p => p.type === 'weekly')
-  const monthlyPackages = packages.filter(p => p.type === 'monthly')
-  const termPackages = packages.filter(p => p.type === 'term')
-  const offerPackages = packages.filter(p => p.type === 'offer')
-
-  return (
-    <div className={`${styles.container} ${styles[`grade-${grade.slug}`]}`}>
-      {/* كل JSX كما هو بدون تغيير */}
-    </div>
+  // ===============================
+  // جلب بيانات الصف
+  // ===============================
+  const gradeRes = await withTimeout(() =>
+    supabase
+      .from('grades')
+      .select('*')
+      .eq('slug', params.grade)
+      .maybeSingle()
   )
-}
 
-// ================== Package Card ==================
-function PackageCard({ 
-  pkg, 
-  isPurchased, 
-  onPurchase, 
-  onEnter 
-}: { 
-  pkg: Package
-  isPurchased: boolean
-  onPurchase?: () => void
-  onEnter?: () => void
-}) {
+  if (gradeRes.error) {
+    console.error('Grade error:', gradeRes.error)
+    notFound()
+  }
+
+  if (!gradeRes.data) {
+    console.error('Grade not found for slug:', params.grade)
+    notFound()
+  }
+
+  const grade = gradeRes.data
+
+  // ===============================
+  // جلب الباقات
+  // ===============================
+  const packagesRes = await withTimeout(() =>
+    supabase
+      .from('packages')
+      .select('*')
+      .eq('grade', params.grade)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+  )
+
+  if (packagesRes.error) {
+    console.error('Packages error:', packagesRes.error)
+    throw new Error('Failed to load packages')
+  }
+
+  const packages = packagesRes.data || []
+
+  // ===============================
+  // UI
+  // ===============================
   return (
-    <div className={styles.packageCard}>
-      {/* نفس كود الكارت كما هو */}
-      <div className={styles.packageImage}>
-        <img 
-          src={pkg.image_url || '/default-package.jpg'} 
-          alt={pkg.name}
-          onError={(e) => {
-            e.currentTarget.src = '/default-package.jpg'
-          }}
-          loading="lazy"
-        />
-      </div>
-      <div className={styles.packageContent}>
-        <h3 className={styles.packageName}>{pkg.name}</h3>
-        <p className={styles.packageDescription}>{pkg.description}</p>
-        <div className={styles.packageDetails}>
-          <span className={styles.lectureCount}>
-            📚 {pkg.lecture_count} محاضرة
-          </span>
-          <span className={styles.price}>💰 {pkg.price} جنيه</span>
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">
+        الصف: {grade.name}
+      </h1>
+
+      {packages.length === 0 ? (
+        <p className="text-gray-500">
+          لا توجد باقات متاحة لهذا الصف حالياً
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {packages.map((pkg) => (
+            <div
+              key={pkg.id}
+              className="border rounded-lg p-4 shadow"
+            >
+              <h2 className="font-bold text-lg mb-2">
+                {pkg.name}
+              </h2>
+
+              <p className="text-sm text-gray-600 mb-2">
+                {pkg.description}
+              </p>
+
+              <p className="font-semibold">
+                السعر: {pkg.price} جنيه
+              </p>
+
+              <p className="text-xs text-gray-500 mt-1">
+                النوع: {pkg.type}
+              </p>
+            </div>
+          ))}
         </div>
-        <div className={styles.packageType}>
-          <span className={`${styles.typeBadge} ${styles[pkg.type]}`}>
-            {pkg.type === 'weekly' && 'أسبوعية'}
-            {pkg.type === 'monthly' && 'شهرية'}
-            {pkg.type === 'term' && 'ترم'}
-            {pkg.type === 'offer' && 'عرض'}
-          </span>
-        </div>
-        <button
-          className={`${styles.actionButton} ${isPurchased ? styles.enterButton : styles.purchaseButton}`}
-          onClick={isPurchased ? onEnter : onPurchase}
-          aria-label={isPurchased ? `الدخول إلى باقة ${pkg.name}` : `شراء باقة ${pkg.name}`}
-        >
-          {isPurchased ? 'الدخول' : 'شراء'}
-        </button>
-      </div>
+      )}
     </div>
   )
 }
