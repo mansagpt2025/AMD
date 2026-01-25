@@ -191,6 +191,9 @@ function PackageCard({
 }) {
   return (
     <div className={styles.packageCard}>
+      {/* نفس كود الكارت كما هو */}
+
+
       <div className={styles.packageImage}>
         <img 
           src={pkg.image_url || '/default-package.jpg'} 
