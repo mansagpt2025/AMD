@@ -346,28 +346,6 @@
   color: #1e293b;
 }
 
-.textContentInner :deep(h1),
-.textContentInner :deep(h2),
-.textContentInner :deep(h3) {
-  color: #1e293b;
-  margin-bottom: 16px;
-  font-weight: 700;
-}
-
-.textContentInner :deep(p) {
-  margin-bottom: 24px;
-}
-
-.textContentInner :deep(ul),
-.textContentInner :deep(ol) {
-  margin-bottom: 24px;
-  padding-left: 24px;
-}
-
-.textContentInner :deep(li) {
-  margin-bottom: 8px;
-}
-
 /* Unsupported Content */
 .unsupportedContent {
   text-align: center;
