@@ -624,7 +624,6 @@ function PackageCard({
               highlight ? styles.offerButton : 
               styles.buyButton
             }`}
-            disabled={isPurchased}
           >
             {isPurchased ? (
               <>
@@ -765,7 +764,7 @@ export default function GradePage() {
 
         if (walletData) setWalletBalance(walletData.balance)
 
-        // Fetch User Packages
+        // Fetch User Packages - تحقق من جميع اشتراكات المستخدم
         const { data: userPackagesData } = await supabase
           .from('user_packages')
           .select(`*, packages (*)`)
@@ -773,14 +772,45 @@ export default function GradePage() {
           .eq('is_active', true)
 
         if (userPackagesData) {
+          // تصفية الباقات التي تنتمي لهذا الصف
           const filtered = userPackagesData.filter((up: any) => up.packages?.grade === gradeSlug)
           setUserPackages(filtered)
         }
+      } else {
+        setUser(null)
+        setUserPackages([])
       }
     } catch (err) {
       console.error('Error checking user:', err)
     }
   }
+
+  // ================== Helper Functions ==================
+  const isPackagePurchased = (packageId: string) => {
+    return userPackages.some(up => up.package_id === packageId)
+  }
+
+  const getPurchasedPackage = (packageId: string) => {
+    return userPackages.find(up => up.package_id === packageId)
+  }
+
+  // ================== Filter Packages ==================
+  // الحصول على الباقات المشتراة
+  const purchasedPackages = userPackages
+    .filter(up => up.is_active && up.packages)
+    .map(up => up.packages)
+    .filter((pkg): pkg is Package => pkg !== null && pkg !== undefined)
+
+  // الحصول على الباقات المتاحة (غير مشتراة)
+  const availablePackages = packages.filter(pkg => 
+    !userPackages.some(up => up.package_id === pkg.id)
+  )
+
+  // تصفية الباقات المتاحة حسب النوع (ستعرض فقط الباقات غير المشتراة)
+  const weeklyPackages = availablePackages.filter(p => p.type === 'weekly')
+  const monthlyPackages = availablePackages.filter(p => p.type === 'monthly')
+  const termPackages = availablePackages.filter(p => p.type === 'term')
+  const offerPackages = availablePackages.filter(p => p.type === 'offer')
 
   // ================== Code Validation ==================
   const validateCode = async (code: string) => {
@@ -842,14 +872,11 @@ export default function GradePage() {
     }
     
     // التحقق إذا كانت الباقة مشتراة مسبقاً
-    const isPurchased = userPackages.some(up => up.package_id === pkg.id)
+    const isPurchased = isPackagePurchased(pkg.id)
     
     if (isPurchased) {
-      setPurchaseError('لقد قمت بشراء هذه الباقة مسبقاً!')
-      setTimeout(() => {
-        // توجيه المستخدم للباقة المشتراة
-        router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)
-      }, 2000)
+      // إذا كانت مشتراة، توجه مباشرة للباقة
+      router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)
       return
     }
     
@@ -862,6 +889,10 @@ export default function GradePage() {
     setCodeValidationSuccess('')
     setValidatedCode(null)
     setShowPurchaseModal(true)
+  }
+
+  const handleEnterPackage = (pkgId: string) => {
+    router.push(`/grades/${gradeSlug}/packages/${pkgId}`)
   }
 
   const handlePurchase = async () => {
@@ -894,18 +925,30 @@ export default function GradePage() {
           throw new Error(data.message || 'فشل عملية الشراء')
         }
 
-        setPurchaseSuccess('تم الشراء بنجاح! 🎉 سيتم تحويلك للباقة...')
+        setPurchaseSuccess('تم الشراء بنجاح! 🎉 سيتم تحديث صفحتك...')
         
         // تحديث الرصيد
         setWalletBalance(data.newBalance)
         
-        // تحديث الباقات
+        // إضافة الباقة المشتراة إلى userPackages محلياً
+        const newUserPackage: UserPackage = {
+          id: `temp-${Date.now()}`,
+          package_id: selectedPackage.id,
+          purchased_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
+          is_active: true,
+          packages: selectedPackage
+        }
+        
+        setUserPackages(prev => [...prev, newUserPackage])
+        
+        // تحديث البيانات من السيرفر
         await checkUser()
         
         setTimeout(() => {
           setShowPurchaseModal(false)
-          // توجيه المستخدم للباقة المشتراة
-          router.push(`/grades/${gradeSlug}/packages/${selectedPackage.id}`)
+          // تحديث الصفحة لتعكس التغييرات
+          fetchData()
         }, 2000)
 
       } else {
@@ -934,15 +977,27 @@ export default function GradePage() {
           throw new Error(data.message || 'فشل تفعيل الكود')
         }
 
-        setPurchaseSuccess('تم التفعيل بنجاح! 🎉 سيتم تحويلك للباقة...')
+        setPurchaseSuccess('تم التفعيل بنجاح! 🎉 سيتم تحديث صفحتك...')
         
-        // تحديث الباقات
+        // إضافة الباقة المشتراة إلى userPackages محلياً
+        const newUserPackage: UserPackage = {
+          id: `temp-${Date.now()}`,
+          package_id: selectedPackage.id,
+          purchased_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
+          is_active: true,
+          packages: selectedPackage
+        }
+        
+        setUserPackages(prev => [...prev, newUserPackage])
+        
+        // تحديث البيانات من السيرفر
         await checkUser()
         
         setTimeout(() => {
           setShowPurchaseModal(false)
-          // توجيه المستخدم للباقة المشتراة
-          router.push(`/grades/${gradeSlug}/packages/${selectedPackage.id}`)
+          // تحديث الصفحة لتعكس التغييرات
+          fetchData()
         }, 2000)
       }
     } catch (err: any) {
@@ -951,28 +1006,6 @@ export default function GradePage() {
       setIsPurchasing(false)
     }
   }
-
-  const isPackagePurchased = (packageId: string) => {
-    return userPackages.some(up => up.package_id === packageId)
-  }
-
-  // ================== Filter Packages ==================
-  // الحصول على الباقات المشتراة
-  const purchasedPackages = userPackages
-    .filter(up => up.is_active)
-    .map(up => up.packages)
-    .filter((pkg): pkg is Package => pkg !== null && pkg !== undefined)
-
-  // الحصول على الباقات المتاحة (غير مشتراة)
-  const availablePackages = packages.filter(pkg => 
-    !userPackages.some(up => up.package_id === pkg.id)
-  )
-
-  // تصفية الباقات المتاحة حسب النوع
-  const weeklyPackages = availablePackages.filter(p => p.type === 'weekly')
-  const monthlyPackages = availablePackages.filter(p => p.type === 'monthly')
-  const termPackages = availablePackages.filter(p => p.type === 'term')
-  const offerPackages = availablePackages.filter(p => p.type === 'offer')
 
   // ================== Loading State ==================
   if (loading) {
@@ -1491,7 +1524,7 @@ export default function GradePage() {
                         repeat: Infinity
                       }}
                     >
-                      اشتراكاتك
+                      اشتراكاتك النشطة
                     </motion.h2>
                     <p className={styles.sectionSubtitle}>الباقات التي قمت بشرائها</p>
                   </div>
@@ -1516,7 +1549,7 @@ export default function GradePage() {
                       pkg={pkg} 
                       index={index}
                       isPurchased={true}
-                      onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
+                      onEnter={() => handleEnterPackage(pkg.id)}
                     />
                   ))}
                 </div>
@@ -1582,7 +1615,6 @@ export default function GradePage() {
                       index={index}
                       isPurchased={false}
                       onPurchase={() => handlePurchaseClick(pkg)}
-                      onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
                       highlight={true}
                     />
                   ))}
@@ -1619,7 +1651,6 @@ export default function GradePage() {
                       index={index}
                       isPurchased={false}
                       onPurchase={() => handlePurchaseClick(pkg)}
-                      onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
                     />
                   ))}
                 </div>
@@ -1656,7 +1687,6 @@ export default function GradePage() {
                       index={index}
                       isPurchased={false}
                       onPurchase={() => handlePurchaseClick(pkg)}
-                      onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
                     />
                   ))}
                 </div>
@@ -1692,7 +1722,6 @@ export default function GradePage() {
                       index={index}
                       isPurchased={false}
                       onPurchase={() => handlePurchaseClick(pkg)}
-                      onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
                     />
                   ))}
                 </div>
