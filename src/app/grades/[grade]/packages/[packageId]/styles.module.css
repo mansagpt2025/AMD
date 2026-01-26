@@ -1,0 +1,561 @@
+/* Container */
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 20px;
+}
+
+/* Loading State */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 20px;
+}
+
+.loadingSpinner {
+  color: #3b82f6;
+}
+
+.loadingText {
+  color: #64748b;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+/* Error State */
+.errorContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+}
+
+.errorContent {
+  text-align: center;
+  max-width: 400px;
+  padding: 40px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.errorTitle {
+  font-size: 24px;
+  font-weight: bold;
+  color: #dc2626;
+  margin: 20px 0;
+}
+
+.errorMessage {
+  color: #64748b;
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.backButton:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+}
+
+/* Header */
+.header {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  margin-bottom: 30px;
+  font-size: 14px;
+}
+
+.breadcrumbItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.breadcrumbItem:hover {
+  color: #3b82f6;
+}
+
+.breadcrumbCurrent {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.packageHeader {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .packageHeader {
+    grid-template-columns: 1fr;
+  }
+}
+
+.packageImage {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 16/9;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.imagePlaceholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.packageInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.packageTitle {
+  font-size: 32px;
+  font-weight: bold;
+  color: #1e293b;
+  margin: 0;
+}
+
+.packageDescription {
+  color: #64748b;
+  line-height: 1.8;
+  font-size: 16px;
+  margin: 0;
+}
+
+.packageStats {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.statItem svg {
+  color: #3b82f6;
+}
+
+/* Progress Section */
+.progressSection {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.progressHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.progressHeader svg {
+  color: #3b82f6;
+}
+
+.percentage {
+  margin-left: auto;
+  font-size: 24px;
+  font-weight: bold;
+  color: #10b981;
+}
+
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 15px 0;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  border-radius: 4px;
+}
+
+.progressDetails {
+  display: flex;
+  justify-content: space-between;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Lectures Container */
+.lecturesContainer {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.lecturesTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #1e293b;
+  margin: 0 0 30px 0;
+}
+
+.lecturesTitle svg {
+  color: #3b82f6;
+}
+
+.emptyLectures {
+  text-align: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+}
+
+.lecturesList {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* Lecture Card */
+.lectureCard {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 25px;
+  border: 1px solid #e2e8f0;
+}
+
+.lectureHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 25px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.lectureInfo {
+  flex: 1;
+}
+
+.lectureTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 10px 0;
+}
+
+.lectureDescription {
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.lectureOrder {
+  margin-left: 20px;
+}
+
+.orderBadge {
+  padding: 6px 12px;
+  background: #3b82f6;
+  color: white;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Contents List */
+.contentsList {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.contentItem {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.contentAccessible {
+  border-color: #dbeafe;
+}
+
+.contentAccessible:hover {
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.1);
+}
+
+.contentLocked {
+  border-color: #f1f5f9;
+  opacity: 0.7;
+}
+
+.contentHeader {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.contentIcon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.contentIcon svg {
+  color: #3b82f6;
+}
+
+.contentInfo {
+  flex: 1;
+}
+
+.contentTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 5px 0;
+}
+
+.contentDescription {
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 10px 0;
+}
+
+.contentMeta {
+  display: flex;
+  gap: 15px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.contentType, .contentDuration, .examInfo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.contentActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 15px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.contentStatus {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.examScore {
+  background: #d1fae5;
+  color: #065f46;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.failedText {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.completedText {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.contentButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.buttonEnabled {
+  background: #3b82f6;
+  color: white;
+}
+
+.buttonEnabled:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+}
+
+.buttonDisabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.lockMessage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 15px;
+  padding: 10px;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* Package Footer */
+.packageFooter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 30px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.footerCard {
+  display: flex;
+  gap: 20px;
+  padding: 25px;
+  background: #f0f9ff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 800px;
+}
+
+.footerCard svg {
+  color: #3b82f6;
+  flex-shrink: 0;
+}
+
+.footerInfo {
+  flex: 1;
+}
+
+.footerInfo h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 15px 0;
+}
+
+.notesList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notesList li {
+  padding: 8px 0;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+  padding-left: 20px;
+  position: relative;
+}
+
+.notesList li:before {
+  content: "•";
+  color: #3b82f6;
+  position: absolute;
+  left: 0;
+}
+
+.backToPackages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 30px;
+  background: white;
+  color: #3b82f6;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.backToPackages:hover {
+  background: #3b82f6;
+  color: white;
+  transform: translateY(-2px);
+}
