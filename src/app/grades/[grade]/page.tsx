@@ -32,9 +32,7 @@ import {
   Moon,
   Sun,
   Waves as WavesIcon,
-  UserCheck,
-  Package,
-  CheckSquare
+  Package
 } from 'lucide-react'
 import styles from './styles.module.css'
 
@@ -358,8 +356,7 @@ function PackageCard({
   isPurchased, 
   onPurchase, 
   onEnter,
-  highlight = false,
-  isMySubscription = false
+  highlight = false
 }: { 
   pkg: Package
   index: number
@@ -367,7 +364,6 @@ function PackageCard({
   onPurchase?: () => void
   onEnter?: () => void
   highlight?: boolean
-  isMySubscription?: boolean
 }) {
   const cardRef = useRef<HTMLDivElement>(null)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
@@ -416,7 +412,7 @@ function PackageCard({
         stiffness: 200,
         damping: 20
       }}
-      className={`${styles.card} ${highlight ? styles.cardHighlight : ''} ${isPurchased ? styles.cardPurchased : ''} ${isMySubscription ? styles.mySubscriptionCard : ''}`}
+      className={`${styles.card} ${highlight ? styles.cardHighlight : ''} ${isPurchased ? styles.cardPurchased : ''}`}
       onMouseMove={handleMouseMove}
       style={{
         '--mouse-x': `${mousePosition.x}%`,
@@ -473,30 +469,6 @@ function PackageCard({
         </motion.div>
       )}
 
-      {/* My Subscription Badge */}
-      {isMySubscription && (
-        <motion.div 
-          className={styles.mySubscriptionBadge}
-          initial={{ scale: 0, rotate: -10 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 300 }}
-        >
-          <UserCheck className="w-4 h-4" />
-          <span>مشترك</span>
-          <motion.div
-            className={styles.badgeGlow}
-            animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.5, 0.8, 0.5]
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity
-            }}
-          />
-        </motion.div>
-      )}
-
       {/* Type Badge */}
       <motion.div 
         className={styles.typeBadge}
@@ -510,22 +482,16 @@ function PackageCard({
                pkg.type === 'term' ? 'ترم كامل' : 'عرض خاص'}</span>
       </motion.div>
 
-      {/* Purchased Overlay */}
-      {isPurchased && !isMySubscription && (
+      {/* Purchased Badge */}
+      {isPurchased && (
         <motion.div 
-          className={styles.purchasedOverlay}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          className={styles.purchasedBadge}
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 250 }}
         >
-          <motion.div 
-            className={styles.purchasedBadge}
-            initial={{ scale: 0, rotate: -20 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 250 }}
-          >
-            <CheckCircle2 className="w-6 h-6" />
-            <span>مشترك بالفعل</span>
-          </motion.div>
+          <CheckCircle2 className="w-6 h-6" />
+          <span>مشترك بالفعل</span>
         </motion.div>
       )}
 
@@ -624,43 +590,27 @@ function PackageCard({
 
         {/* Card Footer */}
         <div className={styles.cardFooter}>
-          {!isMySubscription && (
-            <motion.div 
-              className={styles.priceInfo}
-              whileHover={{ scale: 1.05 }}
-            >
-              <p className={styles.priceLabel}>السعر</p>
-              <div className={styles.priceWrapper}>
-                <p className={`${styles.price} ${highlight ? styles.priceHighlight : ''}`}>
-                  {pkg.price.toLocaleString()}
-                </p>
-                <span className={styles.currency}>جنيه</span>
-              </div>
-              {pkg.type === 'offer' && (
-                <motion.p 
-                  className={styles.originalPrice}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                >
-                  كان {Math.round(pkg.price * 1.3).toLocaleString()} جنيه
-                </motion.p>
-              )}
-            </motion.div>
-          )}
-
-          {isMySubscription && (
-            <motion.div 
-              className={styles.subscriptionInfo}
-              whileHover={{ scale: 1.05 }}
-            >
-              <p className={styles.subscriptionLabel}>تاريخ الاشتراك</p>
-              <div className={styles.subscriptionDate}>
-                <Calendar className="w-4 h-4" />
-                <span>قريباً</span>
-              </div>
-              <p className={styles.expiresLabel}>تنتهي بعد {pkg.duration_days} يوم</p>
-            </motion.div>
-          )}
+          <motion.div 
+            className={styles.priceInfo}
+            whileHover={{ scale: 1.05 }}
+          >
+            <p className={styles.priceLabel}>السعر</p>
+            <div className={styles.priceWrapper}>
+              <p className={`${styles.price} ${highlight ? styles.priceHighlight : ''}`}>
+                {pkg.price.toLocaleString()}
+              </p>
+              <span className={styles.currency}>جنيه</span>
+            </div>
+            {pkg.type === 'offer' && (
+              <motion.p 
+                className={styles.originalPrice}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+              >
+                كان {Math.round(pkg.price * 1.3).toLocaleString()} جنيه
+              </motion.p>
+            )}
+          </motion.div>
 
           <motion.button
             whileHover={{ 
@@ -668,17 +618,17 @@ function PackageCard({
               boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)"
             }}
             whileTap={{ scale: 0.95 }}
-            onClick={isPurchased || isMySubscription ? onEnter : onPurchase}
+            onClick={isPurchased ? onEnter : onPurchase}
             className={`${styles.actionButton} ${
-              isPurchased || isMySubscription ? styles.enterButton : 
+              isPurchased ? styles.enterButton : 
               highlight ? styles.offerButton : 
               styles.buyButton
             }`}
-            disabled={isPurchased && !isMySubscription}
+            disabled={isPurchased}
           >
-            {isPurchased || isMySubscription ? (
+            {isPurchased ? (
               <>
-                <span>دخول للمحاضرات</span>
+                <span>دخول للباقة</span>
                 <motion.div
                   animate={{
                     x: [0, 5, 0]
@@ -762,23 +712,35 @@ export default function GradePage() {
   // ================== Load Data ==================
   useEffect(() => {
     if (gradeSlug) {
-      fetchAllData()
+      fetchData()
+      checkUser()
     }
   }, [gradeSlug])
 
-  const fetchAllData = async () => {
+  const fetchData = async () => {
     setLoading(true)
     setError(null)
 
     try {
-      // 1. تحميل بيانات الصف أولاً
-      await fetchGradeData()
-      
-      // 2. تحقق من المستخدم وجميع بياناته
-      await checkUserAndPackages()
-      
-      // 3. تحميل الباقات المتاحة (غير المشتراة)
-      await fetchAvailablePackages()
+      const { data: gradeData, error: gradeError } = await supabase
+        .from('grades')
+        .select('*')
+        .eq('slug', gradeSlug)
+        .maybeSingle()
+
+      if (gradeError) throw new Error('خطأ في تحميل بيانات الصف')
+      if (!gradeData) throw new Error('الصف غير موجود')
+      setGrade(gradeData)
+
+      const { data: packagesData, error: packagesError } = await supabase
+        .from('packages')
+        .select('*')
+        .eq('grade', gradeSlug)
+        .eq('is_active', true)
+        .order('price', { ascending: true })
+
+      if (packagesError) throw new Error('خطأ في تحميل الباقات')
+      setPackages(packagesData || [])
 
     } catch (err: any) {
       setError(err.message)
@@ -787,26 +749,14 @@ export default function GradePage() {
     }
   }
 
-  const fetchGradeData = async () => {
-    const { data: gradeData, error: gradeError } = await supabase
-      .from('grades')
-      .select('*')
-      .eq('slug', gradeSlug)
-      .maybeSingle()
-
-    if (gradeError) throw new Error('خطأ في تحميل بيانات الصف')
-    if (!gradeData) throw new Error('الصف غير موجود')
-    setGrade(gradeData)
-  }
-
-  const checkUserAndPackages = async () => {
+  const checkUser = async () => {
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser()
       
       if (currentUser) {
         setUser(currentUser)
         
-        // 1. جلب رصيد المحفظة
+        // Fetch Wallet
         const { data: walletData } = await supabase
           .from('wallets')
           .select('balance')
@@ -815,13 +765,10 @@ export default function GradePage() {
 
         if (walletData) setWalletBalance(walletData.balance)
 
-        // 2. جلب جميع باقات المستخدم لهذا الصف
+        // Fetch User Packages
         const { data: userPackagesData } = await supabase
           .from('user_packages')
-          .select(`
-            *,
-            packages (*)
-          `)
+          .select(`*, packages (*)`)
           .eq('user_id', currentUser.id)
           .eq('is_active', true)
 
@@ -831,53 +778,7 @@ export default function GradePage() {
         }
       }
     } catch (err) {
-      console.error('Error checking user and packages:', err)
-      throw new Error('فشل في تحميل بيانات المستخدم')
-    }
-  }
-
-  const fetchAvailablePackages = async () => {
-    try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
-      
-      if (currentUser) {
-        // جلب الباقات المتاحة لهذا الصف
-        const { data: packagesData, error: packagesError } = await supabase
-          .from('packages')
-          .select('*')
-          .eq('grade', gradeSlug)
-          .eq('is_active', true)
-          .order('price', { ascending: true })
-
-        if (packagesError) throw new Error('خطأ في تحميل الباقات')
-        
-        // جلب الباقات المشتراة للمستخدم
-        const { data: purchasedPackages } = await supabase
-          .from('user_packages')
-          .select('package_id')
-          .eq('user_id', currentUser.id)
-          .eq('is_active', true)
-
-        // تصفية الباقات المشتراة من القائمة
-        const purchasedIds = purchasedPackages?.map(p => p.package_id) || []
-        const availablePackages = packagesData?.filter(pkg => !purchasedIds.includes(pkg.id)) || []
-        
-        setPackages(availablePackages)
-      } else {
-        // إذا لم يكن هناك مستخدم، عرض جميع الباقات
-        const { data: packagesData, error: packagesError } = await supabase
-          .from('packages')
-          .select('*')
-          .eq('grade', gradeSlug)
-          .eq('is_active', true)
-          .order('price', { ascending: true })
-
-        if (packagesError) throw new Error('خطأ في تحميل الباقات')
-        setPackages(packagesData || [])
-      }
-    } catch (err) {
-      console.error('Error fetching available packages:', err)
-      throw new Error('فشل في تحميل الباقات المتاحة')
+      console.error('Error checking user:', err)
     }
   }
 
@@ -940,6 +841,18 @@ export default function GradePage() {
       return
     }
     
+    // التحقق إذا كانت الباقة مشتراة مسبقاً
+    const isPurchased = userPackages.some(up => up.package_id === pkg.id)
+    
+    if (isPurchased) {
+      setPurchaseError('لقد قمت بشراء هذه الباقة مسبقاً!')
+      setTimeout(() => {
+        // توجيه المستخدم للباقة المشتراة
+        router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)
+      }, 2000)
+      return
+    }
+    
     setSelectedPackage(pkg)
     setPaymentMethod('wallet')
     setCodeInput('')
@@ -981,15 +894,18 @@ export default function GradePage() {
           throw new Error(data.message || 'فشل عملية الشراء')
         }
 
-        setPurchaseSuccess('تم الشراء بنجاح! 🎉 يتم تحديث صفحتك...')
+        setPurchaseSuccess('تم الشراء بنجاح! 🎉 سيتم تحويلك للباقة...')
         
-        // تحديث جميع البيانات
-        await fetchAllData()
+        // تحديث الرصيد
+        setWalletBalance(data.newBalance)
+        
+        // تحديث الباقات
+        await checkUser()
         
         setTimeout(() => {
           setShowPurchaseModal(false)
-          // إعادة تحميل البيانات
-          fetchAllData()
+          // توجيه المستخدم للباقة المشتراة
+          router.push(`/grades/${gradeSlug}/packages/${selectedPackage.id}`)
         }, 2000)
 
       } else {
@@ -1018,15 +934,15 @@ export default function GradePage() {
           throw new Error(data.message || 'فشل تفعيل الكود')
         }
 
-        setPurchaseSuccess('تم التفعيل بنجاح! 🎉 يتم تحديث صفحتك...')
+        setPurchaseSuccess('تم التفعيل بنجاح! 🎉 سيتم تحويلك للباقة...')
         
-        // تحديث جميع البيانات
-        await fetchAllData()
+        // تحديث الباقات
+        await checkUser()
         
         setTimeout(() => {
           setShowPurchaseModal(false)
-          // إعادة تحميل البيانات
-          fetchAllData()
+          // توجيه المستخدم للباقة المشتراة
+          router.push(`/grades/${gradeSlug}/packages/${selectedPackage.id}`)
         }, 2000)
       }
     } catch (err: any) {
@@ -1036,15 +952,27 @@ export default function GradePage() {
     }
   }
 
-  // ================== Filter Packages ==================
-  const getPurchasedPackages = () => {
-    return userPackages.map(up => up.packages)
+  const isPackagePurchased = (packageId: string) => {
+    return userPackages.some(up => up.package_id === packageId)
   }
 
-  const getAvailablePackages = () => {
-    const purchasedIds = userPackages.map(up => up.package_id)
-    return packages.filter(pkg => !purchasedIds.includes(pkg.id))
-  }
+  // ================== Filter Packages ==================
+  // الحصول على الباقات المشتراة
+  const purchasedPackages = userPackages
+    .filter(up => up.is_active)
+    .map(up => up.packages)
+    .filter((pkg): pkg is Package => pkg !== null && pkg !== undefined)
+
+  // الحصول على الباقات المتاحة (غير مشتراة)
+  const availablePackages = packages.filter(pkg => 
+    !userPackages.some(up => up.package_id === pkg.id)
+  )
+
+  // تصفية الباقات المتاحة حسب النوع
+  const weeklyPackages = availablePackages.filter(p => p.type === 'weekly')
+  const monthlyPackages = availablePackages.filter(p => p.type === 'monthly')
+  const termPackages = availablePackages.filter(p => p.type === 'term')
+  const offerPackages = availablePackages.filter(p => p.type === 'offer')
 
   // ================== Loading State ==================
   if (loading) {
@@ -1174,14 +1102,6 @@ export default function GradePage() {
       </div>
     )
   }
-
-  // ================== Filter Packages ==================
-  const weeklyPackages = getAvailablePackages().filter(p => p.type === 'weekly')
-  const monthlyPackages = getAvailablePackages().filter(p => p.type === 'monthly')
-  const termPackages = getAvailablePackages().filter(p => p.type === 'term')
-  const offerPackages = getAvailablePackages().filter(p => p.type === 'offer')
-  
-  const purchasedPackages = getPurchasedPackages()
 
   return (
     <div className={`${styles.container} ${theme === 'dark' ? styles.dark : styles.light}`}>
@@ -1538,8 +1458,8 @@ export default function GradePage() {
             animate="visible"
             className={styles.sections}
           >
-            {/* قسم اشتراكاتي - يظهر فقط إذا كان لدى المستخدم باقات مشتراة */}
-            {user && purchasedPackages.length > 0 && (
+            {/* Section: Your Subscriptions */}
+            {purchasedPackages.length > 0 && (
               <section className={styles.section}>
                 <motion.div 
                   variants={itemVariants} 
@@ -1558,7 +1478,7 @@ export default function GradePage() {
                       ease: "linear"
                     }}
                   >
-                    <UserCheck className="w-8 h-8" />
+                    <Package className="w-8 h-8" />
                   </motion.div>
                   <div>
                     <motion.h2 
@@ -1573,7 +1493,7 @@ export default function GradePage() {
                     >
                       اشتراكاتك
                     </motion.h2>
-                    <p className={styles.sectionSubtitle}>الباقات التي اشتركت بها مسبقاً</p>
+                    <p className={styles.sectionSubtitle}>الباقات التي قمت بشرائها</p>
                   </div>
                   <motion.div 
                     className={styles.sectionBadge}
@@ -1592,19 +1512,18 @@ export default function GradePage() {
                 <div className={styles.grid}>
                   {purchasedPackages.map((pkg, index) => (
                     <PackageCard 
-                      key={`purchased-${pkg.id}`} 
+                      key={pkg.id} 
                       pkg={pkg} 
                       index={index}
                       isPurchased={true}
                       onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
-                      isMySubscription={true}
                     />
                   ))}
                 </div>
               </section>
             )}
 
-            {/* Offers Section - تظهر فقط الباقات غير المشتراة */}
+            {/* Offers Section */}
             {offerPackages.length > 0 && (
               <section className={styles.section}>
                 <motion.div 
@@ -1663,6 +1582,7 @@ export default function GradePage() {
                       index={index}
                       isPurchased={false}
                       onPurchase={() => handlePurchaseClick(pkg)}
+                      onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
                       highlight={true}
                     />
                   ))}
@@ -1670,7 +1590,7 @@ export default function GradePage() {
               </section>
             )}
 
-            {/* Term Packages - تظهر فقط الباقات غير المشتراة */}
+            {/* Term Packages */}
             {termPackages.length > 0 && (
               <section className={styles.section}>
                 <motion.div variants={itemVariants} className={styles.sectionHeader}>
@@ -1699,13 +1619,14 @@ export default function GradePage() {
                       index={index}
                       isPurchased={false}
                       onPurchase={() => handlePurchaseClick(pkg)}
+                      onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
                     />
                   ))}
                 </div>
               </section>
             )}
 
-            {/* Monthly Packages - تظهر فقط الباقات غير المشتراة */}
+            {/* Monthly Packages */}
             {monthlyPackages.length > 0 && (
               <section className={styles.section}>
                 <motion.div variants={itemVariants} className={styles.sectionHeader}>
@@ -1735,13 +1656,14 @@ export default function GradePage() {
                       index={index}
                       isPurchased={false}
                       onPurchase={() => handlePurchaseClick(pkg)}
+                      onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
                     />
                   ))}
                 </div>
               </section>
             )}
 
-            {/* Weekly Packages - تظهر فقط الباقات غير المشتراة */}
+            {/* Weekly Packages */}
             {weeklyPackages.length > 0 && (
               <section className={styles.section}>
                 <motion.div variants={itemVariants} className={styles.sectionHeader}>
@@ -1770,13 +1692,14 @@ export default function GradePage() {
                       index={index}
                       isPurchased={false}
                       onPurchase={() => handlePurchaseClick(pkg)}
+                      onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
                     />
                   ))}
                 </div>
               </section>
             )}
 
-            {getAvailablePackages().length === 0 && purchasedPackages.length === 0 && (
+            {availablePackages.length === 0 && purchasedPackages.length === 0 && (
               <motion.div 
                 variants={itemVariants}
                 className={styles.emptyState}
@@ -1818,45 +1741,6 @@ export default function GradePage() {
                   animate={{ width: '60%' }}
                   transition={{ duration: 2, delay: 0.5 }}
                 />
-              </motion.div>
-            )}
-
-            {/* رسالة إذا لم يكن هناك باقات متاحة ولكن هناك باقات مشتراة */}
-            {getAvailablePackages().length === 0 && purchasedPackages.length > 0 && (
-              <motion.div 
-                variants={itemVariants}
-                className={styles.emptyState}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-              >
-                <motion.div 
-                  className={styles.emptyIcon}
-                  animate={{
-                    rotate: [0, 360],
-                    scale: [1, 1.2, 1]
-                  }}
-                  transition={{
-                    duration: 20,
-                    repeat: Infinity,
-                    ease: "linear"
-                  }}
-                >
-                  <CheckSquare className="w-20 h-20" />
-                </motion.div>
-                <motion.h3 
-                  className={styles.emptyTitle}
-                  animate={{ 
-                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity
-                  }}
-                >
-                  لقد اشتركت في جميع الباقات المتاحة
-                </motion.h3>
-                <p className={styles.emptyText}>يمكنك الوصول إلى جميع الباقات التي اشتركت بها من قسم "اشتراكاتك"</p>
-                <p className={styles.emptySubtext}>شكراً لثقتك بنا!</p>
               </motion.div>
             )}
           </motion.div>
