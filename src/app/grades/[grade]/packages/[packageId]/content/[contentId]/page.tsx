@@ -616,7 +616,7 @@ export default function ContentPage() {
             {/* Tips */}
             <div className={styles.tipsCard}>
               <div className={styles.tipsHeader}>
-                <Zap className={styles.tipsIcon} style={{ color: theme.warning || '#f59e0b' }} />
+                <Zap className={styles.tipsIcon} style={{ color: '#f59e0b' }} />
                 <h5 className={styles.tipsTitle}>نصائح للتعلم</h5>
               </div>
               <ul className={styles.tipsList}>
