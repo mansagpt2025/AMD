@@ -14,6 +14,7 @@ import {
 import PurchaseModal from '@/components/packages/PurchaseModal'
 import PackageCard from '@/components/packages/PackageCard'
 import { getGradeTheme } from '@/lib/utils/grade-themes'
+import styles from './GradePage.module.css'
 
 // الأنواع
 interface Package {
@@ -36,17 +37,6 @@ interface UserPackage {
   expires_at: string
   is_active: boolean
   packages: Package
-}
-
-interface PurchaseCode {
-  id: string
-  code: string
-  package_id: string
-  grade: string
-  is_used: boolean
-  used_by: string | null
-  used_at: string | null
-  expires_at: string
 }
 
 export default function GradePage() {
@@ -204,50 +194,51 @@ export default function GradePage() {
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${theme.background}`}>
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" style={{ color: theme.primary }} />
-          <p className="text-lg" style={{ color: theme.text }}>جاري تحميل بيانات الصف...</p>
-        </div>
+      <div className={styles.loadingContainer}>
+        <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
+        <p className={styles.loadingText}>جاري تحميل بيانات الصف...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen" style={{ 
-      background: `linear-gradient(135deg, ${theme.background} 0%, ${theme.backgroundLight} 100%)`
-    }}>
+    <div className={styles.pageContainer} style={{ 
+      '--primary': theme.primary,
+      '--secondary': theme.secondary,
+      '--accent': theme.accent,
+      '--success': theme.success,
+      '--background': theme.background,
+      '--backgroundLight': theme.backgroundLight,
+      '--text': theme.text,
+      '--border': theme.border
+    } as React.CSSProperties}>
       {/* Header */}
-      <header className="relative overflow-hidden py-8 px-4" style={{ background: theme.header }}>
-        <div className="max-w-7xl mx-auto">
+      <header className={styles.header}>
+        <div className={styles.headerContent}>
           {/* Platform Branding */}
-          <div className="flex flex-col md:flex-row justify-between items-center mb-8">
+          <div className={styles.platformBranding}>
             <motion.div 
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-center md:text-right mb-6 md:mb-0"
+              className={styles.platformInfo}
             >
-              <h1 className="text-4xl md:text-5xl font-bold mb-2 text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>
-                الأبــارع محمود الـديــب
-              </h1>
-              <p className="text-xl text-white/90">منارة العلم والتميز</p>
+              <h1 className={styles.platformTitle}>الأبــارع محمود الـديــب</h1>
+              <p className={styles.platformSubtitle}>منارة العلم والتميز</p>
             </motion.div>
 
             {user && (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-4"
+                className={styles.walletContainer}
               >
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                  <div className="flex items-center gap-3">
-                    <Wallet className="w-8 h-8 text-white" />
-                    <div>
-                      <p className="text-sm text-white/80">رصيد المحفظة</p>
-                      <p className="text-2xl font-bold text-white">
-                        {walletBalance.toLocaleString()} <span className="text-lg">جنيه</span>
-                      </p>
-                    </div>
+                <div className={styles.walletInfo}>
+                  <Wallet className={styles.walletIcon} />
+                  <div>
+                    <p className={styles.walletLabel}>رصيد المحفظة</p>
+                    <p className={styles.walletBalance}>
+                      {walletBalance.toLocaleString()} <span className={styles.walletCurrency}>جنيه</span>
+                    </p>
                   </div>
                 </div>
               </motion.div>
@@ -258,28 +249,30 @@ export default function GradePage() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-center py-8"
+            className={styles.gradeTitle}
           >
-            <div className="inline-flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-              <GraduationCap className="w-16 h-16 text-white" />
-              <div className="text-right">
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">
+            <div className={styles.gradeCard}>
+              <div className={styles.gradeIconContainer}>
+                <GraduationCap className={styles.gradeIcon} />
+              </div>
+              <div className={styles.gradeInfo}>
+                <h2 className={styles.gradeName}>
                   {grade?.name || `الصف ${gradeSlug === 'first' ? 'الأول' : gradeSlug === 'second' ? 'الثاني' : 'الثالث'} الثانوي`}
                 </h2>
-                <p className="text-xl text-white/90">رحلة نحو التميز الأكاديمي</p>
+                <p className={styles.gradeDescription}>رحلة نحو التميز الأكاديمي</p>
               </div>
             </div>
           </motion.div>
         </div>
 
         {/* Decorative Elements */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
+        <div className={styles.floatingShapes}>
           {Array.from({ length: 20 }).map((_, i) => (
             <motion.div
               key={i}
-              className="absolute rounded-full opacity-10"
+              className={styles.floatingShape}
               style={{
-                background: theme.accent,
+                background: `radial-gradient(circle, ${theme.accent}20 0%, transparent 70%)`,
                 width: Math.random() * 100 + 50,
                 height: Math.random() * 100 + 50,
                 top: `${Math.random() * 100}%`,
@@ -299,8 +292,8 @@ export default function GradePage() {
       </header>
 
       {/* Stats */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className={styles.statsContainer}>
+        <div className={styles.statsGrid}>
           {[
             { icon: Users, label: 'طالب متفوق', value: stats.totalStudents, suffix: '+' },
             { icon: TrendingUp, label: 'نسبة النجاح', value: stats.successRate, suffix: '%' },
@@ -312,18 +305,17 @@ export default function GradePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-2xl p-6 shadow-lg border"
-              style={{ borderColor: theme.border }}
+              className={styles.statCard}
             >
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl" style={{ background: `${theme.primary}20` }}>
-                  <stat.icon className="w-8 h-8" style={{ color: theme.primary }} />
+              <div className={styles.statContent}>
+                <div className={styles.statIconContainer}>
+                  <stat.icon className={styles.statIcon} />
                 </div>
                 <div>
-                  <p className="text-3xl font-bold" style={{ color: theme.text }}>
+                  <p className={styles.statValue}>
                     {stat.value}{stat.suffix}
                   </p>
-                  <p className="text-gray-600">{stat.label}</p>
+                  <p className={styles.statLabel}>{stat.label}</p>
                 </div>
               </div>
             </motion.div>
@@ -332,28 +324,28 @@ export default function GradePage() {
       </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className={styles.mainContent}>
         {/* Section 1: اشتراكاتك */}
         {purchasedPackages.length > 0 && (
-          <section className="mb-12">
+          <section className={styles.packagesSection}>
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3 mb-6"
+              className={styles.sectionHeader}
             >
-              <div className="p-3 rounded-xl" style={{ background: `${theme.primary}20` }}>
-                <Package className="w-7 h-7" style={{ color: theme.primary }} />
+              <div className={styles.sectionIconContainer}>
+                <Package className={styles.sectionIcon} />
               </div>
               <div>
-                <h2 className="text-2xl font-bold" style={{ color: theme.text }}>اشتراكاتك</h2>
-                <p className="text-gray-600">الباقات التي قمت بشرائها</p>
+                <h2 className={styles.sectionTitle}>اشتراكاتك</h2>
+                <p className={styles.sectionSubtitle}>الباقات التي قمت بشرائها</p>
               </div>
-              <div className="mr-auto px-4 py-2 rounded-full text-sm font-bold text-white" style={{ background: theme.primary }}>
+              <div className={styles.sectionCount}>
                 {purchasedPackages.length} باقة
               </div>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className={styles.packagesGrid}>
               {purchasedPackages.map((pkg, index) => (
                 <PackageCard
                   key={pkg.id}
@@ -370,25 +362,25 @@ export default function GradePage() {
 
         {/* Section 2: العروض */}
         {offerPackages.length > 0 && (
-          <section className="mb-12">
+          <section className={styles.packagesSection}>
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3 mb-6"
+              className={styles.sectionHeader}
             >
-              <div className="p-3 rounded-xl" style={{ background: `${theme.accent}20` }}>
-                <Crown className="w-7 h-7" style={{ color: theme.accent }} />
+              <div className={styles.sectionIconContainer}>
+                <Crown className={styles.sectionIcon} />
               </div>
               <div>
-                <h2 className="text-2xl font-bold" style={{ color: theme.text }}>عروض VIP حصرية</h2>
-                <p className="text-gray-600">فرص ذهبية بخصومات استثنائية</p>
+                <h2 className={styles.sectionTitle}>عروض VIP حصرية</h2>
+                <p className={styles.sectionSubtitle}>فرص ذهبية بخصومات استثنائية</p>
               </div>
-              <div className="mr-auto px-4 py-2 rounded-full text-sm font-bold text-white" style={{ background: theme.accent }}>
+              <div className={styles.sectionCount}>
                 محدودة
               </div>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className={styles.packagesGrid}>
               {offerPackages.map((pkg, index) => (
                 <PackageCard
                   key={pkg.id}
@@ -406,22 +398,22 @@ export default function GradePage() {
 
         {/* Section 3: الباقات الشهرية والترم */}
         {(monthlyPackages.length > 0 || termPackages.length > 0) && (
-          <section className="mb-12">
+          <section className={styles.packagesSection}>
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3 mb-6"
+              className={styles.sectionHeader}
             >
-              <div className="p-3 rounded-xl" style={{ background: `${theme.secondary}20` }}>
-                <Calendar className="w-7 h-7" style={{ color: theme.secondary }} />
+              <div className={styles.sectionIconContainer}>
+                <Calendar className={styles.sectionIcon} />
               </div>
               <div>
-                <h2 className="text-2xl font-bold" style={{ color: theme.text }}>باقات التميز</h2>
-                <p className="text-gray-600">برامج تعليمية متكاملة</p>
+                <h2 className={styles.sectionTitle}>باقات التميز</h2>
+                <p className={styles.sectionSubtitle}>برامج تعليمية متكاملة</p>
               </div>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className={styles.packagesGrid}>
               {[...monthlyPackages, ...termPackages].map((pkg, index) => (
                 <PackageCard
                   key={pkg.id}
@@ -438,22 +430,22 @@ export default function GradePage() {
 
         {/* Section 4: الباقات الأسبوعية */}
         {weeklyPackages.length > 0 && (
-          <section className="mb-12">
+          <section className={styles.packagesSection}>
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3 mb-6"
+              className={styles.sectionHeader}
             >
-              <div className="p-3 rounded-xl" style={{ background: `${theme.success}20` }}>
-                <Clock className="w-7 h-7" style={{ color: theme.success }} />
+              <div className={styles.sectionIconContainer}>
+                <Clock className={styles.sectionIcon} />
               </div>
               <div>
-                <h2 className="text-2xl font-bold" style={{ color: theme.text }}>باقات البداية</h2>
-                <p className="text-gray-600">ابدأ رحلتك من اليوم</p>
+                <h2 className={styles.sectionTitle}>باقات البداية</h2>
+                <p className={styles.sectionSubtitle}>ابدأ رحلتك من اليوم</p>
               </div>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className={styles.packagesGrid}>
               {weeklyPackages.map((pkg, index) => (
                 <PackageCard
                   key={pkg.id}
@@ -473,32 +465,30 @@ export default function GradePage() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-center py-16"
+            className={styles.noPackages}
           >
-            <BookOpen className="w-24 h-24 mx-auto mb-6 text-gray-400" />
-            <h3 className="text-2xl font-bold mb-4" style={{ color: theme.text }}>جاري التحضير</h3>
-            <p className="text-gray-600 mb-2">يتم إعداد محتوى مميز للصف حالياً</p>
-            <p className="text-gray-500">سيتم إطلاق الباقات قريباً</p>
+            <BookOpen className={styles.noPackagesIcon} />
+            <h3 className={styles.noPackagesTitle}>جاري التحضير</h3>
+            <p className={styles.noPackagesText}>يتم إعداد محتوى مميز للصف حالياً</p>
+            <p className={styles.noPackagesSubtext}>سيتم إطلاق الباقات قريباً</p>
           </motion.div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="border-t py-8" style={{ borderColor: theme.border }}>
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-3">
-              <Crown className="w-8 h-8" style={{ color: theme.primary }} />
-              <span className="text-xl font-bold" style={{ color: theme.text }}>الابارع محمود الديب</span>
-            </div>
-            <p className="text-gray-600">منارة العلم والتميز منذ 2010</p>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span>+{stats.totalStudents} طالب متفوق</span>
-              <span>•</span>
-              <span>{stats.successRate}% نسبة نجاح</span>
-              <span>•</span>
-              <span>{stats.expertTeachers} خبير تعليمي</span>
-            </div>
+      <footer className={styles.footer}>
+        <div className={styles.footerContent}>
+          <div className={styles.footerBrand}>
+            <Crown className={styles.footerIcon} />
+            <span className={styles.footerBrandName}>الابارع محمود الديب</span>
+          </div>
+          <p className={styles.footerCopyright}>منارة العلم والتميز منذ 2010</p>
+          <div className={styles.footerStats}>
+            <span>+{stats.totalStudents} طالب متفوق</span>
+            <span className={styles.footerSeparator}>•</span>
+            <span>{stats.successRate}% نسبة نجاح</span>
+            <span className={styles.footerSeparator}>•</span>
+            <span>{stats.expertTeachers} خبير تعليمي</span>
           </div>
         </div>
       </footer>

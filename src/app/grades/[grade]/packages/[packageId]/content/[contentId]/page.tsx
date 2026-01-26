@@ -8,12 +8,15 @@ import {
   Video, FileText, BookOpen, Clock, CheckCircle,
   X, ArrowRight, AlertCircle, Loader2, Download,
   Play, Target, Lock, Eye, Home,
-  ChevronRight, Shield, Award, Users
+  ChevronRight, Shield, Award, Users,
+  Maximize, Settings, Volume2, Pause,
+  BarChart, Zap, Star, Crown
 } from 'lucide-react'
 import { getGradeTheme } from '@/lib/utils/grade-themes'
 import ProtectedVideoPlayer from '@/components/content/ProtectedVideoPlayer'
 import PDFViewer from '@/components/content/PDFViewer'
 import ExamViewer from '@/components/content/ExamViewer'
+import styles from './ContentPage.module.css'
 
 export default function ContentPage() {
   const router = useRouter()
@@ -36,6 +39,7 @@ export default function ContentPage() {
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
   const [videoProgress, setVideoProgress] = useState(0)
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
 
   useEffect(() => {
     loadContent()
@@ -146,6 +150,10 @@ export default function ContentPage() {
     }
   }
 
+  const handleVideoPlay = (playing: boolean) => {
+    setIsVideoPlaying(playing)
+  }
+
   const markAsCompleted = async () => {
     if (!userProgress || !content) return
     if (userProgress.status === 'completed' || userProgress.status === 'passed') return
@@ -205,8 +213,8 @@ export default function ContentPage() {
         )
       case 'text':
         return (
-          <div className="bg-white rounded-2xl p-8 border" style={{ borderColor: theme.border }}>
-            <div className="prose max-w-none">
+          <div className={styles.textContent}>
+            <div className={styles.textContentInner}>
               {content.content_url ? (
                 <div dangerouslySetInnerHTML={{ __html: content.content_url }} />
               ) : (
@@ -217,33 +225,44 @@ export default function ContentPage() {
         )
       default:
         return (
-          <div className="text-center py-12">
-            <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">نوع المحتوى غير مدعوم</p>
+          <div className={styles.unsupportedContent}>
+            <AlertCircle className={styles.unsupportedIcon} />
+            <p className={styles.unsupportedText}>نوع المحتوى غير مدعوم</p>
           </div>
         )
     }
   }
 
+  const getContentTypeLabel = () => {
+    switch (content?.type) {
+      case 'video': return 'فيديو تعليمي'
+      case 'pdf': return 'ملف PDF'
+      case 'exam': return 'امتحان تقييمي'
+      case 'text': return 'نص تعليمي'
+      default: return 'محتوى'
+    }
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-12 h-12 animate-spin" style={{ color: theme.primary }} />
+      <div className={styles.loadingContainer}>
+        <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
+        <p className={styles.loadingText}>جاري تحميل المحتوى...</p>
       </div>
     )
   }
 
   if (error || !content) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">حدث خطأ</h2>
-          <p className="text-gray-600 mb-4">{error || 'المحتوى غير موجود'}</p>
+      <div className={styles.errorContainer}>
+        <div className={styles.errorContent}>
+          <AlertCircle className={styles.errorIcon} />
+          <h2 className={styles.errorTitle}>حدث خطأ</h2>
+          <p className={styles.errorMessage}>{error || 'المحتوى غير موجود'}</p>
           <button
             onClick={handleBack}
-            className="px-6 py-3 rounded-lg font-medium"
-            style={{ background: theme.primary, color: 'white' }}
+            className={styles.backButton}
+            style={{ background: theme.primary }}
           >
             العودة للباقة
           </button>
@@ -253,207 +272,246 @@ export default function ContentPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: theme.background }}>
+    <div className={styles.pageContainer}>
       {/* Header */}
-      <div className="border-b" style={{ borderColor: theme.border, background: theme.backgroundLight }}>
-        <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className={styles.header}>
+        <div className={styles.headerContent}>
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-gray-600 mb-4">
+          <div className={styles.breadcrumb}>
             <button
               onClick={() => router.push('/')}
-              className="flex items-center gap-1 hover:text-gray-900"
+              className={styles.breadcrumbItem}
             >
-              <Home className="w-4 h-4" />
+              <Home className={styles.breadcrumbIcon} />
               الرئيسية
             </button>
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className={styles.breadcrumbSeparator} />
             <button
               onClick={() => router.push(`/grades/${gradeSlug}`)}
-              className="hover:text-gray-900"
+              className={styles.breadcrumbItem}
             >
               {gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}
             </button>
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className={styles.breadcrumbSeparator} />
             <button
               onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)}
-              className="hover:text-gray-900"
+              className={styles.breadcrumbItem}
             >
               {packageData?.name}
             </button>
-            <ChevronRight className="w-4 h-4" />
-            <span className="font-medium" style={{ color: theme.text }}>{content.title}</span>
+            <ChevronRight className={styles.breadcrumbSeparator} />
+            <span className={styles.currentPage}>{content.title}</span>
           </div>
 
           {/* Content Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: theme.text }}>
-                {content.title}
-              </h1>
-              <p className="text-gray-600">
-                {lecture?.title} • {packageData?.name}
-              </p>
+          <div className={styles.contentHeader}>
+            <div className={styles.contentInfo}>
+              <h1 className={styles.contentTitle}>{content.title}</h1>
+              <div className={styles.contentMeta}>
+                <span className={styles.contentType}>
+                  {getContentTypeLabel()}
+                </span>
+                <span className={styles.contentSeparator}>•</span>
+                <span className={styles.lectureName}>{lecture?.title}</span>
+                <span className={styles.contentSeparator}>•</span>
+                <span className={styles.packageName}>{packageData?.name}</span>
+              </div>
             </div>
 
-            <button
-              onClick={handleBack}
-              className="px-4 py-2 rounded-lg border flex items-center gap-2"
-              style={{ borderColor: theme.primary, color: theme.primary }}
-            >
-              <ArrowRight className="w-4 h-4" />
-              العودة
-            </button>
+            <div className={styles.headerActions}>
+              <button
+                onClick={handleBack}
+                className={styles.backActionButton}
+                style={{ borderColor: theme.primary, color: theme.primary }}
+              >
+                <ArrowRight className={styles.backActionIcon} />
+                العودة
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className={styles.mainContent}>
+        <div className={styles.contentLayout}>
           {/* Left Column - Content Viewer */}
-          <div className="lg:col-span-2">
+          <div className={styles.leftColumn}>
             {/* Tabs */}
-            <div className="flex border-b mb-6" style={{ borderColor: theme.border }}>
+            <div className={styles.tabs}>
               <button
                 onClick={() => setActiveTab('viewer')}
-                className={`px-6 py-3 font-medium border-b-2 transition-all ${
-                  activeTab === 'viewer' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'
-                }`}
-                style={activeTab === 'viewer' ? { borderColor: theme.primary, color: theme.primary } : {}}
+                className={`${styles.tabButton} ${activeTab === 'viewer' ? styles.activeTab : ''}`}
+                style={activeTab === 'viewer' ? { 
+                  borderColor: theme.primary, 
+                  color: theme.primary 
+                } : {}}
               >
-                <Eye className="w-4 h-4 inline ml-2" />
-                العارض
+                <Eye className={styles.tabIcon} />
+                <span>عارض المحتوى</span>
               </button>
               <button
                 onClick={() => setActiveTab('info')}
-                className={`px-6 py-3 font-medium border-b-2 transition-all ${
-                  activeTab === 'info' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'
-                }`}
-                style={activeTab === 'info' ? { borderColor: theme.primary, color: theme.primary } : {}}
+                className={`${styles.tabButton} ${activeTab === 'info' ? styles.activeTab : ''}`}
+                style={activeTab === 'info' ? { 
+                  borderColor: theme.primary, 
+                  color: theme.primary 
+                } : {}}
               >
-                <BookOpen className="w-4 h-4 inline ml-2" />
-                المعلومات
+                <BookOpen className={styles.tabIcon} />
+                <span>معلومات المحتوى</span>
               </button>
             </div>
 
             {/* Content Area */}
-            {activeTab === 'viewer' ? (
-              <div className="bg-white rounded-2xl shadow-lg border overflow-hidden" style={{ borderColor: theme.border }}>
-                {renderContent()}
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-lg border p-6" style={{ borderColor: theme.border }}>
-                <h3 className="text-xl font-bold mb-4" style={{ color: theme.text }}>معلومات المحتوى</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2 text-gray-700">الوصف</h4>
-                    <p className="text-gray-600">{content.description || 'لا يوجد وصف'}</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-medium mb-2 text-gray-700">النوع</h4>
-                      <p className="flex items-center gap-2">
-                        {content.type === 'video' ? <Video className="w-4 h-4" /> :
-                         content.type === 'pdf' ? <FileText className="w-4 h-4" /> :
-                         content.type === 'exam' ? <Target className="w-4 h-4" /> :
-                         <BookOpen className="w-4 h-4" />}
-                        {content.type === 'video' ? 'فيديو' :
-                         content.type === 'pdf' ? 'ملف PDF' :
-                         content.type === 'exam' ? 'امتحان' : 'نص'}
-                      </p>
-                    </div>
+            <div className={styles.contentArea}>
+              {activeTab === 'viewer' ? (
+                <div className={styles.viewerContainer}>
+                  {renderContent()}
+                </div>
+              ) : (
+                <div className={styles.infoContainer}>
+                  <div className={styles.infoContent}>
+                    <h3 className={styles.infoTitle}>معلومات المحتوى</h3>
                     
-                    {content.duration_minutes > 0 && (
-                      <div>
-                        <h4 className="font-medium mb-2 text-gray-700">المدة</h4>
-                        <p className="flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          {content.duration_minutes} دقيقة
+                    <div className={styles.infoGrid}>
+                      <div className={styles.infoSection}>
+                        <h4 className={styles.infoSectionTitle}>الوصف</h4>
+                        <p className={styles.infoDescription}>
+                          {content.description || 'لا يوجد وصف متاح'}
                         </p>
                       </div>
-                    )}
-                    
-                    {content.type === 'exam' && (
-                      <>
-                        <div>
-                          <h4 className="font-medium mb-2 text-gray-700">درجة النجاح</h4>
-                          <p className="flex items-center gap-2">
-                            <Target className="w-4 h-4" />
-                            {content.pass_score}%
-                          </p>
+                      
+                      <div className={styles.infoDetails}>
+                        <div className={styles.detailItem}>
+                          <div className={styles.detailLabel}>نوع المحتوى</div>
+                          <div className={styles.detailValue}>
+                            <span className={styles.detailBadge}>
+                              {content.type === 'video' ? (
+                                <>
+                                  <Video className={styles.detailIcon} />
+                                  فيديو
+                                </>
+                              ) : content.type === 'pdf' ? (
+                                <>
+                                  <FileText className={styles.detailIcon} />
+                                  ملف PDF
+                                </>
+                              ) : content.type === 'exam' ? (
+                                <>
+                                  <Target className={styles.detailIcon} />
+                                  امتحان
+                                </>
+                              ) : (
+                                <>
+                                  <BookOpen className={styles.detailIcon} />
+                                  نص
+                                </>
+                              )}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-medium mb-2 text-gray-700">المحاولات</h4>
-                          <p className="flex items-center gap-2">
-                            <Users className="w-4 h-4" />
-                            {content.max_attempts} محاولة
-                          </p>
-                        </div>
-                      </>
-                    )}
+                        
+                        {content.duration_minutes > 0 && (
+                          <div className={styles.detailItem}>
+                            <div className={styles.detailLabel}>المدة الزمنية</div>
+                            <div className={styles.detailValue}>
+                              <span className={styles.detailBadge}>
+                                <Clock className={styles.detailIcon} />
+                                {content.duration_minutes} دقيقة
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {content.type === 'exam' && (
+                          <>
+                            <div className={styles.detailItem}>
+                              <div className={styles.detailLabel}>درجة النجاح</div>
+                              <div className={styles.detailValue}>
+                                <span className={styles.detailBadge}>
+                                  <Target className={styles.detailIcon} />
+                                  {content.pass_score}%
+                                </span>
+                              </div>
+                            </div>
+                            <div className={styles.detailItem}>
+                              <div className={styles.detailLabel}>عدد المحاولات</div>
+                              <div className={styles.detailValue}>
+                                <span className={styles.detailBadge}>
+                                  <Users className={styles.detailIcon} />
+                                  {content.max_attempts} محاولة
+                                </span>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Progress Tracking */}
-            {content.type === 'video' && (
-              <div className="mt-6 bg-white rounded-2xl border p-6" style={{ borderColor: theme.border }}>
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-bold" style={{ color: theme.text }}>تقدم المشاهدة</h4>
-                  <span className="text-lg font-bold">{videoProgress}%</span>
+              {/* Progress Tracking */}
+              {content.type === 'video' && (
+                <div className={styles.progressTracking}>
+                  <div className={styles.progressHeader}>
+                    <h4 className={styles.progressTitle}>تقدم المشاهدة</h4>
+                    <span className={styles.progressPercentage}>{videoProgress}%</span>
+                  </div>
+                  
+                  <div className={styles.progressBar}>
+                    <div 
+                      className={styles.progressFill}
+                      style={{ 
+                        width: `${videoProgress}%`, 
+                        background: theme.primary 
+                      }}
+                    />
+                  </div>
+                  
+                  <div className={styles.progressLabels}>
+                    <span className={styles.progressLabel}>لم يشاهد</span>
+                    <span className={styles.progressLabel}>مشاهدة كاملة</span>
+                  </div>
                 </div>
-                
-                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full rounded-full transition-all duration-300"
-                    style={{ width: `${videoProgress}%`, background: theme.primary }}
-                  />
-                </div>
-                
-                <div className="flex justify-between mt-2 text-sm text-gray-600">
-                  <span>لم يشاهد</span>
-                  <span>مشاهدة كاملة</span>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Right Column - Actions & Info */}
-          <div className="space-y-6">
+          <div className={styles.rightColumn}>
             {/* Content Status */}
-            <div className="bg-white rounded-2xl border p-6" style={{ borderColor: theme.border }}>
-              <h4 className="font-bold mb-4" style={{ color: theme.text }}>حالة المحتوى</h4>
+            <div className={styles.statusCard}>
+              <h4 className={styles.cardTitle}>حالة المحتوى</h4>
               
-              <div className={`p-4 rounded-lg mb-4 flex items-center gap-3 ${
+              <div className={`${styles.statusContent} ${
                 userProgress?.status === 'completed' || userProgress?.status === 'passed' 
-                  ? 'bg-green-50 text-green-700'
+                  ? styles.statusCompleted
                   : userProgress?.status === 'failed'
-                  ? 'bg-red-50 text-red-700'
+                  ? styles.statusFailed
                   : userProgress?.status === 'in_progress'
-                  ? 'bg-yellow-50 text-yellow-700'
-                  : 'bg-gray-50 text-gray-700'
+                  ? styles.statusInProgress
+                  : styles.statusNotStarted
               }`}>
                 {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? (
-                  <CheckCircle className="w-6 h-6" />
+                  <CheckCircle className={styles.statusIcon} />
                 ) : userProgress?.status === 'failed' ? (
-                  <X className="w-6 h-6" />
+                  <X className={styles.statusIcon} />
                 ) : userProgress?.status === 'in_progress' ? (
-                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <Loader2 className={`${styles.statusIcon} ${styles.spinning}`} />
                 ) : (
-                  <BookOpen className="w-6 h-6" />
+                  <BookOpen className={styles.statusIcon} />
                 )}
-                <div>
-                  <div className="font-bold">
+                <div className={styles.statusInfo}>
+                  <div className={styles.statusText}>
                     {userProgress?.status === 'completed' ? 'مكتمل' :
                      userProgress?.status === 'passed' ? 'ناجح' :
                      userProgress?.status === 'failed' ? 'فاشل' :
                      userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}
                   </div>
                   {userProgress?.completed_at && (
-                    <div className="text-sm mt-1">
+                    <div className={styles.statusDate}>
                       تم الإكمال: {new Date(userProgress.completed_at).toLocaleDateString('ar-EG')}
                     </div>
                   )}
@@ -465,22 +523,21 @@ export default function ContentPage() {
                 <button
                   onClick={markAsCompleted}
                   disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'}
-                  className={`w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 ${
+                  className={`${styles.completeButton} ${
                     userProgress?.status === 'completed' || userProgress?.status === 'passed'
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'text-white'
+                      ? styles.completeButtonDisabled : ''
                   }`}
                   style={!(userProgress?.status === 'completed' || userProgress?.status === 'passed') ? 
                     { background: theme.success } : {}}
                 >
                   {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? (
                     <>
-                      <CheckCircle className="w-5 h-5" />
+                      <CheckCircle className={styles.completeIcon} />
                       تم الإكمال
                     </>
                   ) : (
                     <>
-                      <CheckCircle className="w-5 h-5" />
+                      <CheckCircle className={styles.completeIcon} />
                       تمييز كمكتمل
                     </>
                   )}
@@ -489,64 +546,64 @@ export default function ContentPage() {
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-2xl border p-6" style={{ borderColor: theme.border }}>
-              <h4 className="font-bold mb-4" style={{ color: theme.text }}>إجراءات سريعة</h4>
+            <div className={styles.actionsCard}>
+              <h4 className={styles.cardTitle}>إجراءات سريعة</h4>
               
-              <div className="space-y-3">
+              <div className={styles.actionsList}>
                 {content.type === 'pdf' && (
                   <a
                     href={content.content_url || '#'}
                     download
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-all"
-                    style={{ borderColor: theme.border }}
+                    className={styles.actionItem}
                   >
-                    <span>تحميل الملف</span>
-                    <Download className="w-5 h-5" />
+                    <span className={styles.actionText}>تحميل الملف</span>
+                    <Download className={styles.actionIcon} />
                   </a>
                 )}
                 
                 <button
                   onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)}
-                  className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-all"
-                  style={{ borderColor: theme.border }}
+                  className={styles.actionItem}
                 >
-                  <span>العودة للباقة</span>
-                  <ArrowRight className="w-5 h-5" />
+                  <span className={styles.actionText}>العودة للباقة</span>
+                  <ArrowRight className={styles.actionIcon} />
                 </button>
                 
                 <button
                   onClick={() => router.push(`/grades/${gradeSlug}`)}
-                  className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-all"
-                  style={{ borderColor: theme.border }}
+                  className={styles.actionItem}
                 >
-                  <span>جميع باقات الصف</span>
-                  <BookOpen className="w-5 h-5" />
+                  <span className={styles.actionText}>جميع باقات الصف</span>
+                  <BookOpen className={styles.actionIcon} />
                 </button>
               </div>
             </div>
 
             {/* Package Info */}
-            <div className="bg-white rounded-2xl border p-6" style={{ borderColor: theme.border }}>
-              <h4 className="font-bold mb-4" style={{ color: theme.text }}>معلومات الباقة</h4>
+            <div className={styles.packageCard}>
+              <h4 className={styles.cardTitle}>معلومات الباقة</h4>
               
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg" style={{ background: theme.primary + '20' }}>
-                    <Award className="w-5 h-5" style={{ color: theme.primary }} />
+              <div className={styles.packageInfo}>
+                <div className={styles.packageItem}>
+                  <div className={styles.packageIcon} style={{ background: theme.primary }}>
+                    <Award className={styles.packageItemIcon} />
                   </div>
-                  <div>
-                    <div className="font-medium">{packageData?.name}</div>
-                    <div className="text-sm text-gray-600">{packageData?.type === 'weekly' ? 'أسبوعي' : 'شهري/ترم'}</div>
+                  <div className={styles.packageDetails}>
+                    <div className={styles.packageName}>{packageData?.name}</div>
+                    <div className={styles.packageType}>
+                      {packageData?.type === 'weekly' ? 'أسبوعي' : 
+                       packageData?.type === 'monthly' ? 'شهري' : 'ترم كامل'}
+                    </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg" style={{ background: theme.success + '20' }}>
-                    <Shield className="w-5 h-5" style={{ color: theme.success }} />
+                <div className={styles.packageItem}>
+                  <div className={styles.packageIcon} style={{ background: theme.success }}>
+                    <Shield className={styles.packageItemIcon} />
                   </div>
-                  <div>
-                    <div className="font-medium">حالة الاشتراك</div>
-                    <div className="text-sm text-gray-600">
+                  <div className={styles.packageDetails}>
+                    <div className={styles.packageName}>حالة الاشتراك</div>
+                    <div className={styles.packageStatus}>
                       {userPackage?.expires_at 
                         ? `نشط حتى ${new Date(userPackage.expires_at).toLocaleDateString('ar-EG')}`
                         : 'غير متاح'}
@@ -554,6 +611,19 @@ export default function ContentPage() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Tips */}
+            <div className={styles.tipsCard}>
+              <div className={styles.tipsHeader}>
+                <Zap className={styles.tipsIcon} style={{ color: theme.warning || '#f59e0b' }} />
+                <h5 className={styles.tipsTitle}>نصائح للتعلم</h5>
+              </div>
+              <ul className={styles.tipsList}>
+                <li className={styles.tipItem}>خذ ملاحظات أثناء المشاهدة</li>
+                <li className={styles.tipItem}>كرر الأجزاء المهمة</li>
+                <li className={styles.tipItem}>اختبر فهمك بعد كل محتوى</li>
+              </ul>
             </div>
           </div>
         </div>

@@ -9,9 +9,11 @@ import {
   CheckCircle, XCircle, AlertCircle, Home,
   ChevronRight, GraduationCap, BarChart3,
   Calendar, Video, File, Target, Loader2,
-  ArrowRight, Shield, Users, Award
+  ArrowRight, Shield, Users, Award, Zap,
+  Star, Crown, TrendingUp, Brain, Rocket
 } from 'lucide-react'
 import { getGradeTheme } from '@/lib/utils/grade-themes'
+import styles from './PackagePage.module.css'
 
 export default function PackagePage() {
   const router = useRouter()
@@ -31,6 +33,7 @@ export default function PackagePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [completion, setCompletion] = useState(0)
+  const [activeSection, setActiveSection] = useState<string | null>(null)
 
   useEffect(() => {
     checkAccessAndLoadData()
@@ -169,11 +172,11 @@ export default function PackagePage() {
 
   const getContentIcon = (type: string) => {
     switch (type) {
-      case 'video': return <Video className="w-5 h-5" />
-      case 'pdf': return <File className="w-5 h-5" />
-      case 'exam': return <Target className="w-5 h-5" />
-      case 'text': return <BookOpen className="w-5 h-5" />
-      default: return <PlayCircle className="w-5 h-5" />
+      case 'video': return <Video className={styles.contentTypeIcon} />
+      case 'pdf': return <File className={styles.contentTypeIcon} />
+      case 'exam': return <Target className={styles.contentTypeIcon} />
+      case 'text': return <BookOpen className={styles.contentTypeIcon} />
+      default: return <PlayCircle className={styles.contentTypeIcon} />
     }
   }
 
@@ -191,25 +194,30 @@ export default function PackagePage() {
     router.push(`/grades/${gradeSlug}/packages/${packageId}/content/${content.id}`)
   }
 
+  const toggleSection = (sectionId: string) => {
+    setActiveSection(activeSection === sectionId ? null : sectionId)
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-12 h-12 animate-spin" style={{ color: theme.primary }} />
+      <div className={styles.loadingContainer}>
+        <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
+        <p className={styles.loadingText}>جاري تحميل بيانات الباقة...</p>
       </div>
     )
   }
 
   if (error || !packageData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">حدث خطأ</h2>
-          <p className="text-gray-600 mb-4">{error || 'الباقة غير موجودة'}</p>
+      <div className={styles.errorContainer}>
+        <div className={styles.errorContent}>
+          <AlertCircle className={styles.errorIcon} />
+          <h2 className={styles.errorTitle}>حدث خطأ</h2>
+          <p className={styles.errorMessage}>{error || 'الباقة غير موجودة'}</p>
           <button
             onClick={() => router.push(`/grades/${gradeSlug}`)}
-            className="px-6 py-3 rounded-lg font-medium"
-            style={{ background: theme.primary, color: 'white' }}
+            className={styles.backButton}
+            style={{ background: theme.primary }}
           >
             العودة إلى الباقات
           </button>
@@ -219,66 +227,69 @@ export default function PackagePage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: theme.background }}>
+    <div className={styles.pageContainer}>
       {/* Header */}
-      <div className="relative overflow-hidden" style={{ background: theme.header }}>
-        <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className={styles.header} style={{ background: theme.header }}>
+        <div className={styles.headerContent}>
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-white/80 mb-6">
+          <div className={styles.breadcrumb}>
             <button
               onClick={() => router.push('/')}
-              className="flex items-center gap-1 hover:text-white"
+              className={styles.breadcrumbItem}
             >
-              <Home className="w-4 h-4" />
+              <Home className={styles.breadcrumbIcon} />
               الرئيسية
             </button>
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className={styles.breadcrumbSeparator} />
             <button
               onClick={() => router.push(`/grades/${gradeSlug}`)}
-              className="hover:text-white"
+              className={styles.breadcrumbItem}
             >
               {gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}
             </button>
-            <ChevronRight className="w-4 h-4" />
-            <span className="text-white font-medium">{packageData.name}</span>
+            <ChevronRight className={styles.breadcrumbSeparator} />
+            <span className={styles.currentPage}>{packageData.name}</span>
           </div>
 
           {/* Package Info */}
-          <div className="flex flex-col md:flex-row gap-8 items-start">
+          <div className={styles.packageHeader}>
             {/* Image */}
-            <div className="w-full md:w-1/3">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
-                {packageData.image_url ? (
+            <div className={styles.packageImageContainer}>
+              {packageData.image_url ? (
+                <div className={styles.imageWrapper}>
                   <img
                     src={packageData.image_url}
                     alt={packageData.name}
-                    className="w-full h-64 object-cover rounded-xl"
+                    className={styles.packageImage}
                   />
-                ) : (
-                  <div className="w-full h-64 rounded-xl flex items-center justify-center" style={{ background: theme.primary + '40' }}>
-                    <GraduationCap className="w-20 h-20 text-white" />
-                  </div>
-                )}
-              </div>
+                  <div className={styles.imageOverlay} />
+                </div>
+              ) : (
+                <div className={styles.placeholderImage} style={{ background: theme.primary + '40' }}>
+                  <GraduationCap className={styles.placeholderIcon} />
+                </div>
+              )}
             </div>
 
             {/* Details */}
-            <div className="flex-1 text-white">
-              <h1 className="text-3xl md:text-4xl font-bold mb-4">{packageData.name}</h1>
-              <p className="text-lg mb-6 text-white/90">{packageData.description}</p>
+            <div className={styles.packageDetails}>
+              <h1 className={styles.packageTitle}>{packageData.name}</h1>
+              <p className={styles.packageDescription}>{packageData.description}</p>
               
-              <div className="flex flex-wrap gap-4 mb-6">
-                <div className="flex items-center gap-2">
-                  <PlayCircle className="w-5 h-5" />
-                  <span>{lectures.length} محاضرة</span>
+              <div className={styles.packageStats}>
+                <div className={styles.statItem}>
+                  <PlayCircle className={styles.statIcon} />
+                  <span className={styles.statValue}>{lectures.length}</span>
+                  <span className={styles.statLabel}>محاضرة</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
-                  <span>{packageData.duration_days} يوم</span>
+                <div className={styles.statItem}>
+                  <Clock className={styles.statIcon} />
+                  <span className={styles.statValue}>{packageData.duration_days}</span>
+                  <span className={styles.statLabel}>يوم</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  <span>
+                <div className={styles.statItem}>
+                  <Calendar className={styles.statIcon} />
+                  <span className={styles.statValue}>
                     {packageData.type === 'weekly' ? 'أسبوعي' :
                      packageData.type === 'monthly' ? 'شهري' :
                      packageData.type === 'term' ? 'ترم كامل' : 'عرض خاص'}
@@ -287,28 +298,34 @@ export default function PackagePage() {
               </div>
 
               {/* Progress */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5" />
+              <div className={styles.progressContainer}>
+                <div className={styles.progressHeader}>
+                  <div className={styles.progressLabel}>
+                    <BarChart3 className={styles.progressIcon} />
                     <span>نسبة الإتمام</span>
                   </div>
-                  <span className="text-2xl font-bold">{completion}%</span>
+                  <span className={styles.progressPercentage}>{completion}%</span>
                 </div>
                 
-                <div className="w-full h-3 bg-white/20 rounded-full overflow-hidden">
+                <div className={styles.progressBar}>
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${completion}%` }}
-                    className="h-full rounded-full"
+                    className={styles.progressFill}
                     style={{ background: theme.accent }}
                   />
                 </div>
                 
-                <div className="flex justify-between mt-3 text-sm">
-                  <span>مكتمل: {userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}</span>
-                  <span>المتبقي: {contents.length - userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}</span>
-                  <span>الإجمالي: {contents.length}</span>
+                <div className={styles.progressStats}>
+                  <span className={styles.progressStat}>
+                    مكتمل: {userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
+                  </span>
+                  <span className={styles.progressStat}>
+                    المتبقي: {contents.length - userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
+                  </span>
+                  <span className={styles.progressStat}>
+                    الإجمالي: {contents.length}
+                  </span>
                 </div>
               </div>
             </div>
@@ -316,92 +333,105 @@ export default function PackagePage() {
         </div>
       </div>
 
-      {/* Lectures */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: theme.text }}>
-          <BookOpen className="w-6 h-6" />
-          محاضرات الباقة
-        </h2>
-
-        {lectures.length === 0 ? (
-          <div className="text-center py-12">
-            <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">لا توجد محاضرات متاحة حالياً</p>
+      {/* Main Content */}
+      <main className={styles.mainContent}>
+        {/* Lectures */}
+        <section className={styles.lecturesSection}>
+          <div className={styles.sectionHeader}>
+            <div className={styles.sectionTitleContainer}>
+              <BookOpen className={styles.sectionIcon} />
+              <h2 className={styles.sectionTitle}>محاضرات الباقة</h2>
+            </div>
+            <p className={styles.sectionSubtitle}>ابدأ رحلتك التعليمية الآن</p>
           </div>
-        ) : (
-          <div className="space-y-6">
-            {lectures.map((lecture, lectureIndex) => {
-              const lectureContents = contents.filter(c => c.lecture_id === lecture.id)
-              
-              return (
-                <motion.div
-                  key={lecture.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-2xl shadow-lg border overflow-hidden"
-                  style={{ borderColor: theme.border }}
-                >
-                  {/* Lecture Header */}
-                  <div className="p-6 border-b" style={{ borderColor: theme.border }}>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="text-xl font-bold mb-2" style={{ color: theme.text }}>
-                          المحاضرة {lectureIndex + 1}: {lecture.title}
-                        </h3>
+
+          {lectures.length === 0 ? (
+            <div className={styles.emptyState}>
+              <BookOpen className={styles.emptyIcon} />
+              <p className={styles.emptyText}>لا توجد محاضرات متاحة حالياً</p>
+              <p className={styles.emptySubtext}>سيتم إضافة المحاضرات قريباً</p>
+            </div>
+          ) : (
+            <div className={styles.lecturesList}>
+              {lectures.map((lecture, lectureIndex) => {
+                const lectureContents = contents.filter(c => c.lecture_id === lecture.id)
+                const isExpanded = activeSection === lecture.id
+                
+                return (
+                  <motion.div
+                    key={lecture.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={styles.lectureCard}
+                  >
+                    {/* Lecture Header */}
+                    <div 
+                      className={styles.lectureHeader}
+                      onClick={() => toggleSection(lecture.id)}
+                    >
+                      <div className={styles.lectureInfo}>
+                        <div className={styles.lectureNumber}>
+                          المحاضرة {lectureIndex + 1}
+                        </div>
+                        <h3 className={styles.lectureTitle}>{lecture.title}</h3>
                         {lecture.description && (
-                          <p className="text-gray-600">{lecture.description}</p>
+                          <p className={styles.lectureDescription}>{lecture.description}</p>
                         )}
                       </div>
-                      <div className="px-3 py-1 rounded-full text-sm font-medium text-white" style={{ background: theme.primary }}>
-                        {lectureContents.length} محتوى
+                      <div className={styles.lectureControls}>
+                        <div className={styles.contentsCount}>
+                          {lectureContents.length} محتوى
+                        </div>
+                        <div className={`${styles.expandIcon} ${isExpanded ? styles.expanded : ''}`}>
+                          <ChevronRight className={styles.chevronIcon} />
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Contents */}
-                  <div className="p-6">
-                    <div className="space-y-4">
-                      {lectureContents.map((content, contentIndex) => {
-                        const isAccessible = isContentAccessible(lectureIndex, contentIndex, content)
-                        const status = getContentStatus(content.id)
-                        
-                        return (
-                          <div
-                            key={content.id}
-                            className={`p-4 rounded-xl border-2 transition-all ${
-                              isAccessible 
-                                ? 'hover:border-blue-500 cursor-pointer border-gray-200' 
-                                : 'border-gray-100 opacity-60'
-                            }`}
-                            onClick={() => isAccessible && handleContentClick(content, lectureIndex, contentIndex)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg" style={{ background: theme.primary + '20' }}>
+                    {/* Contents - Collapsible */}
+                    <motion.div
+                      initial={false}
+                      animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }}
+                      transition={{ duration: 0.3 }}
+                      className={styles.contentsContainer}
+                    >
+                      <div className={styles.contentsList}>
+                        {lectureContents.map((content, contentIndex) => {
+                          const isAccessible = isContentAccessible(lectureIndex, contentIndex, content)
+                          const status = getContentStatus(content.id)
+                          
+                          return (
+                            <div
+                              key={content.id}
+                              className={`${styles.contentItem} ${
+                                isAccessible ? styles.accessible : styles.locked
+                              }`}
+                              onClick={() => isAccessible && handleContentClick(content, lectureIndex, contentIndex)}
+                            >
+                              <div className={styles.contentInfo}>
+                                <div className={styles.contentIcon}>
                                   {getContentIcon(content.type)}
                                 </div>
-                                <div>
-                                  <h4 className="font-bold" style={{ color: theme.text }}>
-                                    {content.title}
-                                  </h4>
+                                <div className={styles.contentDetails}>
+                                  <h4 className={styles.contentTitle}>{content.title}</h4>
                                   {content.description && (
-                                    <p className="text-sm text-gray-600">{content.description}</p>
+                                    <p className={styles.contentDescription}>{content.description}</p>
                                   )}
-                                  <div className="flex gap-4 mt-2 text-sm text-gray-500">
-                                    <span className="flex items-center gap-1">
+                                  <div className={styles.contentMeta}>
+                                    <span className={styles.contentType}>
                                       {content.type === 'video' ? 'فيديو' :
                                        content.type === 'pdf' ? 'ملف PDF' :
                                        content.type === 'exam' ? 'امتحان' : 'نص'}
                                     </span>
                                     {content.duration_minutes > 0 && (
-                                      <span className="flex items-center gap-1">
-                                        <Clock className="w-4 h-4" />
+                                      <span className={styles.contentDuration}>
+                                        <Clock className={styles.metaIcon} />
                                         {content.duration_minutes} دقيقة
                                       </span>
                                     )}
                                     {content.type === 'exam' && (
-                                      <span className="flex items-center gap-1">
-                                        <Target className="w-4 h-4" />
+                                      <span className={styles.examInfo}>
+                                        <Target className={styles.metaIcon} />
                                         النجاح: {content.pass_score}%
                                       </span>
                                     )}
@@ -409,31 +439,29 @@ export default function PackagePage() {
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-3">
+                              <div className={styles.contentActions}>
                                 {/* Status */}
                                 {status === 'completed' || status === 'passed' ? (
-                                  <div className="flex items-center gap-1 text-green-600">
-                                    <CheckCircle className="w-5 h-5" />
+                                  <div className={`${styles.statusBadge} ${styles.completed}`}>
+                                    <CheckCircle className={styles.statusIcon} />
                                     <span>{status === 'passed' ? 'ناجح' : 'مكتمل'}</span>
                                   </div>
                                 ) : status === 'failed' ? (
-                                  <div className="flex items-center gap-1 text-red-600">
-                                    <XCircle className="w-5 h-5" />
+                                  <div className={`${styles.statusBadge} ${styles.failed}`}>
+                                    <XCircle className={styles.statusIcon} />
                                     <span>فاشل</span>
                                   </div>
                                 ) : status === 'in_progress' ? (
-                                  <div className="flex items-center gap-1 text-yellow-600">
-                                    <Clock className="w-5 h-5" />
+                                  <div className={`${styles.statusBadge} ${styles.inProgress}`}>
+                                    <Clock className={styles.statusIcon} />
                                     <span>قيد التقدم</span>
                                   </div>
                                 ) : null}
 
                                 {/* Action Button */}
                                 <button
-                                  className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${
-                                    isAccessible 
-                                      ? 'text-white' 
-                                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  className={`${styles.actionButton} ${
+                                    isAccessible ? styles.activeButton : styles.disabledButton
                                   }`}
                                   style={isAccessible ? { background: theme.primary } : {}}
                                   disabled={!isAccessible}
@@ -441,93 +469,95 @@ export default function PackagePage() {
                                   {isAccessible ? (
                                     <>
                                       {status === 'not_started' ? 'بدء' : 'استكمال'}
-                                      <ArrowRight className="w-4 h-4" />
+                                      <ArrowRight className={styles.buttonIcon} />
                                     </>
                                   ) : (
                                     <>
-                                      <Lock className="w-4 h-4" />
+                                      <Lock className={styles.buttonIcon} />
                                       مقفل
                                     </>
                                   )}
                                 </button>
                               </div>
-                            </div>
 
-                            {/* Lock Message */}
-                            {!isAccessible && (
-                              <div className="mt-3 p-3 rounded-lg bg-yellow-50 text-yellow-800 flex items-center gap-2">
-                                <AlertCircle className="w-4 h-4" />
-                                <span>يجب إتمام المحتوى السابق أولاً</span>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
-        )}
+                              {/* Lock Message */}
+                              {!isAccessible && (
+                                <div className={styles.lockMessage}>
+                                  <AlertCircle className={styles.alertIcon} />
+                                  <span>يجب إتمام المحتوى السابق أولاً</span>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )
+              })}
+            </div>
+          )}
+        </section>
 
         {/* Important Notes */}
-        <div className="mt-12 p-6 rounded-2xl border" style={{ borderColor: theme.border, background: theme.backgroundLight }}>
-          <div className="flex items-center gap-3 mb-4">
-            <Award className="w-6 h-6" style={{ color: theme.primary }} />
-            <h3 className="text-xl font-bold" style={{ color: theme.text }}>ملاحظات هامة</h3>
+        <section className={styles.notesSection}>
+          <div className={styles.notesContainer}>
+            <div className={styles.notesHeader}>
+              <Award className={styles.notesIcon} />
+              <h3 className={styles.notesTitle}>ملاحظات هامة</h3>
+            </div>
+            
+            <ul className={styles.notesList}>
+              {packageData.type === 'monthly' || packageData.type === 'term' ? (
+                <>
+                  <li className={styles.noteItem}>
+                    <Shield className={styles.noteIcon} />
+                    يجب إتمام كل محتوى قبل الانتقال للذي يليه
+                  </li>
+                  <li className={styles.noteItem}>
+                    <Target className={styles.noteIcon} />
+                    لابد من اجتياز الامتحان قبل الانتقال للمحاضرة التالية
+                  </li>
+                  <li className={styles.noteItem}>
+                    <Users className={styles.noteIcon} />
+                    يمكنك إعادة الامتحان حتى 3 مرات
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li className={styles.noteItem}>
+                    <Unlock className={styles.noteIcon} />
+                    جميع المحاضرات متاحة مباشرة
+                  </li>
+                  <li className={styles.noteItem}>
+                    <PlayCircle className={styles.noteIcon} />
+                    يمكنك البدء بأي محاضرة تريد
+                  </li>
+                </>
+              )}
+              <li className={styles.noteItem}>
+                <Calendar className={styles.noteIcon} />
+                مدة الاشتراك تنتهي في: {new Date(userPackage?.expires_at).toLocaleDateString('ar-EG')}
+              </li>
+            </ul>
           </div>
-          
-          <ul className="space-y-2 text-gray-600">
-            {packageData.type === 'monthly' || packageData.type === 'term' ? (
-              <>
-                <li className="flex items-center gap-2">
-                  <Shield className="w-4 h-4" style={{ color: theme.primary }} />
-                  يجب إتمام كل محتوى قبل الانتقال للذي يليه
-                </li>
-                <li className="flex items-center gap-2">
-                  <Target className="w-4 h-4" style={{ color: theme.primary }} />
-                  لابد من اجتياز الامتحان قبل الانتقال للمحاضرة التالية
-                </li>
-                <li className="flex items-center gap-2">
-                  <Users className="w-4 h-4" style={{ color: theme.primary }} />
-                  يمكنك إعادة الامتحان حتى 3 مرات
-                </li>
-              </>
-            ) : (
-              <>
-                <li className="flex items-center gap-2">
-                  <Unlock className="w-4 h-4" style={{ color: theme.primary }} />
-                  جميع المحاضرات متاحة مباشرة
-                </li>
-                <li className="flex items-center gap-2">
-                  <PlayCircle className="w-4 h-4" style={{ color: theme.primary }} />
-                  يمكنك البدء بأي محاضرة تريد
-                </li>
-              </>
-            )}
-            <li className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" style={{ color: theme.primary }} />
-              مدة الاشتراك تنتهي في: {new Date(userPackage?.expires_at).toLocaleDateString('ar-EG')}
-            </li>
-          </ul>
-        </div>
+        </section>
 
         {/* Back Button */}
-        <div className="mt-8 text-center">
+        <div className={styles.backSection}>
           <button
             onClick={() => router.push(`/grades/${gradeSlug}`)}
-            className="px-8 py-3 rounded-xl font-medium border-2 hover:shadow-lg transition-all"
+            className={styles.backActionButton}
             style={{ 
               borderColor: theme.primary,
               color: theme.primary
             }}
           >
-            <ArrowRight className="w-5 h-5 inline ml-2" />
+            <ArrowRight className={styles.backButtonIcon} />
             العودة إلى الباقات
           </button>
         </div>
-      </div>
+      </main>
     </div>
   )
 }
