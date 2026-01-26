@@ -31,7 +31,8 @@ import {
   Gem,
   Moon,
   Sun,
-  Waves as WavesIcon
+  Waves as WavesIcon,
+  Package
 } from 'lucide-react'
 import styles from './styles.module.css'
 
@@ -481,22 +482,16 @@ function PackageCard({
                pkg.type === 'term' ? 'ترم كامل' : 'عرض خاص'}</span>
       </motion.div>
 
-      {/* Purchased Overlay */}
+      {/* Purchased Badge */}
       {isPurchased && (
         <motion.div 
-          className={styles.purchasedOverlay}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          className={styles.purchasedBadge}
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 250 }}
         >
-          <motion.div 
-            className={styles.purchasedBadge}
-            initial={{ scale: 0, rotate: -20 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 250 }}
-          >
-            <CheckCircle2 className="w-6 h-6" />
-            <span>مشترك بالفعل</span>
-          </motion.div>
+          <CheckCircle2 className="w-6 h-6" />
+          <span>مشترك بالفعل</span>
         </motion.div>
       )}
 
@@ -633,7 +628,7 @@ function PackageCard({
           >
             {isPurchased ? (
               <>
-                <span>دخول للمحاضرات</span>
+                <span>دخول للباقة</span>
                 <motion.div
                   animate={{
                     x: [0, 5, 0]
@@ -961,6 +956,24 @@ export default function GradePage() {
     return userPackages.some(up => up.package_id === packageId)
   }
 
+  // ================== Filter Packages ==================
+  // الحصول على الباقات المشتراة
+  const purchasedPackages = userPackages
+    .filter(up => up.is_active)
+    .map(up => up.packages)
+    .filter((pkg): pkg is Package => pkg !== null && pkg !== undefined)
+
+  // الحصول على الباقات المتاحة (غير مشتراة)
+  const availablePackages = packages.filter(pkg => 
+    !userPackages.some(up => up.package_id === pkg.id)
+  )
+
+  // تصفية الباقات المتاحة حسب النوع
+  const weeklyPackages = availablePackages.filter(p => p.type === 'weekly')
+  const monthlyPackages = availablePackages.filter(p => p.type === 'monthly')
+  const termPackages = availablePackages.filter(p => p.type === 'term')
+  const offerPackages = availablePackages.filter(p => p.type === 'offer')
+
   // ================== Loading State ==================
   if (loading) {
     return (
@@ -1089,12 +1102,6 @@ export default function GradePage() {
       </div>
     )
   }
-
-  // ================== Filter Packages ==================
-  const weeklyPackages = packages.filter(p => p.type === 'weekly')
-  const monthlyPackages = packages.filter(p => p.type === 'monthly')
-  const termPackages = packages.filter(p => p.type === 'term')
-  const offerPackages = packages.filter(p => p.type === 'offer')
 
   return (
     <div className={`${styles.container} ${theme === 'dark' ? styles.dark : styles.light}`}>
@@ -1451,6 +1458,71 @@ export default function GradePage() {
             animate="visible"
             className={styles.sections}
           >
+            {/* Section: Your Subscriptions */}
+            {purchasedPackages.length > 0 && (
+              <section className={styles.section}>
+                <motion.div 
+                  variants={itemVariants} 
+                  className={styles.sectionHeader}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <motion.div 
+                    className={styles.sectionIcon}
+                    animate={{
+                      rotate: [0, 360],
+                      scale: [1, 1.2, 1]
+                    }}
+                    transition={{
+                      duration: 20,
+                      repeat: Infinity,
+                      ease: "linear"
+                    }}
+                  >
+                    <Package className="w-8 h-8" />
+                  </motion.div>
+                  <div>
+                    <motion.h2 
+                      className={styles.sectionTitle}
+                      animate={{ 
+                        backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                      }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity
+                      }}
+                    >
+                      اشتراكاتك
+                    </motion.h2>
+                    <p className={styles.sectionSubtitle}>الباقات التي قمت بشرائها</p>
+                  </div>
+                  <motion.div 
+                    className={styles.sectionBadge}
+                    animate={{
+                      scale: [1, 1.1, 1],
+                      rotate: [0, 5, -5, 0]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity
+                    }}
+                  >
+                    {purchasedPackages.length} باقة
+                  </motion.div>
+                </motion.div>
+                <div className={styles.grid}>
+                  {purchasedPackages.map((pkg, index) => (
+                    <PackageCard 
+                      key={pkg.id} 
+                      pkg={pkg} 
+                      index={index}
+                      isPurchased={true}
+                      onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Offers Section */}
             {offerPackages.length > 0 && (
               <section className={styles.section}>
@@ -1508,7 +1580,7 @@ export default function GradePage() {
                       key={pkg.id} 
                       pkg={pkg} 
                       index={index}
-                      isPurchased={isPackagePurchased(pkg.id)}
+                      isPurchased={false}
                       onPurchase={() => handlePurchaseClick(pkg)}
                       onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
                       highlight={true}
@@ -1545,7 +1617,7 @@ export default function GradePage() {
                       key={pkg.id} 
                       pkg={pkg} 
                       index={index}
-                      isPurchased={isPackagePurchased(pkg.id)}
+                      isPurchased={false}
                       onPurchase={() => handlePurchaseClick(pkg)}
                       onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
                     />
@@ -1582,7 +1654,7 @@ export default function GradePage() {
                       key={pkg.id} 
                       pkg={pkg} 
                       index={index}
-                      isPurchased={isPackagePurchased(pkg.id)}
+                      isPurchased={false}
                       onPurchase={() => handlePurchaseClick(pkg)}
                       onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
                     />
@@ -1618,7 +1690,7 @@ export default function GradePage() {
                       key={pkg.id} 
                       pkg={pkg} 
                       index={index}
-                      isPurchased={isPackagePurchased(pkg.id)}
+                      isPurchased={false}
                       onPurchase={() => handlePurchaseClick(pkg)}
                       onEnter={() => router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)}
                     />
@@ -1627,7 +1699,7 @@ export default function GradePage() {
               </section>
             )}
 
-            {packages.length === 0 && (
+            {availablePackages.length === 0 && purchasedPackages.length === 0 && (
               <motion.div 
                 variants={itemVariants}
                 className={styles.emptyState}
