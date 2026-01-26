@@ -64,6 +64,17 @@ interface Grade {
   slug: string
 }
 
+interface PurchaseCode {
+  id: string
+  code: string
+  package_id: string
+  grade: string
+  is_used: boolean
+  used_by: string | null
+  used_at: string | null
+  expires_at: string
+}
+
 // ================== Animation Variants ==================
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -685,6 +696,12 @@ export default function GradePage() {
   const [purchaseError, setPurchaseError] = useState('')
   const [purchaseSuccess, setPurchaseSuccess] = useState('')
   const [isPurchasing, setIsPurchasing] = useState(false)
+  
+  // Code Validation State
+  const [isValidatingCode, setIsValidatingCode] = useState(false)
+  const [codeValidationError, setCodeValidationError] = useState('')
+  const [codeValidationSuccess, setCodeValidationSuccess] = useState('')
+  const [validatedCode, setValidatedCode] = useState<PurchaseCode | null>(null)
 
   // Stats
   const [stats, setStats] = useState({
@@ -695,7 +712,7 @@ export default function GradePage() {
   })
 
   // Theme
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
   // ================== Load Data ==================
   useEffect(() => {
@@ -770,17 +787,85 @@ export default function GradePage() {
     }
   }
 
+  // ================== Code Validation ==================
+  const validateCode = async (code: string) => {
+    if (!selectedPackage || !user) return null
+    
+    setIsValidatingCode(true)
+    setCodeValidationError('')
+    setCodeValidationSuccess('')
+    setValidatedCode(null)
+
+    try {
+      const response = await fetch('/api/validate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: code,
+          packageId: selectedPackage.id,
+          userId: user.id,
+          gradeSlug: gradeSlug
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'كود غير صالح')
+      }
+
+      setCodeValidationSuccess('الكود صالح ويمكن استخدامه!')
+      setValidatedCode(data.code)
+      return data.code
+    } catch (err: any) {
+      setCodeValidationError(err.message)
+      return null
+    } finally {
+      setIsValidatingCode(false)
+    }
+  }
+
+  const handleCodeInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setCodeInput(value)
+    
+    // إذا كان الكود بطول 8 أحرف أو أكثر، قم بالتحقق منه تلقائياً
+    if (value.length >= 8) {
+      await validateCode(value)
+    } else {
+      setCodeValidationError('')
+      setCodeValidationSuccess('')
+      setValidatedCode(null)
+    }
+  }
+
   // ================== Purchase Handlers ==================
-  const handlePurchaseClick = (pkg: Package) => {
+  const handlePurchaseClick = async (pkg: Package) => {
     if (!user) {
       router.push(`/login?returnUrl=/grades/${gradeSlug}`)
       return
     }
+    
+    // التحقق إذا كانت الباقة مشتراة مسبقاً
+    const isPurchased = userPackages.some(up => up.package_id === pkg.id)
+    
+    if (isPurchased) {
+      setPurchaseError('لقد قمت بشراء هذه الباقة مسبقاً!')
+      setTimeout(() => {
+        // توجيه المستخدم للباقة المشتراة
+        router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)
+      }, 2000)
+      return
+    }
+    
     setSelectedPackage(pkg)
     setPaymentMethod('wallet')
     setCodeInput('')
     setPurchaseError('')
     setPurchaseSuccess('')
+    setCodeValidationError('')
+    setCodeValidationSuccess('')
+    setValidatedCode(null)
     setShowPurchaseModal(true)
   }
 
@@ -792,52 +877,78 @@ export default function GradePage() {
 
     try {
       if (paymentMethod === 'wallet') {
+        // التحقق من الرصيد
         if (walletBalance < selectedPackage.price) {
-          throw new Error('رصيد المحفظة غير كافٍ')
+          throw new Error(`رصيد المحفظة غير كافٍ. الرصيد المطلوب: ${selectedPackage.price} جنيه، رصيدك الحالي: ${walletBalance} جنيه`)
         }
 
-        const response = await fetch('/api/purchase', {
+        const response = await fetch('/api/purchase-with-wallet', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             packageId: selectedPackage.id,
             userId: user.id,
-            paymentMethod: 'wallet'
+            price: selectedPackage.price,
+            gradeSlug: gradeSlug
           })
         })
 
+        const data = await response.json()
+
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.message || 'فشل الشراء')
+          throw new Error(data.message || 'فشل عملية الشراء')
         }
 
-        setPurchaseSuccess('تم الشراء بنجاح! 🎉')
-        setWalletBalance(prev => prev - selectedPackage.price)
+        setPurchaseSuccess('تم الشراء بنجاح! 🎉 سيتم تحويلك للباقة...')
+        
+        // تحديث الرصيد
+        setWalletBalance(data.newBalance)
+        
+        // تحديث الباقات
         await checkUser()
         
-        setTimeout(() => setShowPurchaseModal(false), 2000)
+        setTimeout(() => {
+          setShowPurchaseModal(false)
+          // توجيه المستخدم للباقة المشتراة
+          router.push(`/grades/${gradeSlug}/packages/${selectedPackage.id}`)
+        }, 2000)
 
       } else {
+        // طريقة الدفع بالكود
         if (!codeInput.trim()) throw new Error('يرجى إدخال الكود')
+        
+        if (!validatedCode) {
+          throw new Error('يرجى التحقق من صحة الكود أولاً')
+        }
 
-        const response = await fetch('/api/validate-code', {
+        const response = await fetch('/api/purchase-with-code', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             code: codeInput,
             packageId: selectedPackage.id,
-            userId: user.id
+            userId: user.id,
+            gradeSlug: gradeSlug,
+            codeId: validatedCode.id
           })
         })
 
+        const data = await response.json()
+
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.message || 'كود غير صالح')
+          throw new Error(data.message || 'فشل تفعيل الكود')
         }
 
-        setPurchaseSuccess('تم التفعيل بنجاح! 🎉')
+        setPurchaseSuccess('تم التفعيل بنجاح! 🎉 سيتم تحويلك للباقة...')
+        
+        // تحديث الباقات
         await checkUser()
-        setTimeout(() => setShowPurchaseModal(false), 2000)
+        
+        setTimeout(() => {
+          setShowPurchaseModal(false)
+          // توجيه المستخدم للباقة المشتراة
+          router.push(`/grades/${gradeSlug}/packages/${selectedPackage.id}`)
+        }, 2000)
       }
     } catch (err: any) {
       setPurchaseError(err.message)
@@ -1777,20 +1888,90 @@ export default function GradePage() {
                   </div>
 
                   {paymentMethod === 'code' && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className={styles.codeInputContainer}
-                    >
-                      <input
-                        type="text"
-                        placeholder="أدخل كود التفعيل هنا"
-                        value={codeInput}
-                        onChange={(e) => setCodeInput(e.target.value)}
-                        className={styles.codeInput}
-                        dir="ltr"
-                      />
-                    </motion.div>
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className={styles.codeInputContainer}
+                      >
+                        <div className={styles.codeValidationSection}>
+                          <input
+                            type="text"
+                            placeholder="أدخل كود التفعيل هنا (8 أحرف على الأقل)"
+                            value={codeInput}
+                            onChange={handleCodeInputChange}
+                            className={styles.codeInput}
+                            dir="ltr"
+                            disabled={isValidatingCode}
+                          />
+                          
+                          {codeInput.length >= 8 && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => validateCode(codeInput)}
+                              disabled={isValidatingCode}
+                              className={styles.validateButton}
+                            >
+                              {isValidatingCode ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                'التحقق من الكود'
+                              )}
+                            </motion.button>
+                          )}
+                        </div>
+                        
+                        {codeValidationSuccess && (
+                          <motion.div 
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className={styles.successBanner}
+                          >
+                            <CheckCircle2 className="w-5 h-5" />
+                            {codeValidationSuccess}
+                            {validatedCode && (
+                              <div className={styles.codeDetails}>
+                                <span>الكود: {validatedCode.code}</span>
+                                <span>ينتهي: {new Date(validatedCode.expires_at).toLocaleDateString('ar-EG')}</span>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                        
+                        {codeValidationError && (
+                          <motion.div 
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className={styles.errorBanner}
+                          >
+                            <X className="w-5 h-5" />
+                            {codeValidationError}
+                          </motion.div>
+                        )}
+                      </motion.div>
+                      
+                      {validatedCode && (
+                        <motion.div 
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className={styles.codeInfo}
+                        >
+                          <div className={styles.codeInfoItem}>
+                            <Shield className="w-5 h-5" />
+                            <span>الكود صالح للاستخدام مرة واحدة</span>
+                          </div>
+                          <div className={styles.codeInfoItem}>
+                            <Users className="w-5 h-5" />
+                            <span>مخصص لمستخدم واحد فقط</span>
+                          </div>
+                          <div className={styles.codeInfoItem}>
+                            <BookOpen className="w-5 h-5" />
+                            <span>مخصص لباقة: {selectedPackage.name}</span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </>
                   )}
 
                   {purchaseError && (
@@ -1811,7 +1992,7 @@ export default function GradePage() {
                     }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handlePurchase}
-                    disabled={isPurchasing}
+                    disabled={isPurchasing || (paymentMethod === 'code' && !validatedCode)}
                     className={styles.confirmButton}
                   >
                     {isPurchasing ? (
@@ -1819,9 +2000,9 @@ export default function GradePage() {
                         <Loader2 className="w-5 h-5 animate-spin" />
                         جاري المعالجة...
                       </>
-                    ) : (
+                    ) : paymentMethod === 'code' ? (
                       <>
-                        تأكيد الشراء
+                        تفعيل الكود
                         <motion.div
                           animate={{
                             x: [0, 5, 0]
@@ -1831,7 +2012,22 @@ export default function GradePage() {
                             repeat: Infinity
                           }}
                         >
-                          <ArrowRight className="w-5 h-5" />
+                          <CheckCircle2 className="w-5 h-5" />
+                        </motion.div>
+                      </>
+                    ) : (
+                      <>
+                        تأكيد الشراء من المحفظة
+                        <motion.div
+                          animate={{
+                            x: [0, 5, 0]
+                          }}
+                          transition={{
+                            duration: 1,
+                            repeat: Infinity
+                          }}
+                        >
+                          <Wallet className="w-5 h-5" />
                         </motion.div>
                       </>
                     )}

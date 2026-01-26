@@ -1,67 +1,88 @@
-// app/api/validate-code/route.ts
-import { createClient } from '@/lib/supabase/sf-server'
-import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { code, packageId, userId } = await request.json()
     const supabase = await createClient()
+    const { code, packageId, userId, gradeSlug } = await request.json()
 
-    // التحقق من الكود
+    // التحقق من وجود الكود في package_codes
     const { data: codeData, error: codeError } = await supabase
-      .from('codes')
-      .select('*')
-      .eq('code', code)
-      .single()
+      .from('package_codes')
+      .select(`
+        *,
+        packages (*)
+      `)
+      .eq('code', code.trim())
+      .eq('is_used', false)
+      .maybeSingle()
 
     if (codeError || !codeData) {
-      return NextResponse.json({ 
-        valid: false, 
-        message: 'الكود غير صالح' 
-      })
+      return NextResponse.json(
+        { message: 'الكود غير صالح أو غير موجود' },
+        { status: 400 }
+      )
     }
 
-    // التحقق إذا كان الكود مستخدم
-    if (codeData.is_used) {
-      return NextResponse.json({ 
-        valid: false, 
-        message: 'هذا الكود تم استخدامه مسبقاً' 
-      })
+    // التحقق من صلاحية الكود
+    if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
+      return NextResponse.json(
+        { message: 'هذا الكود منتهي الصلاحية' },
+        { status: 400 }
+      )
     }
 
-    // التحقق من مطابقة الباقة
+    // التحقق إذا كان الكود مخصص للباقة الصحيحة
     if (codeData.package_id !== packageId) {
-      return NextResponse.json({ 
-        valid: false, 
-        message: 'هذا الكود ليس لهذه الباقة' 
-      })
+      return NextResponse.json(
+        { message: 'هذا الكود غير مخصص لهذه الباقة' },
+        { status: 400 }
+      )
     }
 
-    // التحقق إذا كان المستخدم اشترى الباقة مسبقاً
+    // التحقق إذا كان الكود مخصص للصف الصحيح
+    if (codeData.grade !== gradeSlug) {
+      return NextResponse.json(
+        { message: 'هذا الكود غير مخصص لهذا الصف' },
+        { status: 400 }
+      )
+    }
+
+    // التحقق إذا كان المستخدم قد اشترى الباقة مسبقاً
     const { data: existingPurchase } = await supabase
       .from('user_packages')
       .select('*')
       .eq('user_id', userId)
       .eq('package_id', packageId)
       .eq('is_active', true)
+      .maybeSingle()
 
-    if (existingPurchase && existingPurchase.length > 0) {
-      return NextResponse.json({ 
-        valid: false, 
-        message: 'لقد قمت بشراء هذه الباقة مسبقاً' 
-      })
+    if (existingPurchase) {
+      return NextResponse.json(
+        { message: 'لقد قمت بشراء هذه الباقة مسبقاً' },
+        { status: 400 }
+      )
     }
 
-    return NextResponse.json({ 
-      valid: true,
+    // التحقق من أن الباقة تنتمي للصف المطلوب
+    if (codeData.packages?.grade !== gradeSlug) {
+      return NextResponse.json(
+        { message: 'هذا الكود غير مخصص لهذا الصف' },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'الكود صالح للاستخدام',
       code: codeData
     })
 
-  } catch (error) {
-    console.error('Validation error:', error)
-    return NextResponse.json({ 
-      valid: false, 
-      message: 'حدث خطأ في التحقق' 
-    }, { status: 500 })
+  } catch (error: any) {
+    console.error('Code validation error:', error)
+    return NextResponse.json(
+      { message: error.message || 'حدث خطأ أثناء التحقق من الكود' },
+      { status: 500 }
+    )
   }
 }

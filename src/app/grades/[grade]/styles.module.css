@@ -1600,6 +1600,140 @@
   background: rgba(12, 140, 232, 0.2);
   color: var(--primary-800);
 }
+/* ================== Code Validation Styles ================== */
+.codeValidationSection {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.validateButton {
+  padding: 0.75rem 1.5rem;
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.validateButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.validateButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.successBanner {
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+  border: 1px solid var(--success-300);
+  border-radius: var(--radius-lg);
+  color: var(--success-700);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.successBanner svg {
+  color: var(--success-500);
+  flex-shrink: 0;
+}
+
+.codeDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--gray-600);
+}
+
+.codeInfo {
+  background: var(--gray-50);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--gray-200);
+}
+
+.codeInfoItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: var(--gray-700);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.codeInfoItem:last-child {
+  margin-bottom: 0;
+}
+
+.codeInfoItem svg {
+  color: var(--primary-500);
+  flex-shrink: 0;
+}
+
+/* ================== Purchased Package Styles ================== */
+.purchasedBadge {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 20;
+  padding: 0.6rem 1.2rem;
+  background: var(--gradient-success);
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: white;
+  box-shadow: var(--shadow-md);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: pulseSubtle 3s ease-in-out infinite;
+}
+
+.packagePurchased {
+  opacity: 0.9;
+  position: relative;
+}
+
+.packagePurchased::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* ================== Button States ================== */
+.confirmButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.confirmButton:disabled:hover {
+  box-shadow: none !important;
+}
 
 /* ================== Focus Styles ================== */
 :focus-visible {
