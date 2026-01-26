@@ -1,54 +1,46 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/nserver-client'
+import { NextResponse } from 'next/server'
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const supabase = await createClient()
     const { code, packageId, userId, gradeSlug } = await request.json()
 
-    // التحقق من وجود الكود في package_codes
+    // 1. البحث عن الكود
     const { data: codeData, error: codeError } = await supabase
-      .from('package_codes')
-      .select(`
-        *,
-        packages (*)
-      `)
-      .eq('code', code.trim())
-      .eq('is_used', false)
-      .maybeSingle()
+      .from('codes')
+      .select('*')
+      .eq('code', code)
+      .eq('grade', gradeSlug)
+      .eq('package_id', packageId)
+      .single()
 
     if (codeError || !codeData) {
       return NextResponse.json(
         { message: 'الكود غير صالح أو غير موجود' },
+        { status: 404 }
+      )
+    }
+
+    // 2. التحقق من استخدام الكود
+    if (codeData.is_used) {
+      return NextResponse.json(
+        { message: 'هذا الكود تم استخدامه مسبقاً' },
         { status: 400 }
       )
     }
 
-    // التحقق من صلاحية الكود
-    if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
+    // 3. التحقق من صلاحية الكود
+    const now = new Date()
+    const expiresAt = new Date(codeData.expires_at)
+    if (now > expiresAt) {
       return NextResponse.json(
         { message: 'هذا الكود منتهي الصلاحية' },
         { status: 400 }
       )
     }
 
-    // التحقق إذا كان الكود مخصص للباقة الصحيحة
-    if (codeData.package_id !== packageId) {
-      return NextResponse.json(
-        { message: 'هذا الكود غير مخصص لهذه الباقة' },
-        { status: 400 }
-      )
-    }
-
-    // التحقق إذا كان الكود مخصص للصف الصحيح
-    if (codeData.grade !== gradeSlug) {
-      return NextResponse.json(
-        { message: 'هذا الكود غير مخصص لهذا الصف' },
-        { status: 400 }
-      )
-    }
-
-    // التحقق إذا كان المستخدم قد اشترى الباقة مسبقاً
+    // 4. التحقق من أن المستخدم لم يشترِ الباقة مسبقاً
     const { data: existingPurchase } = await supabase
       .from('user_packages')
       .select('*')
@@ -64,24 +56,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // التحقق من أن الباقة تنتمي للصف المطلوب
-    if (codeData.packages?.grade !== gradeSlug) {
-      return NextResponse.json(
-        { message: 'هذا الكود غير مخصص لهذا الصف' },
-        { status: 400 }
-      )
-    }
-
     return NextResponse.json({
       success: true,
-      message: 'الكود صالح للاستخدام',
+      message: 'الكود صالح',
       code: codeData
     })
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Code validation error:', error)
     return NextResponse.json(
-      { message: error.message || 'حدث خطأ أثناء التحقق من الكود' },
+      { message: 'حدث خطأ في التحقق من الكود' },
       { status: 500 }
     )
   }

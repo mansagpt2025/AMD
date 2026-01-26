@@ -5,132 +5,38 @@ import { useRouter, useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { createClientBrowser } from '@/lib/supabase/sf-client'
 import {
-  PlayCircle,
-  BookOpen,
-  FileText,
-  Clock,
-  Lock,
-  Unlock,
-  CheckCircle,
-  AlertCircle,
-  ArrowRight,
-  Home,
-  ChevronRight,
-  GraduationCap,
-  BarChart3,
-  Target,
-  Calendar,
-  Video,
-  File,
-  AlertTriangle,
-  Award,
-  Loader2
+  PlayCircle, BookOpen, Clock, Lock, Unlock,
+  CheckCircle, XCircle, AlertCircle, Home,
+  ChevronRight, GraduationCap, BarChart3,
+  Calendar, Video, File, Target, Loader2,
+  ArrowRight, Shield, Users, Award
 } from 'lucide-react'
-import styles from './styles.module.css'
+import { getGradeTheme } from '@/lib/utils/grade-themes'
 
-// ================== Types ==================
-interface Package {
-  id: string
-  name: string
-  description: string
-  price: number
-  image_url: string
-  type: 'weekly' | 'monthly' | 'term' | 'offer'
-  lecture_count: number
-  grade: string
-  duration_days: number
-  is_active: boolean
-}
-
-interface Lecture {
-  id: string
-  package_id: string
-  title: string
-  description: string | null
-  image_url: string | null
-  order_number: number
-  is_active: boolean
-  created_at: string
-}
-
-interface LectureContent {
-  id: string
-  lecture_id: string
-  type: 'video' | 'pdf' | 'exam' | 'text'
-  title: string
-  description: string | null
-  content_url: string | null
-  duration_minutes: number
-  order_number: number
-  is_active: boolean
-  max_attempts: number
-  pass_score: number
-  created_at: string
-}
-
-interface UserProgress {
-  id: string
-  user_id: string
-  lecture_content_id: string
-  package_id: string
-  status: 'not_started' | 'in_progress' | 'completed' | 'passed' | 'failed'
-  score: number | null
-  attempts: number
-  last_accessed_at: string | null
-  completed_at: string | null
-}
-
-interface ExamResult {
-  id: string
-  user_id: string
-  content_id: string
-  score: number
-  total_questions: number | null
-  correct_answers: number | null
-  wrong_answers: number | null
-  completed_at: string
-}
-
-interface UserPackage {
-  id: string
-  user_id: string
-  package_id: string
-  purchased_at: string
-  expires_at: string
-  is_active: boolean
-}
-
-// ================== Page Component ==================
 export default function PackagePage() {
   const router = useRouter()
   const params = useParams()
   const supabase = createClientBrowser()
   
-  const gradeSlug = params?.grade as string
+  const gradeSlug = params?.grade as 'first' | 'second' | 'third'
   const packageId = params?.packageId as string
+  
+  const theme = getGradeTheme(gradeSlug)
 
-  // State
-  const [packageData, setPackageData] = useState<Package | null>(null)
-  const [lectures, setLectures] = useState<Lecture[]>([])
-  const [lectureContents, setLectureContents] = useState<LectureContent[]>([])
-  const [userProgress, setUserProgress] = useState<UserProgress[]>([])
-  const [examResults, setExamResults] = useState<ExamResult[]>([])
-  const [userPackage, setUserPackage] = useState<UserPackage | null>(null)
+  const [packageData, setPackageData] = useState<any>(null)
+  const [lectures, setLectures] = useState<any[]>([])
+  const [contents, setContents] = useState<any[]>([])
+  const [userProgress, setUserProgress] = useState<any[]>([])
+  const [userPackage, setUserPackage] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [completionPercentage, setCompletionPercentage] = useState(0)
+  const [error, setError] = useState('')
+  const [completion, setCompletion] = useState(0)
 
-  // ================== Load Data ==================
   useEffect(() => {
-    if (gradeSlug && packageId) {
-      checkAccessAndLoadData()
-    }
-  }, [gradeSlug, packageId])
+    checkAccessAndLoadData()
+  }, [])
 
   const checkAccessAndLoadData = async () => {
-    setLoading(true)
-    setError(null)
-
     try {
       // 1. التحقق من تسجيل الدخول
       const { data: { user } } = await supabase.auth.getUser()
@@ -139,53 +45,60 @@ export default function PackagePage() {
         return
       }
 
-      // 2. جلب بيانات الباقة
-      const { data: packageData, error: packageError } = await supabase
-        .from('packages')
-        .select('*')
-        .eq('id', packageId)
-        .eq('is_active', true)
-        .single()
-
-      if (packageError) throw new Error('الباقة غير موجودة أو غير متاحة')
-      if (!packageData) throw new Error('الباقة غير موجودة')
-      setPackageData(packageData)
-
-      // 3. التحقق من أن المستخدم مشترك في الباقة
-      const { data: userPackageData, error: userPackageError } = await supabase
+      // 2. التحقق من الاشتراك
+      const { data: userPackageData } = await supabase
         .from('user_packages')
         .select('*')
         .eq('user_id', user.id)
         .eq('package_id', packageId)
         .eq('is_active', true)
-        .maybeSingle()
+        .single()
 
-      if (userPackageError) throw new Error('خطأ في التحقق من الاشتراك')
       if (!userPackageData) {
         router.push(`/grades/${gradeSlug}?error=not_subscribed`)
         return
       }
       setUserPackage(userPackageData)
 
-      // 4. التحقق من صلاحية الاشتراك
-      const now = new Date()
-      const expiresAt = new Date(userPackageData.expires_at)
-      if (now > expiresAt) {
-        // تحديث حالة الاشتراك
-        await supabase
-          .from('user_packages')
-          .update({ is_active: false })
-          .eq('id', userPackageData.id)
-        
-        router.push(`/grades/${gradeSlug}?error=expired`)
-        return
+      // 3. جلب بيانات الباقة
+      const { data: packageData } = await supabase
+        .from('packages')
+        .select('*')
+        .eq('id', packageId)
+        .single()
+      setPackageData(packageData)
+
+      // 4. جلب المحاضرات
+      const { data: lecturesData } = await supabase
+        .from('lectures')
+        .select('*')
+        .eq('package_id', packageId)
+        .eq('is_active', true)
+        .order('order_number')
+      setLectures(lecturesData || [])
+
+      // 5. جلب محتويات المحاضرات
+      if (lecturesData?.length) {
+        const lectureIds = lecturesData.map(l => l.id)
+        const { data: contentsData } = await supabase
+          .from('lecture_contents')
+          .select('*')
+          .in('lecture_id', lectureIds)
+          .eq('is_active', true)
+          .order('order_number')
+        setContents(contentsData || [])
       }
 
-      // 5. جلب بيانات المحاضرات
-      await Promise.all([
-        loadLectures(),
-        loadUserProgress(user.id)
-      ])
+      // 6. جلب تقدم المستخدم
+      const { data: progressData } = await supabase
+        .from('user_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('package_id', packageId)
+      setUserProgress(progressData || [])
+
+      // 7. حساب نسبة الإتمام
+      calculateCompletion(progressData || [], contents)
 
     } catch (err: any) {
       setError(err.message)
@@ -194,149 +107,41 @@ export default function PackagePage() {
     }
   }
 
-  const loadLectures = async () => {
-    try {
-      // جلب المحاضرات
-      const { data: lecturesData, error: lecturesError } = await supabase
-        .from('lectures')
-        .select('*')
-        .eq('package_id', packageId)
-        .eq('is_active', true)
-        .order('order_number', { ascending: true })
-
-      if (lecturesError) throw new Error('خطأ في تحميل المحاضرات')
-      setLectures(lecturesData || [])
-
-      // جلب محتويات المحاضرات
-      if (lecturesData && lecturesData.length > 0) {
-        const lectureIds = lecturesData.map(l => l.id)
-        
-        const { data: contentsData, error: contentsError } = await supabase
-          .from('lecture_contents')
-          .select('*')
-          .in('lecture_id', lectureIds)
-          .eq('is_active', true)
-          .order('order_number', { ascending: true })
-
-        if (contentsError) throw new Error('خطأ في تحميل محتويات المحاضرات')
-        setLectureContents(contentsData || [])
-      }
-
-    } catch (err: any) {
-      throw err
-    }
-  }
-
-  const loadUserProgress = async (userId: string) => {
-    try {
-      // جلب تقدم المستخدم
-      const { data: progressData, error: progressError } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('package_id', packageId)
-
-      if (progressError) throw new Error('خطأ في تحميل التقدم')
-      setUserProgress(progressData || [])
-
-      // جلب نتائج الامتحانات
-      const lectureContentIds = lectureContents
-        .filter(content => content.type === 'exam')
-        .map(content => content.id)
-
-      if (lectureContentIds.length > 0) {
-        const { data: examResultsData, error: examResultsError } = await supabase
-          .from('exam_results')
-          .select('*')
-          .eq('user_id', userId)
-          .in('content_id', lectureContentIds)
-          .order('completed_at', { ascending: false })
-
-        if (examResultsError) throw new Error('خطأ في تحميل نتائج الامتحانات')
-        setExamResults(examResultsData || [])
-      }
-
-      // حساب نسبة الإتمام
-      calculateCompletionPercentage(progressData || [])
-
-    } catch (err: any) {
-      throw err
-    }
-  }
-
-  const calculateCompletionPercentage = (progress: UserProgress[]) => {
-    if (lectureContents.length === 0) {
-      setCompletionPercentage(0)
+  const calculateCompletion = (progress: any[], allContents: any[]) => {
+    if (allContents.length === 0) {
+      setCompletion(0)
       return
     }
 
-    const completedContents = progress.filter(p => 
+    const completed = progress.filter(p => 
       p.status === 'completed' || p.status === 'passed'
     ).length
 
-    const percentage = Math.round((completedContents / lectureContents.length) * 100)
-    setCompletionPercentage(percentage)
+    setCompletion(Math.round((completed / allContents.length) * 100))
   }
 
-  // ================== Helper Functions ==================
-  const getLectureContents = (lectureId: string) => {
-    return lectureContents
-      .filter(content => content.lecture_id === lectureId)
-      .sort((a, b) => a.order_number - b.order_number)
-  }
-
-  const getUserProgressForContent = (contentId: string) => {
-    return userProgress.find(progress => progress.lecture_content_id === contentId)
-  }
-
-  const getExamResultForContent = (contentId: string) => {
-    return examResults.find(result => result.content_id === contentId)
-  }
-
-  const isContentAccessible = (lectureIndex: number, contentIndex: number, content: LectureContent) => {
-    // إذا كانت الباقة أسبوعية، كل المحتويات متاحة
+  const isContentAccessible = (lectureIndex: number, contentIndex: number, content: any) => {
+    // الباقات الأسبوعية: كل المحتويات مفتوحة
     if (packageData?.type === 'weekly') return true
 
-    // إذا كانت الباقة شهرية أو ترم كامل
+    // الباقات الشهرية والترم: نظام تسلسلي
     if (packageData?.type === 'monthly' || packageData?.type === 'term') {
-      // المحاضرة الأولى والمحتوى الأول متاحان دائمًا
+      // المحتوى الأول في المحاضرة الأولى مفتوح
       if (lectureIndex === 0 && contentIndex === 0) return true
 
-      // الحصول على المحاضرة الحالية
-      const currentLecture = lectures[lectureIndex]
-      const currentContents = getLectureContents(currentLecture.id)
-
-      // إذا كان هذا أول محتوى في المحاضرة
-      if (contentIndex === 0) {
-        // إذا كانت هذه أول محاضرة، المحتوى الأول متاح
-        if (lectureIndex === 0) return true
-
-        // الحصول على المحاضرة السابقة
-        const previousLecture = lectures[lectureIndex - 1]
-        const previousContents = getLectureContents(previousLecture.id)
-
-        // التحقق من وجود امتحان في المحاضرة السابقة
-        const previousExam = previousContents.find(c => c.type === 'exam')
-        
-        if (!previousExam) {
-          // إذا لم يكن هناك امتحان في المحاضرة السابقة، متاح
-          return true
-        } else {
-          // التحقق من اجتياز الامتحان السابق
-          const examProgress = getUserProgressForContent(previousExam.id)
-          return examProgress?.status === 'passed'
+      // الحصول على المحتويات السابقة
+      const previousContents = getPreviousContents(lectureIndex, contentIndex)
+      
+      // التحقق من إتمام جميع المحتويات السابقة
+      for (const prevContent of previousContents) {
+        const progress = userProgress.find(p => p.lecture_content_id === prevContent.id)
+        if (!progress || (progress.status !== 'completed' && progress.status !== 'passed')) {
+          return false
         }
-      } else {
-        // إذا لم يكن أول محتوى، التحقق من إتمام المحتوى السابق
-        const previousContent = currentContents[contentIndex - 1]
-        const previousProgress = getUserProgressForContent(previousContent.id)
         
         // إذا كان المحتوى السابق امتحان، يجب اجتيازه
-        if (previousContent.type === 'exam') {
-          return previousProgress?.status === 'passed'
-        } else {
-          // إذا لم يكن امتحان، يكفي إتمامه
-          return previousProgress?.status === 'completed'
+        if (prevContent.type === 'exam' && progress.status !== 'passed') {
+          return false
         }
       }
     }
@@ -344,102 +149,68 @@ export default function PackagePage() {
     return true
   }
 
+  const getPreviousContents = (lectureIndex: number, contentIndex: number) => {
+    const previous: any[] = []
+    
+    // جمع محتويات المحاضرات السابقة
+    for (let i = 0; i < lectureIndex; i++) {
+      const lecture = lectures[i]
+      const lectureContents = contents.filter(c => c.lecture_id === lecture.id)
+      previous.push(...lectureContents)
+    }
+
+    // جمع محتويات المحاضرة الحالية قبل هذا المحتوى
+    const currentLecture = lectures[lectureIndex]
+    const currentContents = contents.filter(c => c.lecture_id === currentLecture.id)
+    previous.push(...currentContents.slice(0, contentIndex))
+
+    return previous
+  }
+
   const getContentIcon = (type: string) => {
     switch (type) {
       case 'video': return <Video className="w-5 h-5" />
       case 'pdf': return <File className="w-5 h-5" />
       case 'exam': return <Target className="w-5 h-5" />
-      case 'text': return <FileText className="w-5 h-5" />
-      default: return <BookOpen className="w-5 h-5" />
+      case 'text': return <BookOpen className="w-5 h-5" />
+      default: return <PlayCircle className="w-5 h-5" />
     }
   }
 
   const getContentStatus = (contentId: string) => {
-    const progress = getUserProgressForContent(contentId)
-    if (!progress) return 'not_started'
-    
-    switch (progress.status) {
-      case 'completed': return 'completed'
-      case 'passed': return 'passed'
-      case 'failed': return 'failed'
-      case 'in_progress': return 'in_progress'
-      default: return 'not_started'
-    }
+    const progress = userProgress.find(p => p.lecture_content_id === contentId)
+    return progress?.status || 'not_started'
   }
 
-  const getContentStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-      case 'passed':
-        return <CheckCircle className="w-5 h-5 text-green-500" />
-      case 'failed':
-        return <AlertCircle className="w-5 h-5 text-red-500" />
-      case 'in_progress':
-        return <Clock className="w-5 h-5 text-yellow-500" />
-      default:
-        return null
-    }
-  }
-
-  const handleContentClick = async (lectureIndex: number, contentIndex: number, content: LectureContent) => {
-    // التحقق من إمكانية الوصول
+  const handleContentClick = (content: any, lectureIndex: number, contentIndex: number) => {
     if (!isContentAccessible(lectureIndex, contentIndex, content)) {
       alert('يجب إتمام المحتوى السابق أولاً')
       return
     }
 
-    // تسجيل الوصول
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase
-        .from('user_progress')
-        .upsert({
-          user_id: user.id,
-          lecture_content_id: content.id,
-          package_id: packageId,
-          status: 'in_progress',
-          last_accessed_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,lecture_content_id'
-        })
-    }
-
-    // التوجيه إلى صفحة المحتوى
     router.push(`/grades/${gradeSlug}/packages/${packageId}/content/${content.id}`)
   }
 
-  const formatDuration = (minutes: number) => {
-    if (minutes < 60) return `${minutes} دقيقة`
-    const hours = Math.floor(minutes / 60)
-    const remainingMinutes = minutes % 60
-    return `${hours} ساعة ${remainingMinutes > 0 ? `${remainingMinutes} دقيقة` : ''}`
-  }
-
-  // ================== Loading State ==================
   if (loading) {
     return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loadingSpinner}>
-          <Loader2 className="w-12 h-12 animate-spin" />
-        </div>
-        <p className={styles.loadingText}>جاري تحميل الباقة...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-12 h-12 animate-spin" style={{ color: theme.primary }} />
       </div>
     )
   }
 
-  // ================== Error State ==================
   if (error || !packageData) {
     return (
-      <div className={styles.errorContainer}>
-        <div className={styles.errorContent}>
-          <AlertTriangle className="w-16 h-16 text-red-500" />
-          <h2 className={styles.errorTitle}>حدث خطأ</h2>
-          <p className={styles.errorMessage}>{error || 'الباقة غير موجودة'}</p>
-          <button 
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">حدث خطأ</h2>
+          <p className="text-gray-600 mb-4">{error || 'الباقة غير موجودة'}</p>
+          <button
             onClick={() => router.push(`/grades/${gradeSlug}`)}
-            className={styles.backButton}
+            className="px-6 py-3 rounded-lg font-medium"
+            style={{ background: theme.primary, color: 'white' }}
           >
-            <ArrowRight className="w-5 h-5" />
             العودة إلى الباقات
           </button>
         </div>
@@ -447,258 +218,315 @@ export default function PackagePage() {
     )
   }
 
-  // ================== Main Page ==================
   return (
-    <div className={styles.container}>
+    <div className="min-h-screen" style={{ background: theme.background }}>
       {/* Header */}
-      <div className={styles.header}>
-        <div className={styles.breadcrumb}>
-          <button 
-            onClick={() => router.push('/')}
-            className={styles.breadcrumbItem}
-          >
-            <Home className="w-4 h-4" />
-            الرئيسية
-          </button>
-          <ChevronRight className="w-4 h-4" />
-          <button 
-            onClick={() => router.push(`/grades/${gradeSlug}`)}
-            className={styles.breadcrumbItem}
-          >
-            {gradeSlug === 'first' ? 'الصف الأول الثانوي' : 
-             gradeSlug === 'second' ? 'الصف الثاني الثانوي' : 
-             'الصف الثالث الثانوي'}
-          </button>
-          <ChevronRight className="w-4 h-4" />
-          <span className={styles.breadcrumbCurrent}>{packageData.name}</span>
-        </div>
-
-        <div className={styles.packageHeader}>
-          <div className={styles.packageImage}>
-            {packageData.image_url ? (
-              <img 
-                src={packageData.image_url} 
-                alt={packageData.name}
-                className={styles.image}
-              />
-            ) : (
-              <div className={styles.imagePlaceholder}>
-                <GraduationCap className="w-16 h-16 text-white" />
-              </div>
-            )}
+      <div className="relative overflow-hidden" style={{ background: theme.header }}>
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 text-white/80 mb-6">
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center gap-1 hover:text-white"
+            >
+              <Home className="w-4 h-4" />
+              الرئيسية
+            </button>
+            <ChevronRight className="w-4 h-4" />
+            <button
+              onClick={() => router.push(`/grades/${gradeSlug}`)}
+              className="hover:text-white"
+            >
+              {gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}
+            </button>
+            <ChevronRight className="w-4 h-4" />
+            <span className="text-white font-medium">{packageData.name}</span>
           </div>
 
-          <div className={styles.packageInfo}>
-            <h1 className={styles.packageTitle}>{packageData.name}</h1>
-            <p className={styles.packageDescription}>{packageData.description}</p>
-            
-            <div className={styles.packageStats}>
-              <div className={styles.statItem}>
-                <PlayCircle className="w-5 h-5" />
-                <span>{lectures.length} محاضرة</span>
-              </div>
-              <div className={styles.statItem}>
-                <Clock className="w-5 h-5" />
-                <span>{packageData.duration_days} يوم</span>
-              </div>
-              <div className={styles.statItem}>
-                <Calendar className="w-5 h-5" />
-                <span>
-                  {packageData.type === 'weekly' ? 'أسبوعي' : 
-                   packageData.type === 'monthly' ? 'شهري' : 
-                   packageData.type === 'term' ? 'ترم كامل' : 'عرض خاص'}
-                </span>
+          {/* Package Info */}
+          <div className="flex flex-col md:flex-row gap-8 items-start">
+            {/* Image */}
+            <div className="w-full md:w-1/3">
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
+                {packageData.image_url ? (
+                  <img
+                    src={packageData.image_url}
+                    alt={packageData.name}
+                    className="w-full h-64 object-cover rounded-xl"
+                  />
+                ) : (
+                  <div className="w-full h-64 rounded-xl flex items-center justify-center" style={{ background: theme.primary + '40' }}>
+                    <GraduationCap className="w-20 h-20 text-white" />
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className={styles.progressSection}>
-              <div className={styles.progressHeader}>
-                <BarChart3 className="w-5 h-5" />
-                <span>نسبة الإتمام</span>
-                <span className={styles.percentage}>{completionPercentage}%</span>
-              </div>
+            {/* Details */}
+            <div className="flex-1 text-white">
+              <h1 className="text-3xl md:text-4xl font-bold mb-4">{packageData.name}</h1>
+              <p className="text-lg mb-6 text-white/90">{packageData.description}</p>
               
-              <div className={styles.progressBar}>
-                <motion.div 
-                  className={styles.progressFill}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${completionPercentage}%` }}
-                  transition={{ duration: 1, ease: "easeInOut" }}
-                />
+              <div className="flex flex-wrap gap-4 mb-6">
+                <div className="flex items-center gap-2">
+                  <PlayCircle className="w-5 h-5" />
+                  <span>{lectures.length} محاضرة</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  <span>{packageData.duration_days} يوم</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  <span>
+                    {packageData.type === 'weekly' ? 'أسبوعي' :
+                     packageData.type === 'monthly' ? 'شهري' :
+                     packageData.type === 'term' ? 'ترم كامل' : 'عرض خاص'}
+                  </span>
+                </div>
               </div>
-              
-              <div className={styles.progressDetails}>
-                <span>مكتمل: {userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}</span>
-                <span>المتبقي: {lectureContents.length - userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}</span>
-                <span>الإجمالي: {lectureContents.length}</span>
+
+              {/* Progress */}
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" />
+                    <span>نسبة الإتمام</span>
+                  </div>
+                  <span className="text-2xl font-bold">{completion}%</span>
+                </div>
+                
+                <div className="w-full h-3 bg-white/20 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${completion}%` }}
+                    className="h-full rounded-full"
+                    style={{ background: theme.accent }}
+                  />
+                </div>
+                
+                <div className="flex justify-between mt-3 text-sm">
+                  <span>مكتمل: {userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}</span>
+                  <span>المتبقي: {contents.length - userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}</span>
+                  <span>الإجمالي: {contents.length}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Lectures List */}
-      <div className={styles.lecturesContainer}>
-        <h2 className={styles.lecturesTitle}>
+      {/* Lectures */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: theme.text }}>
           <BookOpen className="w-6 h-6" />
           محاضرات الباقة
         </h2>
 
         {lectures.length === 0 ? (
-          <div className={styles.emptyLectures}>
-            <BookOpen className="w-12 h-12 text-gray-400" />
-            <p>لا توجد محاضرات متاحة حالياً</p>
+          <div className="text-center py-12">
+            <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">لا توجد محاضرات متاحة حالياً</p>
           </div>
         ) : (
-          <div className={styles.lecturesList}>
-            {lectures.map((lecture, lectureIndex) => (
-              <div key={lecture.id} className={styles.lectureCard}>
-                <div className={styles.lectureHeader}>
-                  <div className={styles.lectureInfo}>
-                    <h3 className={styles.lectureTitle}>
-                      المحاضرة {lectureIndex + 1}: {lecture.title}
-                    </h3>
-                    {lecture.description && (
-                      <p className={styles.lectureDescription}>{lecture.description}</p>
-                    )}
-                  </div>
-                  
-                  <div className={styles.lectureOrder}>
-                    <span className={styles.orderBadge}>المحاضرة {lecture.order_number + 1}</span>
-                  </div>
-                </div>
-
-                <div className={styles.contentsList}>
-                  {getLectureContents(lecture.id).map((content, contentIndex) => {
-                    const isAccessible = isContentAccessible(lectureIndex, contentIndex, content)
-                    const contentStatus = getContentStatus(content.id)
-                    const examResult = getExamResultForContent(content.id)
-
-                    return (
-                      <motion.div
-                        key={content.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: contentIndex * 0.1 }}
-                        className={`${styles.contentItem} ${
-                          isAccessible ? styles.contentAccessible : styles.contentLocked
-                        }`}
-                      >
-                        <div className={styles.contentHeader}>
-                          <div className={styles.contentIcon}>
-                            {getContentIcon(content.type)}
-                          </div>
-                          
-                          <div className={styles.contentInfo}>
-                            <h4 className={styles.contentTitle}>{content.title}</h4>
-                            {content.description && (
-                              <p className={styles.contentDescription}>{content.description}</p>
-                            )}
-                            <div className={styles.contentMeta}>
-                              <span className={styles.contentType}>
-                                {content.type === 'video' ? 'فيديو' : 
-                                 content.type === 'pdf' ? 'ملف PDF' : 
-                                 content.type === 'exam' ? 'امتحان' : 'نص'}
-                              </span>
-                              {content.duration_minutes > 0 && (
-                                <span className={styles.contentDuration}>
-                                  <Clock className="w-4 h-4" />
-                                  {formatDuration(content.duration_minutes)}
-                                </span>
-                              )}
-                              {content.type === 'exam' && (
-                                <span className={styles.examInfo}>
-                                  <Target className="w-4 h-4" />
-                                  النجاح: {content.pass_score}%
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className={styles.contentActions}>
-                          <div className={styles.contentStatus}>
-                            {getContentStatusIcon(contentStatus)}
-                            {contentStatus === 'passed' && examResult && (
-                              <span className={styles.examScore}>الدرجة: {examResult.score}%</span>
-                            )}
-                            {contentStatus === 'failed' && (
-                              <span className={styles.failedText}>لم يتم النجاح</span>
-                            )}
-                            {contentStatus === 'completed' && (
-                              <span className={styles.completedText}>مكتمل</span>
-                            )}
-                          </div>
-
-                          <button
-                            onClick={() => handleContentClick(lectureIndex, contentIndex, content)}
-                            disabled={!isAccessible}
-                            className={`${styles.contentButton} ${
-                              isAccessible ? styles.buttonEnabled : styles.buttonDisabled
-                            }`}
-                          >
-                            {isAccessible ? (
-                              <>
-                                {contentStatus === 'not_started' ? 'بدء' : 'استكمال'}
-                                <PlayCircle className="w-5 h-5" />
-                              </>
-                            ) : (
-                              <>
-                                غير متاح
-                                <Lock className="w-5 h-5" />
-                              </>
-                            )}
-                          </button>
-                        </div>
-
-                        {!isAccessible && (
-                          <div className={styles.lockMessage}>
-                            <AlertCircle className="w-4 h-4" />
-                            <span>يجب إتمام المحتوى السابق أولاً</span>
-                          </div>
+          <div className="space-y-6">
+            {lectures.map((lecture, lectureIndex) => {
+              const lectureContents = contents.filter(c => c.lecture_id === lecture.id)
+              
+              return (
+                <motion.div
+                  key={lecture.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl shadow-lg border overflow-hidden"
+                  style={{ borderColor: theme.border }}
+                >
+                  {/* Lecture Header */}
+                  <div className="p-6 border-b" style={{ borderColor: theme.border }}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-xl font-bold mb-2" style={{ color: theme.text }}>
+                          المحاضرة {lectureIndex + 1}: {lecture.title}
+                        </h3>
+                        {lecture.description && (
+                          <p className="text-gray-600">{lecture.description}</p>
                         )}
-                      </motion.div>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
+                      </div>
+                      <div className="px-3 py-1 rounded-full text-sm font-medium text-white" style={{ background: theme.primary }}>
+                        {lectureContents.length} محتوى
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contents */}
+                  <div className="p-6">
+                    <div className="space-y-4">
+                      {lectureContents.map((content, contentIndex) => {
+                        const isAccessible = isContentAccessible(lectureIndex, contentIndex, content)
+                        const status = getContentStatus(content.id)
+                        
+                        return (
+                          <div
+                            key={content.id}
+                            className={`p-4 rounded-xl border-2 transition-all ${
+                              isAccessible 
+                                ? 'hover:border-blue-500 cursor-pointer border-gray-200' 
+                                : 'border-gray-100 opacity-60'
+                            }`}
+                            onClick={() => isAccessible && handleContentClick(content, lectureIndex, contentIndex)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg" style={{ background: theme.primary + '20' }}>
+                                  {getContentIcon(content.type)}
+                                </div>
+                                <div>
+                                  <h4 className="font-bold" style={{ color: theme.text }}>
+                                    {content.title}
+                                  </h4>
+                                  {content.description && (
+                                    <p className="text-sm text-gray-600">{content.description}</p>
+                                  )}
+                                  <div className="flex gap-4 mt-2 text-sm text-gray-500">
+                                    <span className="flex items-center gap-1">
+                                      {content.type === 'video' ? 'فيديو' :
+                                       content.type === 'pdf' ? 'ملف PDF' :
+                                       content.type === 'exam' ? 'امتحان' : 'نص'}
+                                    </span>
+                                    {content.duration_minutes > 0 && (
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="w-4 h-4" />
+                                        {content.duration_minutes} دقيقة
+                                      </span>
+                                    )}
+                                    {content.type === 'exam' && (
+                                      <span className="flex items-center gap-1">
+                                        <Target className="w-4 h-4" />
+                                        النجاح: {content.pass_score}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                {/* Status */}
+                                {status === 'completed' || status === 'passed' ? (
+                                  <div className="flex items-center gap-1 text-green-600">
+                                    <CheckCircle className="w-5 h-5" />
+                                    <span>{status === 'passed' ? 'ناجح' : 'مكتمل'}</span>
+                                  </div>
+                                ) : status === 'failed' ? (
+                                  <div className="flex items-center gap-1 text-red-600">
+                                    <XCircle className="w-5 h-5" />
+                                    <span>فاشل</span>
+                                  </div>
+                                ) : status === 'in_progress' ? (
+                                  <div className="flex items-center gap-1 text-yellow-600">
+                                    <Clock className="w-5 h-5" />
+                                    <span>قيد التقدم</span>
+                                  </div>
+                                ) : null}
+
+                                {/* Action Button */}
+                                <button
+                                  className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${
+                                    isAccessible 
+                                      ? 'text-white' 
+                                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  }`}
+                                  style={isAccessible ? { background: theme.primary } : {}}
+                                  disabled={!isAccessible}
+                                >
+                                  {isAccessible ? (
+                                    <>
+                                      {status === 'not_started' ? 'بدء' : 'استكمال'}
+                                      <ArrowRight className="w-4 h-4" />
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Lock className="w-4 h-4" />
+                                      مقفل
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Lock Message */}
+                            {!isAccessible && (
+                              <div className="mt-3 p-3 rounded-lg bg-yellow-50 text-yellow-800 flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4" />
+                                <span>يجب إتمام المحتوى السابق أولاً</span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            })}
           </div>
         )}
-      </div>
 
-      {/* Package Info Footer */}
-      <div className={styles.packageFooter}>
-        <div className={styles.footerCard}>
-          <Award className="w-8 h-8" />
-          <div className={styles.footerInfo}>
-            <h4>ملاحظات هامة</h4>
-            <ul className={styles.notesList}>
-              {packageData.type === 'monthly' || packageData.type === 'term' ? (
-                <>
-                  <li>يجب إتمام كل محتوى قبل الانتقال للذي يليه</li>
-                  <li>لابد من اجتياز الامتحان قبل الانتقال للمحاضرة التالية</li>
-                  <li>يمكنك إعادة الامتحان حتى 3 مرات</li>
-                </>
-              ) : (
-                <>
-                  <li>جميع المحاضرات متاحة مباشرة</li>
-                  <li>يمكنك البدء بأي محاضرة تريد</li>
-                </>
-              )}
-              <li>مدة الاشتراك: {userPackage?.expires_at ? 
-                new Date(userPackage.expires_at).toLocaleDateString('ar-EG') : 'غير محددة'}</li>
-            </ul>
+        {/* Important Notes */}
+        <div className="mt-12 p-6 rounded-2xl border" style={{ borderColor: theme.border, background: theme.backgroundLight }}>
+          <div className="flex items-center gap-3 mb-4">
+            <Award className="w-6 h-6" style={{ color: theme.primary }} />
+            <h3 className="text-xl font-bold" style={{ color: theme.text }}>ملاحظات هامة</h3>
           </div>
+          
+          <ul className="space-y-2 text-gray-600">
+            {packageData.type === 'monthly' || packageData.type === 'term' ? (
+              <>
+                <li className="flex items-center gap-2">
+                  <Shield className="w-4 h-4" style={{ color: theme.primary }} />
+                  يجب إتمام كل محتوى قبل الانتقال للذي يليه
+                </li>
+                <li className="flex items-center gap-2">
+                  <Target className="w-4 h-4" style={{ color: theme.primary }} />
+                  لابد من اجتياز الامتحان قبل الانتقال للمحاضرة التالية
+                </li>
+                <li className="flex items-center gap-2">
+                  <Users className="w-4 h-4" style={{ color: theme.primary }} />
+                  يمكنك إعادة الامتحان حتى 3 مرات
+                </li>
+              </>
+            ) : (
+              <>
+                <li className="flex items-center gap-2">
+                  <Unlock className="w-4 h-4" style={{ color: theme.primary }} />
+                  جميع المحاضرات متاحة مباشرة
+                </li>
+                <li className="flex items-center gap-2">
+                  <PlayCircle className="w-4 h-4" style={{ color: theme.primary }} />
+                  يمكنك البدء بأي محاضرة تريد
+                </li>
+              </>
+            )}
+            <li className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" style={{ color: theme.primary }} />
+              مدة الاشتراك تنتهي في: {new Date(userPackage?.expires_at).toLocaleDateString('ar-EG')}
+            </li>
+          </ul>
         </div>
 
-        <button
-          onClick={() => router.push(`/grades/${gradeSlug}`)}
-          className={styles.backToPackages}
-        >
-          <ArrowRight className="w-5 h-5" />
-          العودة إلى الباقات
-        </button>
+        {/* Back Button */}
+        <div className="mt-8 text-center">
+          <button
+            onClick={() => router.push(`/grades/${gradeSlug}`)}
+            className="px-8 py-3 rounded-xl font-medium border-2 hover:shadow-lg transition-all"
+            style={{ 
+              borderColor: theme.primary,
+              color: theme.primary
+            }}
+          >
+            <ArrowRight className="w-5 h-5 inline ml-2" />
+            العودة إلى الباقات
+          </button>
+        </div>
       </div>
     </div>
   )

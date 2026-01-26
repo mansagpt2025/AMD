@@ -1,70 +1,47 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { createClientBrowser } from '@/lib/supabase/sf-client'
 import {
-  Video,
-  FileText,
-  BookOpen,
-  Clock,
-  CheckCircle,
-  X,
-  ArrowRight,
-  AlertCircle,
-  Loader2,
-  Download,
-  Play,
-  Target
+  Video, FileText, BookOpen, Clock, CheckCircle,
+  X, ArrowRight, AlertCircle, Loader2, Download,
+  Play, Target, Lock, Eye, Home,
+  ChevronRight, Shield, Award, Users
 } from 'lucide-react'
-import styles from './styles.module.css'
-
-interface LectureContent {
-  id: string
-  lecture_id: string
-  type: 'video' | 'pdf' | 'exam' | 'text'
-  title: string
-  description: string | null
-  content_url: string | null
-  duration_minutes: number
-  order_number: number
-  is_active: boolean
-  max_attempts: number
-  pass_score: number
-}
-
-interface UserProgress {
-  id: string
-  user_id: string
-  lecture_content_id: string
-  package_id: string
-  status: 'not_started' | 'in_progress' | 'completed' | 'passed' | 'failed'
-  score: number | null
-  attempts: number
-}
+import { getGradeTheme } from '@/lib/utils/grade-themes'
+import ProtectedVideoPlayer from '@/components/content/ProtectedVideoPlayer'
+import PDFViewer from '@/components/content/PDFViewer'
+import ExamViewer from '@/components/content/ExamViewer'
 
 export default function ContentPage() {
   const router = useRouter()
   const params = useParams()
   const supabase = createClientBrowser()
   
-  const gradeSlug = params?.grade as string
+  const gradeSlug = params?.grade as 'first' | 'second' | 'third'
   const packageId = params?.packageId as string
   const contentId = params?.contentId as string
+  
+  const theme = getGradeTheme(gradeSlug)
 
-  const [content, setContent] = useState<LectureContent | null>(null)
+  const [content, setContent] = useState<any>(null)
+  const [lecture, setLecture] = useState<any>(null)
+  const [packageData, setPackageData] = useState<any>(null)
+  const [userProgress, setUserProgress] = useState<any>(null)
+  const [userPackage, setUserPackage] = useState<any>(null)
+  const [currentUser, setCurrentUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [progress, setProgress] = useState<UserProgress | null>(null)
-  const [videoTime, setVideoTime] = useState(0)
-  const [totalDuration, setTotalDuration] = useState(0)
+  const [error, setError] = useState('')
+  const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
+  const [videoProgress, setVideoProgress] = useState(0)
 
   useEffect(() => {
     loadContent()
   }, [contentId])
 
   const loadContent = async () => {
-    setLoading(true)
     try {
       // التحقق من الوصول
       const { data: { user } } = await supabase.auth.getUser()
@@ -72,21 +49,43 @@ export default function ContentPage() {
         router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
         return
       }
+      setCurrentUser(user)
 
-      // جلب بيانات المحتوى
-      const { data: contentData, error: contentError } = await supabase
+      // جلب المحتوى
+      const { data: contentData } = await supabase
         .from('lecture_contents')
         .select('*')
         .eq('id', contentId)
-        .eq('is_active', true)
         .single()
-
-      if (contentError || !contentData) {
-        throw new Error('المحتوى غير موجود')
-      }
       setContent(contentData)
 
-      // جلب تقدم المستخدم
+      // جلب المحاضرة
+      const { data: lectureData } = await supabase
+        .from('lectures')
+        .select('*')
+        .eq('id', contentData.lecture_id)
+        .single()
+      setLecture(lectureData)
+
+      // جلب الباقة
+      const { data: packageData } = await supabase
+        .from('packages')
+        .select('*')
+        .eq('id', packageId)
+        .single()
+      setPackageData(packageData)
+
+      // جلب بيانات اشتراك المستخدم
+      const { data: userPackageData } = await supabase
+        .from('user_packages')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('package_id', packageId)
+        .eq('is_active', true)
+        .single()
+      setUserPackage(userPackageData)
+
+      // جلب تقدم المستخدم أو إنشاؤه
       const { data: progressData } = await supabase
         .from('user_progress')
         .select('*')
@@ -94,7 +93,42 @@ export default function ContentPage() {
         .eq('lecture_content_id', contentId)
         .maybeSingle()
 
-      setProgress(progressData || null)
+      if (!progressData) {
+        // إنشاء تقدم جديد
+        const { data: newProgress, error: progressError } = await supabase
+          .from('user_progress')
+          .insert({
+            user_id: user.id,
+            lecture_content_id: contentId,
+            package_id: packageId,
+            status: 'not_started',
+            last_accessed_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (!progressError && newProgress) {
+          setUserProgress(newProgress)
+          
+          // تسجيل الوصول بعد الإنشاء
+          await supabase
+            .from('user_progress')
+            .update({
+              last_accessed_at: new Date().toISOString()
+            })
+            .eq('id', newProgress.id)
+        }
+      } else {
+        setUserProgress(progressData)
+        
+        // تسجيل الوصول
+        await supabase
+          .from('user_progress')
+          .update({
+            last_accessed_at: new Date().toISOString()
+          })
+          .eq('id', progressData.id)
+      }
 
     } catch (err: any) {
       setError(err.message)
@@ -103,223 +137,425 @@ export default function ContentPage() {
     }
   }
 
-  const handleVideoProgress = (currentTime: number, duration: number) => {
-    setVideoTime(currentTime)
-    setTotalDuration(duration)
+  const handleVideoProgress = (progress: number) => {
+    setVideoProgress(progress)
     
     // إذا شاهد 80% من الفيديو، تمييز كمكتمل
-    if (duration > 0 && currentTime / duration >= 0.8) {
+    if (progress >= 80 && content?.type === 'video') {
       markAsCompleted()
     }
   }
 
   const markAsCompleted = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user || !content) return
+    if (!userProgress || !content) return
+    if (userProgress.status === 'completed' || userProgress.status === 'passed') return
 
     const status = content.type === 'exam' ? 'passed' : 'completed'
     
-    await supabase
+    const { error } = await supabase
       .from('user_progress')
-      .upsert({
-        user_id: user.id,
-        lecture_content_id: contentId,
-        package_id: packageId,
-        status: status,
+      .update({
+        status,
         completed_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id,lecture_content_id'
       })
+      .eq('id', userProgress.id)
 
-    // تحديث التقدم المحلي
-    setProgress({
-      id: progress?.id || `temp-${Date.now()}`,
-      user_id: user.id,
-      lecture_content_id: contentId,
-      package_id: packageId,
-      status: status,
-      score: null,
-      attempts: (progress?.attempts || 0) + 1
-    })
+    if (!error) {
+      setUserProgress({ ...userProgress, status })
+    }
   }
 
   const handleBack = () => {
     router.push(`/grades/${gradeSlug}/packages/${packageId}`)
   }
 
+  const renderContent = () => {
+    if (!content) return null
+
+    switch (content.type) {
+      case 'video':
+        return (
+          <ProtectedVideoPlayer
+            videoUrl={content.content_url || ''}
+            contentId={contentId}
+            userId={currentUser?.id}
+            onProgress={handleVideoProgress}
+            theme={theme}
+          />
+        )
+      case 'pdf':
+        return (
+          <PDFViewer
+            pdfUrl={content.content_url || ''}
+            contentId={contentId}
+            userId={currentUser?.id}
+            theme={theme}
+          />
+        )
+      case 'exam':
+        return (
+          <ExamViewer
+            examContent={content}
+            contentId={contentId}
+            packageId={packageId}
+            userId={currentUser?.id}
+            theme={theme}
+            onComplete={markAsCompleted}
+          />
+        )
+      case 'text':
+        return (
+          <div className="bg-white rounded-2xl p-8 border" style={{ borderColor: theme.border }}>
+            <div className="prose max-w-none">
+              {content.content_url ? (
+                <div dangerouslySetInnerHTML={{ __html: content.content_url }} />
+              ) : (
+                'لا يوجد محتوى نصي'
+              )}
+            </div>
+          </div>
+        )
+      default:
+        return (
+          <div className="text-center py-12">
+            <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">نوع المحتوى غير مدعوم</p>
+          </div>
+        )
+    }
+  }
+
   if (loading) {
     return (
-      <div className={styles.loadingContainer}>
-        <Loader2 className="w-8 h-8 animate-spin" />
-        <p>جاري تحميل المحتوى...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-12 h-12 animate-spin" style={{ color: theme.primary }} />
       </div>
     )
   }
 
   if (error || !content) {
     return (
-      <div className={styles.errorContainer}>
-        <AlertCircle className="w-12 h-12 text-red-500" />
-        <h2>حدث خطأ</h2>
-        <p>{error || 'المحتوى غير موجود'}</p>
-        <button onClick={handleBack} className={styles.backButton}>
-          <ArrowRight className="w-5 h-5" />
-          العودة للباقة
-        </button>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">حدث خطأ</h2>
+          <p className="text-gray-600 mb-4">{error || 'المحتوى غير موجود'}</p>
+          <button
+            onClick={handleBack}
+            className="px-6 py-3 rounded-lg font-medium"
+            style={{ background: theme.primary, color: 'white' }}
+          >
+            العودة للباقة
+          </button>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <button onClick={handleBack} className={styles.backButton}>
-          <ArrowRight className="w-5 h-5" />
-          العودة
-        </button>
-        
-        <div className={styles.titleSection}>
-          <h1>{content.title}</h1>
-          {content.description && <p>{content.description}</p>}
-        </div>
+    <div className="min-h-screen" style={{ background: theme.background }}>
+      {/* Header */}
+      <div className="border-b" style={{ borderColor: theme.border, background: theme.backgroundLight }}>
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 text-gray-600 mb-4">
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center gap-1 hover:text-gray-900"
+            >
+              <Home className="w-4 h-4" />
+              الرئيسية
+            </button>
+            <ChevronRight className="w-4 h-4" />
+            <button
+              onClick={() => router.push(`/grades/${gradeSlug}`)}
+              className="hover:text-gray-900"
+            >
+              {gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}
+            </button>
+            <ChevronRight className="w-4 h-4" />
+            <button
+              onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)}
+              className="hover:text-gray-900"
+            >
+              {packageData?.name}
+            </button>
+            <ChevronRight className="w-4 h-4" />
+            <span className="font-medium" style={{ color: theme.text }}>{content.title}</span>
+          </div>
 
-        <div className={styles.metaInfo}>
-          <span>
-            {content.type === 'video' ? 'فيديو' : 
-             content.type === 'pdf' ? 'ملف PDF' : 
-             content.type === 'exam' ? 'امتحان' : 'نص'}
-          </span>
-          {content.duration_minutes > 0 && (
-            <span>
-              <Clock className="w-4 h-4" />
-              {content.duration_minutes} دقيقة
-            </span>
-          )}
+          {/* Content Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: theme.text }}>
+                {content.title}
+              </h1>
+              <p className="text-gray-600">
+                {lecture?.title} • {packageData?.name}
+              </p>
+            </div>
+
+            <button
+              onClick={handleBack}
+              className="px-4 py-2 rounded-lg border flex items-center gap-2"
+              style={{ borderColor: theme.primary, color: theme.primary }}
+            >
+              <ArrowRight className="w-4 h-4" />
+              العودة
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className={styles.contentArea}>
-        {content.type === 'video' && content.content_url ? (
-          <div className={styles.videoContainer}>
-            <video
-              controls
-              className={styles.videoPlayer}
-              onTimeUpdate={(e) => handleVideoProgress(
-                e.currentTarget.currentTime,
-                e.currentTarget.duration
-              )}
-            >
-              <source src={content.content_url} type="video/mp4" />
-              متصفحك لا يدعم تشغيل الفيديو.
-            </video>
-          </div>
-        ) : content.type === 'pdf' && content.content_url ? (
-          <div className={styles.pdfContainer}>
-            <iframe
-              src={content.content_url}
-              className={styles.pdfViewer}
-              title={content.title}
-            />
-            <a
-              href={content.content_url}
-              download
-              className={styles.downloadButton}
-            >
-              <Download className="w-5 h-5" />
-              تحميل الملف
-            </a>
-          </div>
-        ) : content.type === 'text' ? (
-          <div className={styles.textContainer}>
-            <div className={styles.textContent}>
-              {content.content_url ? (
-                <iframe src={content.content_url} className={styles.textViewer} />
-              ) : (
-                <p>المحتوى النصي غير متاح حالياً.</p>
-              )}
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Content Viewer */}
+          <div className="lg:col-span-2">
+            {/* Tabs */}
+            <div className="flex border-b mb-6" style={{ borderColor: theme.border }}>
+              <button
+                onClick={() => setActiveTab('viewer')}
+                className={`px-6 py-3 font-medium border-b-2 transition-all ${
+                  activeTab === 'viewer' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'
+                }`}
+                style={activeTab === 'viewer' ? { borderColor: theme.primary, color: theme.primary } : {}}
+              >
+                <Eye className="w-4 h-4 inline ml-2" />
+                العارض
+              </button>
+              <button
+                onClick={() => setActiveTab('info')}
+                className={`px-6 py-3 font-medium border-b-2 transition-all ${
+                  activeTab === 'info' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'
+                }`}
+                style={activeTab === 'info' ? { borderColor: theme.primary, color: theme.primary } : {}}
+              >
+                <BookOpen className="w-4 h-4 inline ml-2" />
+                المعلومات
+              </button>
             </div>
+
+            {/* Content Area */}
+            {activeTab === 'viewer' ? (
+              <div className="bg-white rounded-2xl shadow-lg border overflow-hidden" style={{ borderColor: theme.border }}>
+                {renderContent()}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-lg border p-6" style={{ borderColor: theme.border }}>
+                <h3 className="text-xl font-bold mb-4" style={{ color: theme.text }}>معلومات المحتوى</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2 text-gray-700">الوصف</h4>
+                    <p className="text-gray-600">{content.description || 'لا يوجد وصف'}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-medium mb-2 text-gray-700">النوع</h4>
+                      <p className="flex items-center gap-2">
+                        {content.type === 'video' ? <Video className="w-4 h-4" /> :
+                         content.type === 'pdf' ? <FileText className="w-4 h-4" /> :
+                         content.type === 'exam' ? <Target className="w-4 h-4" /> :
+                         <BookOpen className="w-4 h-4" />}
+                        {content.type === 'video' ? 'فيديو' :
+                         content.type === 'pdf' ? 'ملف PDF' :
+                         content.type === 'exam' ? 'امتحان' : 'نص'}
+                      </p>
+                    </div>
+                    
+                    {content.duration_minutes > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-2 text-gray-700">المدة</h4>
+                        <p className="flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          {content.duration_minutes} دقيقة
+                        </p>
+                      </div>
+                    )}
+                    
+                    {content.type === 'exam' && (
+                      <>
+                        <div>
+                          <h4 className="font-medium mb-2 text-gray-700">درجة النجاح</h4>
+                          <p className="flex items-center gap-2">
+                            <Target className="w-4 h-4" />
+                            {content.pass_score}%
+                          </p>
+                        </div>
+                        <div>
+                          <h4 className="font-medium mb-2 text-gray-700">المحاولات</h4>
+                          <p className="flex items-center gap-2">
+                            <Users className="w-4 h-4" />
+                            {content.max_attempts} محاولة
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Progress Tracking */}
+            {content.type === 'video' && (
+              <div className="mt-6 bg-white rounded-2xl border p-6" style={{ borderColor: theme.border }}>
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-bold" style={{ color: theme.text }}>تقدم المشاهدة</h4>
+                  <span className="text-lg font-bold">{videoProgress}%</span>
+                </div>
+                
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{ width: `${videoProgress}%`, background: theme.primary }}
+                  />
+                </div>
+                
+                <div className="flex justify-between mt-2 text-sm text-gray-600">
+                  <span>لم يشاهد</span>
+                  <span>مشاهدة كاملة</span>
+                </div>
+              </div>
+            )}
           </div>
-        ) : content.type === 'exam' ? (
-          <div className={styles.examContainer}>
-            <div className={styles.examInfo}>
-              <Target className="w-8 h-8" />
-              <h3>امتحان: {content.title}</h3>
-              <p>درجة النجاح: {content.pass_score}%</p>
-              <p>عدد المحاولات المتاحة: {content.max_attempts}</p>
+
+          {/* Right Column - Actions & Info */}
+          <div className="space-y-6">
+            {/* Content Status */}
+            <div className="bg-white rounded-2xl border p-6" style={{ borderColor: theme.border }}>
+              <h4 className="font-bold mb-4" style={{ color: theme.text }}>حالة المحتوى</h4>
               
-              {progress?.status === 'passed' ? (
-                <div className={styles.successMessage}>
+              <div className={`p-4 rounded-lg mb-4 flex items-center gap-3 ${
+                userProgress?.status === 'completed' || userProgress?.status === 'passed' 
+                  ? 'bg-green-50 text-green-700'
+                  : userProgress?.status === 'failed'
+                  ? 'bg-red-50 text-red-700'
+                  : userProgress?.status === 'in_progress'
+                  ? 'bg-yellow-50 text-yellow-700'
+                  : 'bg-gray-50 text-gray-700'
+              }`}>
+                {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? (
                   <CheckCircle className="w-6 h-6" />
-                  <span>مبروك! لقد نجحت في هذا الامتحان.</span>
-                </div>
-              ) : progress?.status === 'failed' ? (
-                <div className={styles.errorMessage}>
+                ) : userProgress?.status === 'failed' ? (
                   <X className="w-6 h-6" />
-                  <span>لم تنجح في هذا الامتحان. يمكنك المحاولة مرة أخرى.</span>
+                ) : userProgress?.status === 'in_progress' ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <BookOpen className="w-6 h-6" />
+                )}
+                <div>
+                  <div className="font-bold">
+                    {userProgress?.status === 'completed' ? 'مكتمل' :
+                     userProgress?.status === 'passed' ? 'ناجح' :
+                     userProgress?.status === 'failed' ? 'فاشل' :
+                     userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}
+                  </div>
+                  {userProgress?.completed_at && (
+                    <div className="text-sm mt-1">
+                      تم الإكمال: {new Date(userProgress.completed_at).toLocaleDateString('ar-EG')}
+                    </div>
+                  )}
                 </div>
-              ) : (
+              </div>
+
+              {/* Mark as Complete Button */}
+              {content.type !== 'exam' && (
                 <button
-                  onClick={() => router.push(`/exam/${contentId}`)}
-                  className={styles.startExamButton}
+                  onClick={markAsCompleted}
+                  disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'}
+                  className={`w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 ${
+                    userProgress?.status === 'completed' || userProgress?.status === 'passed'
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'text-white'
+                  }`}
+                  style={!(userProgress?.status === 'completed' || userProgress?.status === 'passed') ? 
+                    { background: theme.success } : {}}
                 >
-                  <Play className="w-5 h-5" />
-                  بدء الامتحان
+                  {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      تم الإكمال
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      تمييز كمكتمل
+                    </>
+                  )}
                 </button>
               )}
             </div>
-          </div>
-        ) : (
-          <div className={styles.unsupportedContainer}>
-            <AlertCircle className="w-12 h-12" />
-            <p>نوع المحتوى غير مدعوم.</p>
-          </div>
-        )}
 
-        <div className={styles.progressSection}>
-          <div className={styles.progressHeader}>
-            <h4>حالة المحتوى</h4>
-            {progress && (
-              <span className={
-                progress.status === 'completed' || progress.status === 'passed' 
-                  ? styles.completedBadge 
-                  : styles.inProgressBadge
-              }>
-                {progress.status === 'completed' ? 'مكتمل' :
-                 progress.status === 'passed' ? 'ناجح' :
-                 progress.status === 'failed' ? 'فاشل' : 'قيد التقدم'}
-              </span>
-            )}
-          </div>
-
-          {content.type === 'video' && totalDuration > 0 && (
-            <div className={styles.videoProgress}>
-              <div className={styles.progressBar}>
-                <div 
-                  className={styles.progressFill} 
-                  style={{ width: `${(videoTime / totalDuration) * 100}%` }}
-                />
+            {/* Quick Actions */}
+            <div className="bg-white rounded-2xl border p-6" style={{ borderColor: theme.border }}>
+              <h4 className="font-bold mb-4" style={{ color: theme.text }}>إجراءات سريعة</h4>
+              
+              <div className="space-y-3">
+                {content.type === 'pdf' && (
+                  <a
+                    href={content.content_url || '#'}
+                    download
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-all"
+                    style={{ borderColor: theme.border }}
+                  >
+                    <span>تحميل الملف</span>
+                    <Download className="w-5 h-5" />
+                  </a>
+                )}
+                
+                <button
+                  onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-all"
+                  style={{ borderColor: theme.border }}
+                >
+                  <span>العودة للباقة</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+                
+                <button
+                  onClick={() => router.push(`/grades/${gradeSlug}`)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-all"
+                  style={{ borderColor: theme.border }}
+                >
+                  <span>جميع باقات الصف</span>
+                  <BookOpen className="w-5 h-5" />
+                </button>
               </div>
-              <span>{Math.round(videoTime)} / {Math.round(totalDuration)} ثانية</span>
             </div>
-          )}
 
-          <button
-            onClick={markAsCompleted}
-            disabled={progress?.status === 'completed' || progress?.status === 'passed'}
-            className={styles.markCompleteButton}
-          >
-            {progress?.status === 'completed' || progress?.status === 'passed' ? (
-              <>
-                <CheckCircle className="w-5 h-5" />
-                تم الإكمال
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-5 h-5" />
-                تمييز كمكتمل
-              </>
-            )}
-          </button>
+            {/* Package Info */}
+            <div className="bg-white rounded-2xl border p-6" style={{ borderColor: theme.border }}>
+              <h4 className="font-bold mb-4" style={{ color: theme.text }}>معلومات الباقة</h4>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg" style={{ background: theme.primary + '20' }}>
+                    <Award className="w-5 h-5" style={{ color: theme.primary }} />
+                  </div>
+                  <div>
+                    <div className="font-medium">{packageData?.name}</div>
+                    <div className="text-sm text-gray-600">{packageData?.type === 'weekly' ? 'أسبوعي' : 'شهري/ترم'}</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg" style={{ background: theme.success + '20' }}>
+                    <Shield className="w-5 h-5" style={{ color: theme.success }} />
+                  </div>
+                  <div>
+                    <div className="font-medium">حالة الاشتراك</div>
+                    <div className="text-sm text-gray-600">
+                      {userPackage?.expires_at 
+                        ? `نشط حتى ${new Date(userPackage.expires_at).toLocaleDateString('ar-EG')}`
+                        : 'غير متاح'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
