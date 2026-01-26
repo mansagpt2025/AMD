@@ -91,13 +91,6 @@
   );
 }
 
-/* ================== Base Styles ================== */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 .container {
   min-height: 100vh;
   background: var(--gradient-background);
