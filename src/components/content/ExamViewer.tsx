@@ -5,8 +5,10 @@ import { useRouter, useParams } from 'next/navigation'
 import { createClientBrowser } from '@/lib/supabase/sf-client'
 import { 
   Target, Clock, CheckCircle, XCircle, 
-  ArrowRight, ArrowLeft, Loader2, AlertCircle
+  ArrowRight, ArrowLeft, Loader2, AlertCircle,
+  Trophy, BarChart, Award, Shield
 } from 'lucide-react'
+import styles from './ExamViewer.module.css'
 
 interface ExamViewerProps {
   examContent: any
@@ -47,13 +49,13 @@ export default function ExamViewer({
   const [showResults, setShowResults] = useState(false)
   const [score, setScore] = useState(0)
   const [attempts, setAttempts] = useState(0)
+  const [showExplanation, setShowExplanation] = useState<string | null>(null)
 
   useEffect(() => {
-    // جلب الأسئلة (في الواقع الفعلي، ستأتي من قاعدة البيانات)
-    // هنا سنستخدم بيانات وهمية للتجربة
-    const mockQuestions: Question[] = Array.from({ length: 10 }, (_, i) => ({
+    // جلب الأسئلة
+    const mockQuestions: Question[] = Array.from({ length: examContent.total_questions || 10 }, (_, i) => ({
       id: `q${i + 1}`,
-      text: `سؤال ${i + 1}: ما هو حل المسألة الرياضية التالية؟`,
+      text: `سؤال ${i + 1}: ${examContent.questions?.[i] || 'ما هو حل المسألة الرياضية التالية؟'}`,
       options: [
         { id: 'a', text: 'الإجابة أ' },
         { id: 'b', text: 'الإجابة ب' },
@@ -85,17 +87,24 @@ export default function ExamViewer({
       ...prev,
       [questionId]: answerId
     }))
+    
+    // إظهار الشرح بعد الإجابة
+    setTimeout(() => {
+      setShowExplanation(questionId)
+    }, 500)
   }
 
   const handleNext = () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(prev => prev + 1)
+      setShowExplanation(null)
     }
   }
 
   const handlePrevious = () => {
     if (currentQuestion > 0) {
       setCurrentQuestion(prev => prev - 1)
+      setShowExplanation(null)
     }
   }
 
@@ -117,7 +126,6 @@ export default function ExamViewer({
       // حفظ النتيجة في قاعدة البيانات
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        // حفظ في exam_results
         await supabase
           .from('exam_results')
           .insert({
@@ -133,7 +141,6 @@ export default function ExamViewer({
             ).length
           })
 
-        // تحديث user_progress
         const status = finalScore >= examContent.pass_score ? 'passed' : 'failed'
         await supabase
           .from('user_progress')
@@ -164,77 +171,97 @@ export default function ExamViewer({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  const getTimeColor = () => {
+    if (timeLeft < 60) return '#ef4444'
+    if (timeLeft < 300) return '#f59e0b'
+    return '#10b981'
+  }
+
   if (showResults) {
     const isPassed = score >= examContent.pass_score
 
     return (
-      <div className="p-8">
-        <div className={`p-6 rounded-2xl mb-6 ${
-          isPassed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-        } border`}>
-          <div className="flex items-center gap-3 mb-4">
-            {isPassed ? (
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            ) : (
-              <XCircle className="w-8 h-8 text-red-600" />
-            )}
+      <div className={styles.resultsContainer}>
+        <div className={`${styles.resultCard} ${isPassed ? styles.resultSuccess : styles.resultFailed}`}>
+          <div className={styles.resultHeader}>
+            <div className={styles.resultIcon}>
+              {isPassed ? (
+                <Trophy className={styles.trophyIcon} />
+              ) : (
+                <AlertCircle className={styles.alertIcon} />
+              )}
+            </div>
             <div>
-              <h3 className="text-xl font-bold">
-                {isPassed ? 'مبروك! لقد نجحت في الامتحان 🎉' : 'للأسف، لم تنجح في الامتحان 😔'}
+              <h3 className={styles.resultTitle}>
+                {isPassed ? '🎉 مبروك! لقد نجحت في الامتحان' : '😔 للأسف، لم تنجح في الامتحان'}
               </h3>
-              <p className="text-gray-600">درجة النجاح المطلوبة: {examContent.pass_score}%</p>
+              <p className={styles.resultSubtitle}>
+                درجة النجاح المطلوبة: <span className={styles.passScore}>{examContent.pass_score}%</span>
+              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="text-center p-4 bg-white rounded-xl">
-              <div className="text-3xl font-bold" style={{ color: theme.text }}>
-                {score}%
+          <div className={styles.statsGrid}>
+            <div className={styles.statItem}>
+              <div className={styles.statIcon} style={{ background: `${theme.primary}20` }}>
+                <BarChart className={styles.statSvg} style={{ color: theme.primary }} />
               </div>
-              <div className="text-sm text-gray-600">نتيجتك</div>
+              <div className={styles.statValue}>{score}%</div>
+              <div className={styles.statLabel}>نتيجتك</div>
             </div>
             
-            <div className="text-center p-4 bg-white rounded-xl">
-              <div className="text-3xl font-bold" style={{ color: theme.text }}>
+            <div className={styles.statItem}>
+              <div className={styles.statIcon} style={{ background: `${theme.success}20` }}>
+                <CheckCircle className={styles.statSvg} style={{ color: theme.success }} />
+              </div>
+              <div className={styles.statValue}>
                 {Object.keys(answers).filter(
                   qId => answers[qId] === questions.find(q => q.id === qId)?.correctAnswer
                 ).length}
               </div>
-              <div className="text-sm text-gray-600">إجابات صحيحة</div>
+              <div className={styles.statLabel}>إجابات صحيحة</div>
             </div>
             
-            <div className="text-center p-4 bg-white rounded-xl">
-              <div className="text-3xl font-bold" style={{ color: theme.text }}>
+            <div className={styles.statItem}>
+              <div className={styles.statIcon} style={{ background: `${theme.error}20` }}>
+                <XCircle className={styles.statSvg} style={{ color: theme.error }} />
+              </div>
+              <div className={styles.statValue}>
                 {Object.keys(answers).filter(
                   qId => answers[qId] !== questions.find(q => q.id === qId)?.correctAnswer
                 ).length}
               </div>
-              <div className="text-sm text-gray-600">إجابات خاطئة</div>
+              <div className={styles.statLabel}>إجابات خاطئة</div>
             </div>
             
-            <div className="text-center p-4 bg-white rounded-xl">
-              <div className="text-3xl font-bold" style={{ color: theme.text }}>
+            <div className={styles.statItem}>
+              <div className={styles.statIcon} style={{ background: `${theme.warning}20` }}>
+                <Clock className={styles.statSvg} style={{ color: theme.warning }} />
+              </div>
+              <div className={styles.statValue}>
                 {questions.length - Object.keys(answers).length}
               </div>
-              <div className="text-sm text-gray-600">غير مجاب</div>
+              <div className={styles.statLabel}>غير مجاب</div>
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className={styles.resultActions}>
             <button
               onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)}
-              className="px-6 py-3 rounded-lg font-medium"
-              style={{ background: theme.primary, color: 'white' }}
+              className={styles.backButton}
+              style={{ background: theme.primary }}
             >
+              <ArrowRight className={styles.buttonIcon} />
               العودة للباقة
             </button>
             
             {!isPassed && attempts < examContent.max_attempts && (
               <button
                 onClick={() => setShowResults(false)}
-                className="px-6 py-3 rounded-lg font-medium border"
+                className={styles.retryButton}
                 style={{ borderColor: theme.primary, color: theme.primary }}
               >
+                <Refresh className={styles.buttonIcon} />
                 المحاولة مرة أخرى
               </button>
             )}
@@ -242,48 +269,50 @@ export default function ExamViewer({
         </div>
 
         {/* Review Answers */}
-        <div className="bg-white rounded-2xl border p-6" style={{ borderColor: theme.border }}>
-          <h4 className="text-lg font-bold mb-4" style={{ color: theme.text }}>مراجعة الإجابات</h4>
-          <div className="space-y-4">
+        <div className={styles.reviewSection}>
+          <div className={styles.sectionHeader}>
+            <Award className={styles.sectionIcon} style={{ color: theme.primary }} />
+            <h4 className={styles.sectionTitle}>مراجعة الإجابات</h4>
+          </div>
+          <div className={styles.reviewList}>
             {questions.map((question, index) => {
               const userAnswer = answers[question.id]
               const isCorrect = userAnswer === question.correctAnswer
               
               return (
-                <div key={question.id} className="p-4 rounded-lg border" style={{ 
-                  borderColor: isCorrect ? theme.success : '#ef4444',
-                  background: isCorrect ? `${theme.success}10` : '#fef2f2'
-                }}>
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                <div key={question.id} className={`${styles.reviewItem} ${
+                  isCorrect ? styles.correctAnswer : styles.wrongAnswer
+                }`}>
+                  <div className={styles.reviewHeader}>
+                    <div className={`${styles.statusIndicator} ${
+                      isCorrect ? styles.correctIndicator : styles.wrongIndicator
                     }`}>
                       {isCorrect ? (
-                        <CheckCircle className="w-5 h-5" />
+                        <CheckCircle className={styles.statusIcon} />
                       ) : (
-                        <XCircle className="w-5 h-5" />
+                        <XCircle className={styles.statusIcon} />
                       )}
                     </div>
-                    <div className="flex-1">
-                      <h5 className="font-medium mb-2">سؤال {index + 1}: {question.text}</h5>
-                      <div className="space-y-2">
+                    <div className={styles.questionInfo}>
+                      <h5 className={styles.questionTitle}>سؤال {index + 1}: {question.text}</h5>
+                      <div className={styles.answersGrid}>
                         {question.options.map(option => (
                           <div
                             key={option.id}
-                            className={`p-2 rounded ${
+                            className={`${styles.answerOption} ${
                               option.id === question.correctAnswer
-                                ? 'bg-green-100 text-green-700 border border-green-300'
+                                ? styles.correctOption
                                 : option.id === userAnswer && !isCorrect
-                                ? 'bg-red-100 text-red-700 border border-red-300'
-                                : 'bg-gray-50'
+                                ? styles.wrongOption
+                                : ''
                             }`}
                           >
-                            {option.text}
+                            <span className={styles.optionText}>{option.text}</span>
                             {option.id === question.correctAnswer && (
-                              <span className="mr-2 text-sm text-green-600">✓ الإجابة الصحيحة</span>
+                              <span className={styles.correctBadge}>✓ الإجابة الصحيحة</span>
                             )}
                             {option.id === userAnswer && !isCorrect && (
-                              <span className="mr-2 text-sm text-red-600">✗ إجابتك</span>
+                              <span className={styles.wrongBadge}>✗ إجابتك</span>
                             )}
                           </div>
                         ))}
@@ -301,8 +330,11 @@ export default function ExamViewer({
 
   if (questions.length === 0) {
     return (
-      <div className="h-[600px] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: theme.primary }} />
+      <div className={styles.loadingContainer}>
+        <div className={styles.loadingSpinner}>
+          <Loader2 className={styles.spinner} style={{ color: theme.primary }} />
+        </div>
+        <p className={styles.loadingText}>جاري تحميل الأسئلة...</p>
       </div>
     )
   }
@@ -310,134 +342,156 @@ export default function ExamViewer({
   const currentQ = questions[currentQuestion]
 
   return (
-    <div className="h-[600px] flex flex-col">
+    <div className={styles.examContainer}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: theme.border }}>
-        <div className="flex items-center gap-3">
-          <Target className="w-6 h-6" style={{ color: theme.primary }} />
+      <div className={styles.examHeader}>
+        <div className={styles.headerInfo}>
+          <div className={styles.examIcon} style={{ background: theme.primary }}>
+            <Target className={styles.targetIcon} />
+          </div>
           <div>
-            <h3 className="font-bold" style={{ color: theme.text }}>امتحان: {examContent.title}</h3>
-            <p className="text-sm text-gray-600">سؤال {currentQuestion + 1} من {questions.length}</p>
+            <h3 className={styles.examTitle}>{examContent.title}</h3>
+            <p className={styles.questionCounter}>
+              سؤال {currentQuestion + 1} من {questions.length}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className={styles.headerControls}>
           {/* Timer */}
-          <div className={`px-3 py-1 rounded-full flex items-center gap-2 ${
-            timeLeft < 300 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-          }`}>
-            <Clock className="w-4 h-4" />
-            <span className="font-mono font-bold">{formatTime(timeLeft)}</span>
+          <div className={styles.timerContainer} style={{ background: getTimeColor() + '20' }}>
+            <Clock className={styles.timerIcon} style={{ color: getTimeColor() }} />
+            <span className={styles.timerText}>{formatTime(timeLeft)}</span>
           </div>
 
           {/* Progress */}
-          <div className="text-sm text-gray-600">
-            {Object.keys(answers).length}/{questions.length} مجاب
+          <div className={styles.progressContainer}>
+            <Shield className={styles.progressIcon} style={{ color: theme.primary }} />
+            <span className={styles.progressText}>
+              {Object.keys(answers).length}/{questions.length} مجاب
+            </span>
           </div>
         </div>
       </div>
 
       {/* Question */}
-      <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-3xl mx-auto">
-          <div className="mb-8">
-            <h4 className="text-xl font-bold mb-4" style={{ color: theme.text }}>
-              {currentQ.text}
-            </h4>
-            
-            <div className="space-y-3">
-              {currentQ.options.map(option => (
-                <button
-                  key={option.id}
-                  onClick={() => handleAnswer(currentQ.id, option.id)}
-                  className={`w-full text-right p-4 rounded-xl border-2 transition-all ${
-                    answers[currentQ.id] === option.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg">{option.text}</span>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                      answers[currentQ.id] === option.id
-                        ? 'border-blue-500 bg-blue-500'
-                        : 'border-gray-300'
-                    }`}>
-                      {answers[currentQ.id] === option.id && (
-                        <div className="w-3 h-3 rounded-full bg-white" />
-                      )}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
+      <div className={styles.questionSection}>
+        <div className={styles.questionCard}>
+          <div className={styles.questionHeader}>
+            <span className={styles.questionNumber}>سؤال {currentQuestion + 1}</span>
+            <span className={styles.questionPoints}>{currentQ.points} نقطة</span>
           </div>
-
-          {/* Navigation */}
-          <div className="flex justify-between mt-8">
-            <button
-              onClick={handlePrevious}
-              disabled={currentQuestion === 0}
-              className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 ${
-                currentQuestion === 0
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'text-white'
-              }`}
-              style={currentQuestion !== 0 ? { background: theme.primary } : {}}
-            >
-              <ArrowRight className="w-5 h-5" />
-              السابق
-            </button>
-
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">
-                {currentQuestion + 1} / {questions.length}
-              </span>
-              
-              {currentQuestion === questions.length - 1 ? (
-                <button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="px-6 py-3 rounded-lg font-medium text-white flex items-center gap-2"
-                  style={{ background: theme.success }}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      جاري التصحيح...
-                    </>
-                  ) : (
-                    'تسليم الإجابات'
+          <h4 className={styles.questionText}>{currentQ.text}</h4>
+          
+          <div className={styles.optionsGrid}>
+            {currentQ.options.map(option => (
+              <button
+                key={option.id}
+                onClick={() => handleAnswer(currentQ.id, option.id)}
+                className={`${styles.optionButton} ${
+                  answers[currentQ.id] === option.id ? styles.selectedOption : ''
+                }`}
+              >
+                <span className={styles.optionLabel}>{option.id.toUpperCase()}</span>
+                <span className={styles.optionText}>{option.text}</span>
+                <div className={`${styles.optionCircle} ${
+                  answers[currentQ.id] === option.id ? styles.selectedCircle : ''
+                }`}>
+                  {answers[currentQ.id] === option.id && (
+                    <div className={styles.optionDot} />
                   )}
-                </button>
-              ) : (
-                <button
-                  onClick={handleNext}
-                  className="px-6 py-3 rounded-lg font-medium text-white flex items-center gap-2"
-                  style={{ background: theme.primary }}
-                >
-                  التالي
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-              )}
-            </div>
+                </div>
+              </button>
+            ))}
           </div>
+
+          {showExplanation === currentQ.id && (
+            <div className={styles.explanationCard}>
+              <AlertCircle className={styles.explanationIcon} style={{ color: theme.primary }} />
+              <div>
+                <h5 className={styles.explanationTitle}>شرح السؤال</h5>
+                <p className={styles.explanationText}>
+                  هذا هو الشرح التفصيلي للسؤال وسبب صحة الإجابة المختارة.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <div className={styles.navigationSection}>
+          <button
+            onClick={handlePrevious}
+            disabled={currentQuestion === 0}
+            className={`${styles.navButton} ${styles.prevButton} ${
+              currentQuestion === 0 ? styles.disabledButton : ''
+            }`}
+            style={currentQuestion !== 0 ? { background: theme.primary } : {}}
+          >
+            <ArrowRight className={styles.navIcon} />
+            السابق
+          </button>
+
+          <div className={styles.navInfo}>
+            <div className={styles.progressBar}>
+              <div 
+                className={styles.progressFill}
+                style={{ 
+                  width: `${((currentQuestion + 1) / questions.length) * 100}%`,
+                  background: theme.primary
+                }}
+              />
+            </div>
+            <span className={styles.navCounter}>
+              {currentQuestion + 1} / {questions.length}
+            </span>
+          </div>
+
+          {currentQuestion === questions.length - 1 ? (
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className={`${styles.navButton} ${styles.submitButton}`}
+              style={{ background: theme.success }}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className={`${styles.navIcon} ${styles.spinning}`} />
+                  جاري التصحيح...
+                </>
+              ) : (
+                'تسليم الإجابات'
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={handleNext}
+              className={`${styles.navButton} ${styles.nextButton}`}
+              style={{ background: theme.primary }}
+            >
+              التالي
+              <ArrowLeft className={styles.navIcon} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="p-4 border-t" style={{ borderColor: theme.border }}>
-        <div className="flex flex-wrap gap-2">
+      {/* Question Navigation */}
+      <div className={styles.questionsNavigation}>
+        <div className={styles.questionsGrid}>
           {questions.map((_, index) => (
             <button
               key={index}
-              onClick={() => setCurrentQuestion(index)}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              onClick={() => {
+                setCurrentQuestion(index)
+                setShowExplanation(null)
+              }}
+              className={`${styles.questionDot} ${
                 currentQuestion === index
-                  ? 'bg-blue-500 text-white'
+                  ? styles.activeDot
                   : answers[questions[index].id]
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-600'
+                  ? styles.answeredDot
+                  : ''
               }`}
             >
               {index + 1}
@@ -445,6 +499,26 @@ export default function ExamViewer({
           ))}
         </div>
       </div>
+
+      {/* Exam Tips */}
+      <div className={styles.tipsSection}>
+        <div className={styles.tipsHeader}>
+          <AlertCircle className={styles.tipsIcon} style={{ color: theme.warning }} />
+          <h5 className={styles.tipsTitle}>نصائح للامتحان</h5>
+        </div>
+        <ul className={styles.tipsList}>
+          <li className={styles.tipItem}>اقرأ كل سؤال بعناية قبل الإجابة</li>
+          <li className={styles.tipItem}>يمكنك العودة وتعديل إجاباتك في أي وقت</li>
+          <li className={styles.tipItem}>سيتم الإرسال تلقائياً عند انتهاء الوقت</li>
+        </ul>
+      </div>
     </div>
   )
 }
+
+// Icon component
+const Refresh = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  </svg>
+)

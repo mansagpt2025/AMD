@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Play, Pause, Volume2, Maximize, Settings, Lock } from 'lucide-react'
+import styles from './ProtectedVideoPlayer.module.css'
 
 interface ProtectedVideoPlayerProps {
   videoUrl: string
@@ -121,20 +122,20 @@ export default function ProtectedVideoPlayer({
   return (
     <div 
       ref={containerRef}
-      className="relative bg-black"
+      className={styles.videoPlayerContainer}
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => setShowControls(false)}
     >
       {/* حماية الطبقة الشفافة */}
       {protectionLayer && (
-        <div className="absolute inset-0 z-10 pointer-events-none" />
+        <div className={styles.protectionLayer} />
       )}
 
       {/* الفيديو */}
       <video
         ref={videoRef}
         src={videoUrl}
-        className="w-full h-auto max-h-[70vh]"
+        className={styles.videoElement}
         controls={false}
         onEnded={() => {
           setIsPlaying(false)
@@ -144,41 +145,41 @@ export default function ProtectedVideoPlayer({
 
       {/* عناصر التحكم */}
       {showControls && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+        <div className={styles.controlsOverlay}>
           {/* شريط التقدم */}
-          <div className="mb-4">
+          <div className={styles.progressSection}>
             <input
               type="range"
               min="0"
               max={duration || 0}
               value={currentTime}
               onChange={handleSeek}
-              className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+              className={styles.progressBar}
             />
-            <div className="flex justify-between text-sm text-white mt-1">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
+            <div className={styles.timeDisplay}>
+              <span className={styles.timeText}>{formatTime(currentTime)}</span>
+              <span className={styles.timeText}>{formatTime(duration)}</span>
             </div>
           </div>
 
           {/* أزرار التحكم */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className={styles.controlsBar}>
+            <div className={styles.leftControls}>
               {/* تشغيل/إيقاف */}
               <button
                 onClick={togglePlay}
-                className="text-white hover:scale-110 transition-transform"
+                className={styles.controlButton}
               >
                 {isPlaying ? (
-                  <Pause className="w-6 h-6" />
+                  <Pause className={styles.controlIcon} />
                 ) : (
-                  <Play className="w-6 h-6" />
+                  <Play className={styles.controlIcon} />
                 )}
               </button>
 
               {/* الصوت */}
-              <div className="flex items-center gap-2">
-                <Volume2 className="w-5 h-5 text-white" />
+              <div className={styles.volumeControl}>
+                <Volume2 className={styles.volumeIcon} />
                 <input
                   type="range"
                   min="0"
@@ -186,7 +187,7 @@ export default function ProtectedVideoPlayer({
                   step="0.1"
                   value={volume}
                   onChange={handleVolumeChange}
-                  className="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                  className={styles.volumeSlider}
                 />
               </div>
 
@@ -199,7 +200,7 @@ export default function ProtectedVideoPlayer({
                     setPlaybackRate(parseFloat(e.target.value))
                   }
                 }}
-                className="bg-transparent text-white border-none outline-none"
+                className={styles.playbackSelect}
               >
                 <option value="0.5">0.5x</option>
                 <option value="0.75">0.75x</option>
@@ -210,19 +211,19 @@ export default function ProtectedVideoPlayer({
               </select>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className={styles.rightControls}>
               {/* إشارة الحماية */}
-              <div className="flex items-center gap-2 text-white/70">
-                <Lock className="w-4 h-4" />
-                <span className="text-sm">محمي</span>
+              <div className={styles.protectionIndicator}>
+                <Lock className={styles.protectionIcon} />
+                <span className={styles.protectionText}>محمي</span>
               </div>
 
               {/* ملء الشاشة */}
               <button
                 onClick={toggleFullscreen}
-                className="text-white hover:scale-110 transition-transform"
+                className={styles.controlButton}
               >
-                <Maximize className="w-6 h-6" />
+                <Maximize className={styles.controlIcon} />
               </button>
             </div>
           </div>
@@ -230,9 +231,9 @@ export default function ProtectedVideoPlayer({
       )}
 
       {/* رسالة الحماية */}
-      <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
-        <Lock className="w-3 h-3" />
-        <span>محمي ضد النسخ</span>
+      <div className={styles.protectionBadge}>
+        <Lock className={styles.badgeIcon} />
+        <span className={styles.badgeText}>محمي ضد النسخ</span>
       </div>
     </div>
   )
