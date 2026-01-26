@@ -22,7 +22,16 @@ import {
   Zap,
   Star,
   Shield,
-  TrendingUp
+  TrendingUp,
+  Crown,
+  Award,
+  Target,
+  Brain,
+  Rocket,
+  Gem,
+  Moon,
+  Sun,
+  Waves as WavesIcon
 } from 'lucide-react'
 import styles from './styles.module.css'
 
@@ -62,41 +71,53 @@ const containerVariants: Variants = {
     opacity: 1,
     transition: {
       staggerChildren: 0.1,
-      delayChildren: 0.2
+      delayChildren: 0.3
     }
   }
 }
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 30 },
+  hidden: { opacity: 0, y: 40, scale: 0.9 },
   visible: {
     opacity: 1,
     y: 0,
+    scale: 1,
     transition: {
       type: "spring",
       stiffness: 100,
-      damping: 15
+      damping: 15,
+      mass: 1
     }
   }
 }
 
 const cardVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.95, y: 20 },
+  hidden: { 
+    opacity: 0, 
+    scale: 0.8, 
+    y: 30,
+    rotateX: 15,
+    rotateY: -10
+  },
   visible: {
     opacity: 1,
     scale: 1,
     y: 0,
+    rotateX: 0,
+    rotateY: 0,
     transition: {
       type: "spring",
-      stiffness: 120,
-      damping: 20
+      stiffness: 150,
+      damping: 20,
+      mass: 1.2
     }
   },
   hover: {
-    scale: 1.03,
-    y: -10,
+    scale: 1.05,
+    y: -15,
     rotateX: 5,
     rotateY: 5,
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
     transition: {
       type: "spring",
       stiffness: 400,
@@ -106,53 +127,147 @@ const cardVariants: Variants = {
 }
 
 const modalVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.9, y: 50 },
+  hidden: { 
+    opacity: 0, 
+    scale: 0.8, 
+    y: 50,
+    rotateX: 10
+  },
   visible: {
     opacity: 1,
     scale: 1,
     y: 0,
+    rotateX: 0,
     transition: {
       type: "spring",
       stiffness: 300,
-      damping: 25
+      damping: 25,
+      mass: 1
     }
   },
   exit: {
     opacity: 0,
-    scale: 0.9,
+    scale: 0.8,
     y: 50,
-    transition: { duration: 0.2 }
+    transition: { 
+      duration: 0.3,
+      ease: "easeInOut"
+    }
   }
 }
 
-// إصلاح مشاكل TypeScript في الأنيميشن
-const floatAnimation = {
-  y: [0, -10, 0],
-  transition: {
-    duration: 3,
-    repeat: Infinity,
-    ease: "easeInOut"
-  }
+// ================== Wave Background Component ==================
+const WaveBackground = () => {
+  const waves = Array.from({ length: 5 }, (_, i) => ({
+    id: i,
+    amplitude: Math.random() * 30 + 20,
+    frequency: Math.random() * 0.02 + 0.01,
+    speed: Math.random() * 2 + 1,
+    color: i === 0 ? 'var(--primary-400)' : 
+           i === 1 ? 'var(--accent-400)' : 
+           i === 2 ? 'var(--secondary-400)' :
+           i === 3 ? 'var(--success-400)' : 'var(--purple-400)',
+    opacity: 0.05 + (i * 0.03)
+  }))
+
+  return (
+    <div className={styles.waveContainer}>
+      {waves.map((wave, index) => (
+        <motion.div
+          key={wave.id}
+          className={styles.wave}
+          animate={{
+            x: [0, -100, 0],
+            y: [0, Math.sin(index * 0.5) * 20, 0],
+            scale: [1, 1.05, 1]
+          }}
+          transition={{
+            duration: wave.speed * 10,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          style={{
+            background: `linear-gradient(90deg, transparent, ${wave.color}, transparent)`,
+            opacity: wave.opacity,
+            height: `${wave.amplitude}px`,
+            filter: `blur(${index * 2}px)`
+          }}
+        />
+      ))}
+    </div>
+  )
 }
 
-const pulseAnimation = {
-  scale: [1, 1.05, 1],
-  transition: {
-    duration: 2,
-    repeat: Infinity,
-    ease: "easeInOut"
+// ================== Floating Elements Component ==================
+const FloatingElements = () => {
+  const elements = Array.from({ length: 12 }, (_, i) => ({
+    id: i,
+    size: Math.random() * 40 + 20,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    duration: Math.random() * 30 + 20,
+    delay: Math.random() * 10,
+    type: i % 4,
+    rotation: Math.random() * 360
+  }))
+
+  const getElementContent = (type: number) => {
+    switch(type) {
+      case 0: return <Brain className="w-full h-full" />
+      case 1: return <Award className="w-full h-full" />
+      case 2: return <Target className="w-full h-full" />
+      case 3: return <Gem className="w-full h-full" />
+      default: return <Star className="w-full h-full" />
+    }
   }
+
+  return (
+    <div className={styles.floatingContainer}>
+      {elements.map((element) => (
+        <motion.div
+          key={element.id}
+          className={styles.floatingElement}
+          initial={{ 
+            x: `${element.x}%`, 
+            y: `${element.y}%`,
+            rotate: element.rotation
+          }}
+          animate={{
+            x: [`${element.x}%`, `${element.x + 15}%`, `${element.x}%`],
+            y: [`${element.y}%`, `${element.y - 20}%`, `${element.y}%`],
+            rotate: element.rotation + 360,
+            scale: [1, 1.1, 1]
+          }}
+          transition={{
+            duration: element.duration,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: element.delay
+          }}
+          style={{
+            width: element.size,
+            height: element.size,
+            opacity: 0.1,
+            filter: 'blur(1px)'
+          }}
+        >
+          {getElementContent(element.type)}
+        </motion.div>
+      ))}
+    </div>
+  )
 }
 
 // ================== Particle Background Component ==================
 const ParticleBackground = () => {
-  const particles = Array.from({ length: 30 }, (_, i) => ({
+  const particles = Array.from({ length: 80 }, (_, i) => ({
     id: i,
-    size: Math.random() * 8 + 2,
+    size: Math.random() * 5 + 1,
     x: Math.random() * 100,
     y: Math.random() * 100,
-    duration: Math.random() * 20 + 10,
-    delay: Math.random() * 5
+    duration: Math.random() * 30 + 15,
+    delay: Math.random() * 20,
+    color: `hsla(${Math.random() * 60 + 200}, 100%, 65%, ${Math.random() * 0.3 + 0.1})`
   }))
 
   return (
@@ -163,25 +278,58 @@ const ParticleBackground = () => {
           className={styles.particle}
           initial={{ x: `${particle.x}%`, y: `${particle.y}%` }}
           animate={{
-            x: [`${particle.x}%`, `${particle.x + 10}%`, `${particle.x}%`],
-            y: [`${particle.y}%`, `${particle.y - 15}%`, `${particle.y}%`],
+            x: [`${particle.x}%`, `${particle.x + Math.random() * 30 - 15}%`, `${particle.x}%`],
+            y: [`${particle.y}%`, `${particle.y - Math.random() * 40}%`, `${particle.y}%`],
             rotate: 360
           }}
           transition={{
             duration: particle.duration,
             repeat: Infinity,
-            ease: "linear",
+            ease: "easeInOut",
             delay: particle.delay
           }}
           style={{
             width: particle.size,
             height: particle.size,
-            background: particle.id % 3 === 0 
-              ? 'var(--primary-400)' 
-              : particle.id % 3 === 1 
-                ? 'var(--accent-400)' 
-                : 'var(--primary-200)',
-            opacity: 0.15
+            background: particle.color,
+            borderRadius: '50%'
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ================== Light Beam Component ==================
+const LightBeams = () => {
+  const beams = Array.from({ length: 3 }, (_, i) => ({
+    id: i,
+    angle: Math.random() * 360,
+    width: Math.random() * 100 + 50,
+    opacity: Math.random() * 0.1 + 0.05,
+    duration: Math.random() * 20 + 10
+  }))
+
+  return (
+    <div className={styles.lightBeams}>
+      {beams.map((beam) => (
+        <motion.div
+          key={beam.id}
+          className={styles.lightBeam}
+          initial={{ rotate: beam.angle, opacity: 0 }}
+          animate={{ 
+            rotate: beam.angle + 360,
+            opacity: [beam.opacity, beam.opacity * 2, beam.opacity]
+          }}
+          transition={{
+            duration: beam.duration,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          style={{
+            width: `${beam.width}vw`,
+            background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)`,
+            opacity: beam.opacity
           }}
         />
       ))}
@@ -207,6 +355,7 @@ function PackageCard({
 }) {
   const cardRef = useRef<HTMLDivElement>(null)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [isHovered, setIsHovered] = useState(false)
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return
@@ -218,11 +367,21 @@ function PackageCard({
 
   const getPackageIcon = () => {
     switch (pkg.type) {
-      case 'weekly': return <Clock className="w-4 h-4" />
-      case 'monthly': return <Calendar className="w-4 h-4" />
-      case 'term': return <BookOpen className="w-4 h-4" />
-      case 'offer': return <Sparkles className="w-4 h-4" />
-      default: return <Star className="w-4 h-4" />
+      case 'weekly': return <Clock className="w-5 h-5" />
+      case 'monthly': return <Calendar className="w-5 h-5" />
+      case 'term': return <BookOpen className="w-5 h-5" />
+      case 'offer': return <Crown className="w-5 h-5" />
+      default: return <Star className="w-5 h-5" />
+    }
+  }
+
+  const getTypeColor = () => {
+    switch (pkg.type) {
+      case 'weekly': return 'var(--accent-400)'
+      case 'monthly': return 'var(--primary-400)'
+      case 'term': return 'var(--success-400)'
+      case 'offer': return 'var(--purple-400)'
+      default: return 'var(--secondary-400)'
     }
   }
 
@@ -233,97 +392,225 @@ function PackageCard({
       initial="hidden"
       animate="visible"
       whileHover="hover"
-      transition={{ delay: index * 0.1 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      transition={{ 
+        delay: index * 0.15,
+        type: "spring",
+        stiffness: 200,
+        damping: 20
+      }}
       className={`${styles.card} ${highlight ? styles.cardHighlight : ''} ${isPurchased ? styles.cardPurchased : ''}`}
       onMouseMove={handleMouseMove}
       style={{
         '--mouse-x': `${mousePosition.x}%`,
         '--mouse-y': `${mousePosition.y}%`,
+        '--type-color': getTypeColor(),
       } as React.CSSProperties}
     >
-      {highlight && (
-        <div className={styles.cardBadge}>
-          <Sparkles className="w-3 h-3" />
-          عرض خاص محدود
-        </div>
+      {/* Glow Effect */}
+      {isHovered && (
+        <motion.div 
+          className={styles.cardGlow}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.5 }}
+          transition={{ duration: 0.3 }}
+        />
       )}
 
-      <div className={styles.typeBadge}>
-        {getPackageIcon()}
+      {/* Animated Border */}
+      <div className={styles.cardBorder}>
+        <motion.div 
+          className={styles.borderEffect}
+          animate={{
+            backgroundPosition: ['0% 0%', '100% 100%'],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        />
+      </div>
+
+      {/* Highlight Badge */}
+      {highlight && (
+        <motion.div 
+          className={styles.cardBadge}
+          initial={{ scale: 0, rotate: -10 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 300 }}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>عرض حصري</span>
+          <motion.div
+            className={styles.badgeGlow}
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.5, 1, 0.5]
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity
+            }}
+          />
+        </motion.div>
+      )}
+
+      {/* Type Badge */}
+      <motion.div 
+        className={styles.typeBadge}
+        whileHover={{ scale: 1.1 }}
+      >
+        <div className={styles.typeIcon}>
+          {getPackageIcon()}
+        </div>
         <span>{pkg.type === 'weekly' ? 'أسبوعي' : 
                pkg.type === 'monthly' ? 'شهري' : 
                pkg.type === 'term' ? 'ترم كامل' : 'عرض خاص'}</span>
-      </div>
+      </motion.div>
 
+      {/* Purchased Overlay */}
       {isPurchased && (
-        <div className={`${styles.purchasedOverlay} ${isPurchased ? styles.active : ''}`}>
+        <motion.div 
+          className={styles.purchasedOverlay}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
           <motion.div 
             className={styles.purchasedBadge}
-            initial={{ scale: 0, rotate: -10 }}
-            animate={{ scale: 1, rotate: -5 }}
-            transition={{ type: "spring", stiffness: 200 }}
+            initial={{ scale: 0, rotate: -20 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 250 }}
           >
-            <CheckCircle2 className="w-5 h-5" />
-            <span>تم الشراء</span>
+            <CheckCircle2 className="w-6 h-6" />
+            <span>مشترك بالفعل</span>
           </motion.div>
-        </div>
+        </motion.div>
       )}
 
+      {/* Card Image */}
       <div className={styles.cardImage}>
         {pkg.image_url ? (
-          <img 
+          <motion.img 
             src={pkg.image_url} 
             alt={pkg.name}
             className={styles.image}
             loading="lazy"
+            whileHover={{ scale: 1.1 }}
+            transition={{ duration: 0.3 }}
           />
         ) : (
           <motion.div 
             className={styles.imagePlaceholder}
-            animate={{ backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'] }}
-            transition={{ duration: 10, repeat: Infinity }}
+            animate={{ 
+              backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'],
+              filter: ['hue-rotate(0deg)', 'hue-rotate(360deg)', 'hue-rotate(0deg)']
+            }}
+            transition={{ duration: 15, repeat: Infinity }}
           >
-            <GraduationCap className="w-16 h-16 text-white/50" />
+            <GraduationCap className="w-20 h-20 text-white/60" />
           </motion.div>
         )}
         <div className={styles.imageOverlay}></div>
+        <motion.div 
+          className={styles.imageShine}
+          animate={{
+            x: ['-100%', '200%'],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "linear",
+            delay: index * 0.5
+          }}
+        />
       </div>
 
+      {/* Card Content */}
       <div className={styles.cardContent}>
-        <h3 className={styles.cardTitle}>{pkg.name}</h3>
+        <motion.h3 
+          className={styles.cardTitle}
+          whileHover={{ scale: 1.02 }}
+        >
+          {pkg.name}
+        </motion.h3>
         <p className={styles.cardDescription}>{pkg.description}</p>
 
+        {/* Meta Information */}
         <div className={styles.cardMeta}>
           <div className={styles.metaItem}>
-            <div className={styles.metaIcon}>
-              <PlayCircle className="w-4 h-4 text-primary-400" />
+            <motion.div 
+              className={styles.metaIcon}
+              whileHover={{ rotate: 360 }}
+              transition={{ duration: 0.5 }}
+            >
+              <PlayCircle className="w-5 h-5" />
+            </motion.div>
+            <div>
+              <span className={styles.metaValue}>{pkg.lecture_count}</span>
+              <span className={styles.metaLabel}>محاضرة</span>
             </div>
-            <span>{pkg.lecture_count} محاضرة</span>
           </div>
+          
           <div className={styles.metaItem}>
-            <div className={styles.metaIcon}>
-              <Clock className="w-4 h-4 text-accent-400" />
+            <motion.div 
+              className={styles.metaIcon}
+              whileHover={{ rotate: 360 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Clock className="w-5 h-5" />
+            </motion.div>
+            <div>
+              <span className={styles.metaValue}>{pkg.duration_days}</span>
+              <span className={styles.metaLabel}>يوم</span>
             </div>
-            <span>{pkg.duration_days} يوم</span>
           </div>
+          
           <div className={styles.metaItem}>
-            <div className={styles.metaIcon}>
-              <Shield className="w-4 h-4 text-success-500" />
+            <motion.div 
+              className={styles.metaIcon}
+              whileHover={{ rotate: 360 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Shield className="w-5 h-5" />
+            </motion.div>
+            <div>
+              <span className={styles.metaLabel}>ضمان</span>
+              <span className={styles.metaLabel}>استرجاع</span>
             </div>
-            <span>ضمان الاسترجاع</span>
           </div>
         </div>
 
+        {/* Card Footer */}
         <div className={styles.cardFooter}>
-          <div className={styles.priceInfo}>
+          <motion.div 
+            className={styles.priceInfo}
+            whileHover={{ scale: 1.05 }}
+          >
             <p className={styles.priceLabel}>السعر</p>
-            <p className={`${styles.price} ${highlight ? styles.priceHighlight : ''}`}>
-              {pkg.price} <span className={styles.currency}>جنيه</span>
-            </p>
-          </div>
+            <div className={styles.priceWrapper}>
+              <p className={`${styles.price} ${highlight ? styles.priceHighlight : ''}`}>
+                {pkg.price.toLocaleString()}
+              </p>
+              <span className={styles.currency}>جنيه</span>
+            </div>
+            {pkg.type === 'offer' && (
+              <motion.p 
+                className={styles.originalPrice}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+              >
+                كان {Math.round(pkg.price * 1.3).toLocaleString()} جنيه
+              </motion.p>
+            )}
+          </motion.div>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ 
+              scale: 1.08,
+              boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)"
+            }}
             whileTap={{ scale: 0.95 }}
             onClick={isPurchased ? onEnter : onPurchase}
             className={`${styles.actionButton} ${
@@ -336,22 +623,33 @@ function PackageCard({
             {isPurchased ? (
               <>
                 <span>دخول للمحاضرات</span>
-                <ArrowRight className="w-4 h-4" />
+                <motion.div
+                  animate={{
+                    x: [0, 5, 0]
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity
+                  }}
+                >
+                  <ArrowRight className="w-5 h-5" />
+                </motion.div>
               </>
             ) : (
               <>
                 <span>اشترك الآن</span>
                 <motion.div
                   animate={{
-                    scale: [1, 1.1, 1],
-                    transition: {
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }
+                    rotate: 360,
+                    scale: [1, 1.2, 1]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
                   }}
                 >
-                  <Sparkles className="w-4 h-4" />
+                  <Rocket className="w-5 h-5" />
                 </motion.div>
               </>
             )}
@@ -392,8 +690,12 @@ export default function GradePage() {
   const [stats, setStats] = useState({
     totalStudents: 1250,
     successRate: 94,
-    activeCourses: 42
+    activeCourses: 42,
+    expertTeachers: 25
   })
+
+  // Theme
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
 
   // ================== Load Data ==================
   useEffect(() => {
@@ -552,6 +854,9 @@ export default function GradePage() {
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
+        <LightBeams />
+        <ParticleBackground />
+        
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -559,16 +864,60 @@ export default function GradePage() {
         >
           <motion.div
             className={styles.loadingSpinner}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            animate={{ 
+              rotate: 360,
+              scale: [1, 1.2, 1]
+            }}
+            transition={{ 
+              duration: 2, 
+              repeat: Infinity,
+              ease: "easeInOut" 
+            }}
           />
-          <motion.p
-            className={styles.loadingText}
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
+          <motion.div
+            className={styles.loadingTextContainer}
           >
-            جاري تحميل بيانات الصف...
-          </motion.p>
+            <motion.h2
+              className={styles.loadingTitle}
+              animate={{ 
+                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                opacity: [0.5, 1, 0.5]
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity
+              }}
+            >
+              الأبــارع محمود الـديــب
+            </motion.h2>
+            <motion.p
+              className={styles.loadingText}
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              جاري تحميل بيانات الصف...
+            </motion.p>
+          </motion.div>
+          
+          <motion.div
+            className={styles.loadingDots}
+          >
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className={styles.loadingDot}
+                animate={{ 
+                  y: [0, -10, 0],
+                  opacity: [0.3, 1, 0.3]
+                }}
+                transition={{
+                  duration: 1,
+                  repeat: Infinity,
+                  delay: i * 0.2
+                }}
+              />
+            ))}
+          </motion.div>
         </motion.div>
       </div>
     )
@@ -578,22 +927,51 @@ export default function GradePage() {
   if (error || !grade) {
     return (
       <div className={styles.errorContainer}>
+        <WaveBackground />
+        <FloatingElements />
+        
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 50, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 200 }}
           className={styles.errorCard}
         >
-          <div className={styles.errorIcon}>
-            <X className="w-10 h-10 text-error-500" />
-          </div>
-          <h2 className={styles.errorTitle}>عذراً</h2>
+          <motion.div
+            className={styles.errorIcon}
+            animate={{ 
+              rotate: [0, 10, -10, 0],
+              scale: [1, 1.1, 1]
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <X className="w-16 h-16 text-error-500" />
+          </motion.div>
+          
+          <motion.h2 
+            className={styles.errorTitle}
+            animate={{ 
+              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity
+            }}
+          >
+            عذراً
+          </motion.h2>
+          
           <p className={styles.errorMessage}>{error || 'الصف غير موجود'}</p>
+          
           <motion.button 
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ 
+              scale: 1.05,
+              boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)"
+            }}
             whileTap={{ scale: 0.95 }}
             onClick={() => router.push('/')}
             className={styles.backButton}
           >
+            <ArrowRight className="w-5 h-5" />
             العودة للرئيسية
           </motion.button>
         </motion.div>
@@ -608,102 +986,350 @@ export default function GradePage() {
   const offerPackages = packages.filter(p => p.type === 'offer')
 
   return (
-    <div className={styles.container}>
-      {/* Background Effects */}
+    <div className={`${styles.container} ${theme === 'dark' ? styles.dark : styles.light}`}>
+      {/* Enhanced Background Effects */}
       <div className={styles.bgEffects}>
-        <div className={styles.animatedLines} />
-        <div className={styles.gridDots} />
+        <WaveBackground />
         <ParticleBackground />
+        <FloatingElements />
+        <LightBeams />
+        
+        {/* Animated Gradient Orbs */}
+        <motion.div 
+          className={styles.gradientOrb1}
+          animate={{
+            x: [0, 100, 0],
+            y: [0, 50, 0],
+            scale: [1, 1.2, 1]
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        />
+        <motion.div 
+          className={styles.gradientOrb2}
+          animate={{
+            x: [100, 0, 100],
+            y: [50, 0, 50],
+            scale: [1.2, 1, 1.2]
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        />
       </div>
 
       <div className={styles.content}>
-        {/* Header */}
+        {/* Premium Header */}
         <motion.header 
-          initial={{ opacity: 0, y: -50 }}
+          initial={{ opacity: 0, y: -100 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 100 }}
+          transition={{ 
+            type: "spring", 
+            stiffness: 100,
+            damping: 20,
+            delay: 0.2
+          }}
           className={styles.header}
         >
+          <div className={styles.headerBackground}></div>
+          
           <div className={styles.headerContent}>
+            {/* Platform Branding */}
+            <motion.div 
+              className={styles.platformBranding}
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <motion.div 
+                className={styles.platformLogo}
+                animate={{
+                  rotate: [0, 360],
+                  scale: [1, 1.1, 1]
+                }}
+                transition={{
+                  duration: 20,
+                  repeat: Infinity,
+                  ease: "linear"
+                }}
+              >
+                <Crown className="w-10 h-10 text-primary-400" />
+              </motion.div>
+              <div className={styles.platformInfo}>
+                <motion.h1 
+                  className={styles.platformName}
+                  animate={{ 
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                  }}
+                  transition={{
+                    duration: 5,
+                    repeat: Infinity
+                  }}
+                >
+                  الأبــارع محمود الـديــب
+                </motion.h1>
+                <p className={styles.platformTagline}>منارة العلم والتميز</p>
+              </div>
+            </motion.div>
+
+            {/* Grade Title */}
             <motion.div 
               className={styles.headerTitle}
-              whileHover={{ scale: 1.02 }}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.4 }}
             >
               <motion.div 
                 className={styles.gradeIcon}
                 animate={{
-                  y: [0, -10, 0],
-                  transition: {
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }
+                  y: [0, -15, 0],
+                  rotate: [0, 5, -5, 0]
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut"
                 }}
               >
-                <GraduationCap className="w-8 h-8 text-white" />
+                <GraduationCap className="w-12 h-12 text-white" />
               </motion.div>
               <div className={styles.titleWrapper}>
-                <h1 className={styles.title}>{grade.name}</h1>
-                <p className={styles.subtitle}>اختر باقتك وابدأ رحلة التعلم معنا</p>
+                <motion.h1 
+                  className={styles.title}
+                  animate={{ 
+                    textShadow: [
+                      '0 0 20px rgba(255,255,255,0.3)',
+                      '0 0 30px rgba(255,255,255,0.5)',
+                      '0 0 20px rgba(255,255,255,0.3)'
+                    ]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity
+                  }}
+                >
+                  {grade.name}
+                </motion.h1>
+                <p className={styles.subtitle}>رحلة نحو التميز الأكاديمي</p>
               </div>
             </motion.div>
 
-            {user && (
-              <motion.div 
-                className={styles.walletBalance}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
+            {/* User Actions */}
+            <div className={styles.headerActions}>
+              {user && (
                 <motion.div 
-                  className={styles.walletIcon}
-                  animate={{
-                    scale: [1, 1.05, 1],
-                    transition: {
-                      duration: 2,
+                  className={styles.walletBalance}
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.5 }}
+                  whileHover={{ 
+                    scale: 1.05,
+                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)"
+                  }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <motion.div 
+                    className={styles.walletIcon}
+                    animate={{
+                      scale: [1, 1.1, 1],
+                      rotate: [0, 5, -5, 0]
+                    }}
+                    transition={{
+                      duration: 3,
                       repeat: Infinity,
                       ease: "easeInOut"
-                    }
-                  }}
-                >
-                  <Wallet className="w-6 h-6 text-white" />
+                    }}
+                  >
+                    <Wallet className="w-8 h-8 text-white" />
+                  </motion.div>
+                  <div className={styles.walletInfo}>
+                    <p className={styles.walletLabel}>رصيد المحفظة</p>
+                    <motion.p 
+                      className={styles.walletAmount}
+                      animate={{
+                        scale: [1, 1.05, 1]
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity
+                      }}
+                    >
+                      {walletBalance.toLocaleString()} <span className={styles.currency}>جنيه</span>
+                    </motion.p>
+                  </div>
+                  <motion.div 
+                    className={styles.walletParticles}
+                    animate={{
+                      opacity: [0, 1, 0],
+                      y: [0, -20, 0]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity
+                    }}
+                  />
                 </motion.div>
-                <div className={styles.walletInfo}>
-                  <p className={styles.walletLabel}>رصيد المحفظة</p>
-                  <p className={styles.walletAmount}>{walletBalance.toLocaleString()} جنيه</p>
-                </div>
-              </motion.div>
-            )}
+              )}
+
+              {/* Theme Toggle */}
+              <motion.button
+                className={styles.themeToggle}
+                whileHover={{ scale: 1.1, rotate: 180 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-6 h-6 text-yellow-400" />
+                ) : (
+                  <Moon className="w-6 h-6 text-indigo-400" />
+                )}
+              </motion.button>
+            </div>
           </div>
         </motion.header>
 
-        {/* Stats Section */}
+        {/* Stats Section with Enhanced Design */}
         <motion.div 
           className={styles.statsContainer}
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.6, type: "spring" }}
         >
-          <div className={styles.statCard}>
-            <Users className="w-8 h-8 text-primary-400" />
-            <div>
-              <h3>{stats.totalStudents.toLocaleString()}+</h3>
-              <p>طالب</p>
+          <motion.div 
+            className={styles.statCard}
+            whileHover={{ 
+              y: -10,
+              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)"
+            }}
+          >
+            <motion.div 
+              className={styles.statIcon}
+              animate={{
+                rotate: [0, 360],
+                scale: [1, 1.2, 1]
+              }}
+              transition={{
+                duration: 10,
+                repeat: Infinity,
+                ease: "linear"
+              }}
+            >
+              <Users className="w-10 h-10" />
+            </motion.div>
+            <div className={styles.statContent}>
+              <motion.h3 
+                className={styles.statNumber}
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                {stats.totalStudents.toLocaleString()}+
+              </motion.h3>
+              <p className={styles.statLabel}>طالب متفوق</p>
             </div>
-          </div>
-          <div className={styles.statCard}>
-            <TrendingUp className="w-8 h-8 text-accent-400" />
-            <div>
-              <h3>{stats.successRate}%</h3>
-              <p>نسبة النجاح</p>
+          </motion.div>
+          
+          <motion.div 
+            className={styles.statCard}
+            whileHover={{ 
+              y: -10,
+              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)"
+            }}
+          >
+            <motion.div 
+              className={styles.statIcon}
+              animate={{
+                y: [0, -5, 0],
+                scale: [1, 1.1, 1]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity
+              }}
+            >
+              <TrendingUp className="w-10 h-10" />
+            </motion.div>
+            <div className={styles.statContent}>
+              <motion.h3 
+                className={styles.statNumber}
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                {stats.successRate}%
+              </motion.h3>
+              <p className={styles.statLabel}>نسبة النجاح</p>
             </div>
-          </div>
-          <div className={styles.statCard}>
-            <Zap className="w-8 h-8 text-success-500" />
-            <div>
-              <h3>{stats.activeCourses}+</h3>
-              <p>دورة نشطة</p>
+          </motion.div>
+          
+          <motion.div 
+            className={styles.statCard}
+            whileHover={{ 
+              y: -10,
+              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)"
+            }}
+          >
+            <motion.div 
+              className={styles.statIcon}
+              animate={{
+                rotate: [0, 180, 0],
+                scale: [1, 1.2, 1]
+              }}
+              transition={{
+                duration: 5,
+                repeat: Infinity,
+                ease: "linear"
+              }}
+            >
+              <Zap className="w-10 h-10" />
+            </motion.div>
+            <div className={styles.statContent}>
+              <motion.h3 
+                className={styles.statNumber}
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                {stats.activeCourses}+
+              </motion.h3>
+              <p className={styles.statLabel}>دورة نشطة</p>
             </div>
-          </div>
+          </motion.div>
+          
+          <motion.div 
+            className={styles.statCard}
+            whileHover={{ 
+              y: -10,
+              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)"
+            }}
+          >
+            <motion.div 
+              className={styles.statIcon}
+              animate={{
+                rotate: [0, -360],
+                scale: [1, 1.2, 1]
+              }}
+              transition={{
+                duration: 8,
+                repeat: Infinity,
+                ease: "linear"
+              }}
+            >
+              <Award className="w-10 h-10" />
+            </motion.div>
+            <div className={styles.statContent}>
+              <motion.h3 
+                className={styles.statNumber}
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                {stats.expertTeachers}+
+              </motion.h3>
+              <p className={styles.statLabel}>خبير تعليمي</p>
+            </div>
+          </motion.div>
         </motion.div>
 
         {/* Main Content */}
@@ -717,14 +1343,53 @@ export default function GradePage() {
             {/* Offers Section */}
             {offerPackages.length > 0 && (
               <section className={styles.section}>
-                <motion.div variants={itemVariants} className={styles.sectionHeader}>
-                  <div className={styles.sectionIcon}>
-                    <Sparkles className="w-6 h-6 text-accent-400" />
-                  </div>
+                <motion.div 
+                  variants={itemVariants} 
+                  className={styles.sectionHeader}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <motion.div 
+                    className={styles.sectionIcon}
+                    animate={{
+                      rotate: [0, 360],
+                      scale: [1, 1.2, 1]
+                    }}
+                    transition={{
+                      duration: 20,
+                      repeat: Infinity,
+                      ease: "linear"
+                    }}
+                  >
+                    <Crown className="w-8 h-8" />
+                  </motion.div>
                   <div>
-                    <h2 className={styles.sectionTitle}>عروض حصرية محدودة</h2>
-                    <p className={styles.sectionSubtitle}>استغل العروض قبل انتهاء المدة</p>
+                    <motion.h2 
+                      className={styles.sectionTitle}
+                      animate={{ 
+                        backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                      }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity
+                      }}
+                    >
+                      عروض VIP حصرية
+                    </motion.h2>
+                    <p className={styles.sectionSubtitle}>فرص ذهبية بخصومات استثنائية</p>
                   </div>
+                  <motion.div 
+                    className={styles.sectionBadge}
+                    animate={{
+                      scale: [1, 1.1, 1],
+                      rotate: [0, 5, -5, 0]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity
+                    }}
+                  >
+                    محدودة
+                  </motion.div>
                 </motion.div>
                 <div className={styles.grid}>
                   {offerPackages.map((pkg, index) => (
@@ -746,12 +1411,21 @@ export default function GradePage() {
             {termPackages.length > 0 && (
               <section className={styles.section}>
                 <motion.div variants={itemVariants} className={styles.sectionHeader}>
-                  <div className={styles.sectionIcon}>
-                    <BookOpen className="w-6 h-6 text-primary-400" />
-                  </div>
+                  <motion.div 
+                    className={styles.sectionIcon}
+                    animate={{
+                      y: [0, -5, 0]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity
+                    }}
+                  >
+                    <BookOpen className="w-8 h-8" />
+                  </motion.div>
                   <div>
                     <h2 className={styles.sectionTitle}>باقات الترم الكامل</h2>
-                    <p className={styles.sectionSubtitle}>تعلم بلا حدود طوال الترم</p>
+                    <p className={styles.sectionSubtitle}>رحلة تعلم متكاملة وشاملة</p>
                   </div>
                 </motion.div>
                 <div className={styles.grid}>
@@ -773,12 +1447,22 @@ export default function GradePage() {
             {monthlyPackages.length > 0 && (
               <section className={styles.section}>
                 <motion.div variants={itemVariants} className={styles.sectionHeader}>
-                  <div className={styles.sectionIcon}>
-                    <Calendar className="w-6 h-6 text-success-500" />
-                  </div>
+                  <motion.div 
+                    className={styles.sectionIcon}
+                    animate={{
+                      rotate: [0, 180, 0]
+                    }}
+                    transition={{
+                      duration: 10,
+                      repeat: Infinity,
+                      ease: "linear"
+                    }}
+                  >
+                    <Calendar className="w-8 h-8" />
+                  </motion.div>
                   <div>
                     <h2 className={styles.sectionTitle}>الباقات الشهرية</h2>
-                    <p className={styles.sectionSubtitle}>مرونة في التعلم شهرياً</p>
+                    <p className={styles.sectionSubtitle}>مرونة في التعلم والتقدم</p>
                   </div>
                 </motion.div>
                 <div className={styles.grid}>
@@ -800,12 +1484,21 @@ export default function GradePage() {
             {weeklyPackages.length > 0 && (
               <section className={styles.section}>
                 <motion.div variants={itemVariants} className={styles.sectionHeader}>
-                  <div className={styles.sectionIcon}>
-                    <Clock className="w-6 h-6 text-purple-400" />
-                  </div>
+                  <motion.div 
+                    className={styles.sectionIcon}
+                    animate={{
+                      scale: [1, 1.2, 1]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity
+                    }}
+                  >
+                    <Clock className="w-8 h-8" />
+                  </motion.div>
                   <div>
                     <h2 className={styles.sectionTitle}>الباقات الأسبوعية</h2>
-                    <p className={styles.sectionSubtitle}>ابدأ رحلتك هذا الأسبوع</p>
+                    <p className={styles.sectionSubtitle}>ابدأ رحلتك من اليوم</p>
                   </div>
                 </motion.div>
                 <div className={styles.grid}>
@@ -827,19 +1520,77 @@ export default function GradePage() {
               <motion.div 
                 variants={itemVariants}
                 className={styles.emptyState}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
               >
-                <div className={styles.emptyIcon}>
-                  <BookOpen className="w-12 h-12 text-gray-400" />
-                </div>
-                <p className={styles.emptyText}>لا توجد باقات متاحة حالياً</p>
-                <p className={styles.emptySubtext}>سيتم إضافة باقات جديدة قريباً</p>
+                <motion.div 
+                  className={styles.emptyIcon}
+                  animate={{
+                    rotate: [0, 360],
+                    scale: [1, 1.2, 1]
+                  }}
+                  transition={{
+                    duration: 20,
+                    repeat: Infinity,
+                    ease: "linear"
+                  }}
+                >
+                  <BookOpen className="w-20 h-20" />
+                </motion.div>
+                <motion.h3 
+                  className={styles.emptyTitle}
+                  animate={{ 
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity
+                  }}
+                >
+                  جاري التحضير
+                </motion.h3>
+                <p className={styles.emptyText}>يتم إعداد محتوى مميز للصف حالياً</p>
+                <p className={styles.emptySubtext}>سيتم إطلاق الباقات قريباً</p>
+                
+                <motion.div 
+                  className={styles.emptyProgress}
+                  initial={{ width: 0 }}
+                  animate={{ width: '60%' }}
+                  transition={{ duration: 2, delay: 0.5 }}
+                />
               </motion.div>
             )}
           </motion.div>
         </main>
+
+        {/* Footer */}
+        <motion.footer 
+          className={styles.footer}
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1 }}
+        >
+          <div className={styles.footerContent}>
+            <motion.div 
+              className={styles.footerBrand}
+              whileHover={{ scale: 1.05 }}
+            >
+              <Crown className="w-6 h-6 text-primary-400" />
+              <span>الابارع محمود الديب</span>
+            </motion.div>
+            <p className={styles.footerText}>منارة العلم والتميز منذ 2010</p>
+            <div className={styles.footerStats}>
+              <span>+1250 طالب متفوق</span>
+              <span>•</span>
+              <span>94% نسبة نجاح</span>
+              <span>•</span>
+              <span>25 خبير تعليمي</span>
+            </div>
+          </div>
+        </motion.footer>
       </div>
 
-      {/* Purchase Modal */}
+      {/* Premium Purchase Modal */}
       <AnimatePresence>
         {showPurchaseModal && selectedPackage && (
           <motion.div
@@ -857,6 +1608,8 @@ export default function GradePage() {
               className={styles.modal}
               onClick={e => e.stopPropagation()}
             >
+              <div className={styles.modalGlow}></div>
+              
               {purchaseSuccess ? (
                 <motion.div 
                   initial={{ scale: 0.8, opacity: 0 }}
@@ -864,21 +1617,68 @@ export default function GradePage() {
                   className={styles.successContainer}
                 >
                   <motion.div 
+                    className={styles.successIcon}
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ 
+                      type: "spring", 
+                      stiffness: 200,
+                      damping: 15
+                    }}
+                  >
+                    <CheckCircle2 className="w-16 h-16" />
+                  </motion.div>
+                  <motion.h3 
+                    className={styles.successTitle}
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    مبروك! 🎉
+                  </motion.h3>
+                  <motion.p 
+                    className={styles.successMessage}
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    {purchaseSuccess}
+                  </motion.p>
+                  <motion.div
+                    className={styles.successConfetti}
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 200 }}
-                    className={styles.successIcon}
+                    transition={{ delay: 0.4 }}
                   >
-                    <CheckCircle2 className="w-12 h-12 text-success-500" />
+                    {Array.from({ length: 20 }).map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className={styles.confetti}
+                        initial={{ 
+                          x: 0, 
+                          y: 0, 
+                          rotate: 0,
+                          opacity: 1
+                        }}
+                        animate={{ 
+                          x: Math.random() * 200 - 100,
+                          y: Math.random() * 200 - 100,
+                          rotate: 360,
+                          opacity: 0
+                        }}
+                        transition={{ 
+                          duration: 1,
+                          delay: i * 0.05
+                        }}
+                      />
+                    ))}
                   </motion.div>
-                  <h3 className={styles.successTitle}>تهانينا!</h3>
-                  <p className={styles.successMessage}>{purchaseSuccess}</p>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setShowPurchaseModal(false)}
                     className={styles.closeButton}
-                    style={{ marginTop: '1.5rem' }}
+                    style={{ marginTop: '2rem' }}
                   >
                     إغلاق
                   </motion.button>
@@ -886,19 +1686,49 @@ export default function GradePage() {
               ) : (
                 <>
                   <div className={styles.modalHeader}>
-                    <div>
+                    <motion.div 
+                      className={styles.modalTitleContainer}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                    >
                       <h3 className={styles.modalTitle}>{selectedPackage.name}</h3>
-                      <p className={styles.modalPrice}>{selectedPackage.price.toLocaleString()} جنيه</p>
-                    </div>
+                      <motion.p 
+                        className={styles.modalPrice}
+                        animate={{ scale: [1, 1.05, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        {selectedPackage.price.toLocaleString()} <span className={styles.modalCurrency}>جنيه</span>
+                      </motion.p>
+                    </motion.div>
                     <motion.button 
-                      whileHover={{ rotate: 90 }}
+                      whileHover={{ rotate: 90, scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => setShowPurchaseModal(false)}
                       className={styles.closeButton}
                     >
-                      <X className="w-5 h-5 text-gray-400" />
+                      <X className="w-6 h-6" />
                     </motion.button>
                   </div>
+
+                  <motion.div 
+                    className={styles.packageFeatures}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <div className={styles.feature}>
+                      <PlayCircle className="w-5 h-5" />
+                      <span>{selectedPackage.lecture_count} محاضرة</span>
+                    </div>
+                    <div className={styles.feature}>
+                      <Clock className="w-5 h-5" />
+                      <span>{selectedPackage.duration_days} يوم</span>
+                    </div>
+                    <div className={styles.feature}>
+                      <Shield className="w-5 h-5" />
+                      <span>ضمان الاسترجاع</span>
+                    </div>
+                  </motion.div>
 
                   <div className={styles.paymentMethods}>
                     <motion.button
@@ -907,12 +1737,20 @@ export default function GradePage() {
                       onClick={() => setPaymentMethod('wallet')}
                       className={`${styles.paymentMethod} ${paymentMethod === 'wallet' ? styles.paymentMethodActive : ''}`}
                     >
-                      <CreditCard className={`w-6 h-6 ${paymentMethod === 'wallet' ? 'text-primary-500' : 'text-gray-400'}`} />
+                      <div className={styles.paymentMethodIcon}>
+                        <CreditCard className="w-6 h-6" />
+                      </div>
                       <div className={styles.paymentMethodInfo}>
                         <p className={styles.paymentMethodTitle}>الدفع من المحفظة</p>
                         <p className={styles.paymentMethodSubtitle}>رصيدك: {walletBalance.toLocaleString()} جنيه</p>
                       </div>
-                      {paymentMethod === 'wallet' && <div className={styles.checkIndicator}></div>}
+                      {paymentMethod === 'wallet' && (
+                        <motion.div 
+                          className={styles.checkIndicator}
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                        />
+                      )}
                     </motion.button>
 
                     <motion.button
@@ -921,12 +1759,20 @@ export default function GradePage() {
                       onClick={() => setPaymentMethod('code')}
                       className={`${styles.paymentMethod} ${paymentMethod === 'code' ? styles.paymentMethodActive : ''}`}
                     >
-                      <Ticket className={`w-6 h-6 ${paymentMethod === 'code' ? 'text-primary-500' : 'text-gray-400'}`} />
+                      <div className={styles.paymentMethodIcon}>
+                        <Ticket className="w-6 h-6" />
+                      </div>
                       <div className={styles.paymentMethodInfo}>
                         <p className={styles.paymentMethodTitle}>كود تفعيل</p>
                         <p className={styles.paymentMethodSubtitle}>أدخل كود الشراء</p>
                       </div>
-                      {paymentMethod === 'code' && <div className={styles.checkIndicator}></div>}
+                      {paymentMethod === 'code' && (
+                        <motion.div 
+                          className={styles.checkIndicator}
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                        />
+                      )}
                     </motion.button>
                   </div>
 
@@ -959,7 +1805,10 @@ export default function GradePage() {
                   )}
 
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ 
+                      scale: 1.02,
+                      boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)"
+                    }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handlePurchase}
                     disabled={isPurchasing}
@@ -973,7 +1822,17 @@ export default function GradePage() {
                     ) : (
                       <>
                         تأكيد الشراء
-                        <ArrowRight className="w-5 h-5" />
+                        <motion.div
+                          animate={{
+                            x: [0, 5, 0]
+                          }}
+                          transition={{
+                            duration: 1,
+                            repeat: Infinity
+                          }}
+                        >
+                          <ArrowRight className="w-5 h-5" />
+                        </motion.div>
                       </>
                     )}
                   </motion.button>
