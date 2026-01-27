@@ -30,13 +30,18 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
   const [currentUser, setCurrentUser] = useState<User>(user);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // دالة للتحقق من حالة المصادقة
   const checkAuthStatus = useCallback(async () => {
     try {
-      const response = await fetch('/api/auth/status', {
-        credentials: 'include', // لإرسال الكوكيز
-        cache: 'no-store', // لمنع التخزين المؤقت
+      const response = await fetch('/api/auth/check-session', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       });
       
       if (response.ok) {
@@ -57,19 +62,55 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
     }
   }, []);
 
+  // تحديث حالة المستخدم عندما تتغير من props
+  useEffect(() => {
+    setCurrentUser(user);
+  }, [user]);
+
   // التحقق من حالة المصادقة كل ثانية
   useEffect(() => {
     // التحقق الفوري عند التحميل
     checkAuthStatus();
     
     // تعيين interval للتحقق كل ثانية
-    const intervalId = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       checkAuthStatus();
-    }, 1000); // 1000 مللي ثانية = 1 ثانية
+    }, 1000);
     
     // تنظيف interval عند إلغاء التحميل
-    return () => clearInterval(intervalId);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
   }, [checkAuthStatus]);
+
+  // دالة تسجيل الخروج المدمجة
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      // تحديث الحالة المحلية فورًا
+      setCurrentUser({
+        isLoggedIn: false,
+        role: null,
+        name: '',
+        profileImage: ''
+      });
+      
+      // إغلاق القوائم المنسدلة
+      setDropdownOpen(false);
+      setMobileMenuOpen(false);
+      
+      // استدعاء دالة تسجيل الخروج من props
+      onLogout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  }, [onLogout]);
 
   // إغلاق القائمة المنسدلة عند النقر خارجها
   useEffect(() => {
@@ -107,7 +148,7 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
     if (currentUser.role === 'admin') {
       navLinks.push({ href: '/dashboard', label: 'لوحة التحكم' });
     } else if (currentUser.role === 'student') {
-      navLinks.push({ href: '/student/dashboard', label: 'لوحة تحكم الطالب' });
+      navLinks.push({ href: '/student-dashboard', label: 'لوحة تحكم الطالب' });
     }
   }
 
@@ -175,7 +216,9 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
                     <div className={styles.profileImage}>
                       <FiUser className={styles.profileIcon} />
                     </div>
-                    <span className={styles.profileName}>{currentUser.name.split(' ')[0]}</span>
+                    <span className={styles.profileName}>
+                      {currentUser.name.split(' ')[0] || 'طالب'}
+                    </span>
                     <HiChevronDown className={`${styles.chevron} ${dropdownOpen ? styles.rotate : ''}`} />
                   </div>
                 </button>
@@ -188,7 +231,9 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
                       </div>
                       <div className={styles.dropdownProfileInfo}>
                         <p className={styles.dropdownProfileRole}>أهلًا :</p>
-                        <p className={styles.dropdownProfileName}>{currentUser.name}</p>
+                        <p className={styles.dropdownProfileName}>
+                          {currentUser.name || 'طالب'}
+                        </p>
                       </div>
                     </div>
                     <div className={styles.dropdownDivider}></div>
@@ -198,7 +243,7 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
                     </Link>
                     <div className={styles.dropdownDivider}></div>
                     <button
-                      onClick={onLogout}
+                      onClick={handleLogout}
                       className={`${styles.dropdownItem} ${styles.logoutItem}`}
                     >
                       <FiLogOut className={styles.dropdownIcon} />
@@ -213,7 +258,7 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
                 <Link href="/dashboard" className={styles.adminDashboardButton}>
                   لوحة التحكم
                 </Link>
-                <button onClick={onLogout} className={styles.adminLogoutButton}>
+                <button onClick={handleLogout} className={styles.adminLogoutButton}>
                   <FiLogOut />
                 </button>
               </div>
@@ -246,7 +291,9 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
                     <FiUser />
                   </div>
                   <div className={styles.mobileProfileInfo}>
-                    <p className={styles.mobileProfileName}>{currentUser.name}</p>
+                    <p className={styles.mobileProfileName}>
+                      {currentUser.name || 'مستخدم'}
+                    </p>
                     <p className={styles.mobileProfileRole}>
                       {currentUser.role === 'admin' ? 'أدمن' : 'طالب'}
                     </p>
@@ -303,7 +350,7 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
                 </Link>
                 <button
                   onClick={() => {
-                    onLogout();
+                    handleLogout();
                     setMobileMenuOpen(false);
                   }}
                   className={styles.mobileLogoutButton}
