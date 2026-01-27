@@ -3,7 +3,7 @@ import { CodeForm } from '../../components/admin/CodeForm';
 import { CodesTable } from '../../components/admin/CodesTable';
 import styles from './CodesPage.module.css';
 
-export const CodesPage: React.FC = () => {
+function CodesPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleCodeCreated = () => {
@@ -23,4 +23,6 @@ export const CodesPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
+
+export default CodesPage;

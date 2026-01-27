@@ -13,7 +13,7 @@ interface User {
   role: string;
 }
 
-export const PasswordPage: React.FC = () => {
+function PasswordPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -56,4 +56,6 @@ export const PasswordPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
+
+export default PasswordPage;
