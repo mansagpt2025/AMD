@@ -5,12 +5,14 @@ import styles from './CodesTable.module.css';
 interface Code {
   id: string;
   code: string;
+  package_id?: string;
   grade: string;
   is_used: boolean;
+  used_by?: string | null;
   created_at: string;
-  used_at?: string;
-  packages?: { name: string; type: string };
-  profiles?: { full_name: string; email: string };
+  used_at?: string | null;
+  packages?: { name: string; type: string }[];
+  profiles?: { full_name: string; email: string }[];
 }
 
 export const CodesTable: React.FC<{ refreshTrigger?: number }> = ({ refreshTrigger }) => {
@@ -32,26 +34,47 @@ export const CodesTable: React.FC<{ refreshTrigger?: number }> = ({ refreshTrigg
   const fetchCodes = async () => {
     setLoading(true);
     try {
+      let fetchedCodes: any[] = [];
+      
       if (searchQuery) {
-        const searchResults = await codesService.searchCodes(searchQuery);
-        setCodes(searchResults);
-        setTotalCodes(searchResults.length);
+        fetchedCodes = await codesService.searchCodes(searchQuery);
       } else if (filterStatus === 'used') {
-        const usedCodes = await codesService.getUsedCodes();
-        setCodes(usedCodes);
-        setTotalCodes(usedCodes.length);
+        fetchedCodes = await codesService.getUsedCodes();
       } else if (filterStatus === 'unused') {
-        const unusedCodes = await codesService.getUnusedCodes();
-        setCodes(unusedCodes);
-        setTotalCodes(unusedCodes.length);
+        fetchedCodes = await codesService.getUnusedCodes();
       } else {
         const offset = (currentPage - 1) * itemsPerPage;
-        const { data, total } = await codesService.getAllCodes(itemsPerPage, offset);
-        setCodes(data);
-        setTotalCodes(total || 0);
+        const response = await codesService.getAllCodes(itemsPerPage, offset);
+        fetchedCodes = response.data || response || [];
+        setTotalCodes(response.total || fetchedCodes.length || 0);
+      }
+
+      // تحويل البيانات لتتوافق مع interface Code
+      const formattedCodes: Code[] = fetchedCodes.map((item: any) => ({
+        id: item.id || '',
+        code: item.code || '',
+        package_id: item.package_id,
+        grade: item.grade || '',
+        // تحديد إذا كان الكود مستخدمًا بناءً على used_at أو is_used
+        is_used: item.is_used !== undefined ? item.is_used : !!item.used_at,
+        used_by: item.used_by,
+        created_at: item.created_at || new Date().toISOString(),
+        used_at: item.used_at,
+        packages: item.packages || [],
+        profiles: item.profiles || [],
+      }));
+
+      setCodes(formattedCodes);
+      
+      // تحديث العدد الإجمالي إذا لم يكن قد تم تحديثه بالفعل
+      if (!searchQuery && filterStatus === 'all') {
+        setTotalCodes(response.total || formattedCodes.length || 0);
+      } else {
+        setTotalCodes(formattedCodes.length);
       }
     } catch (error) {
       console.error('Error fetching codes:', error);
+      setCodes([]);
     } finally {
       setLoading(false);
     }
@@ -88,11 +111,18 @@ export const CodesTable: React.FC<{ refreshTrigger?: number }> = ({ refreshTrigg
       first: 'الأول',
       second: 'الثاني',
       third: 'الثالث',
+      الأول: 'الأول',
+      الثاني: 'الثاني',
+      الثالث: 'الثالث',
+      'الصف الأول': 'الأول',
+      'الصف الثاني': 'الثاني',
+      'الصف الثالث': 'الثالث',
     };
     return labels[grade] || grade;
   };
 
-  const getStatusBadge = (isUsed: boolean) => {
+  const getStatusBadge = (isUsed: boolean, usedAt?: string | null) => {
+    if (usedAt) return 'مستخدم';
     return isUsed ? 'مستخدم' : 'غير مستخدم';
   };
 
@@ -200,20 +230,20 @@ export const CodesTable: React.FC<{ refreshTrigger?: number }> = ({ refreshTrigg
             </thead>
             <tbody>
               {codes.map((code) => (
-                <tr key={code.id} className={code.is_used ? styles.usedRow : ''}>
+                <tr key={code.id} className={code.is_used || code.used_at ? styles.usedRow : ''}>
                   <td className={styles.codeCell}>
                     <span className={styles.codeBadge}>{code.code}</span>
                   </td>
-                  <td>{code.packages?.name || '-'}</td>
-                  <td>{code.packages?.type || '-'}</td>
+                  <td>{code.packages?.[0]?.name || '-'}</td>
+                  <td>{code.packages?.[0]?.type || '-'}</td>
                   <td>{getGradeLabel(code.grade)}</td>
                   <td>
-                    <span className={`${styles.statusBadge} ${code.is_used ? styles.used : styles.unused}`}>
-                      {getStatusBadge(code.is_used)}
+                    <span className={`${styles.statusBadge} ${code.is_used || code.used_at ? styles.used : styles.unused}`}>
+                      {getStatusBadge(code.is_used, code.used_at)}
                     </span>
                   </td>
-                  <td>{code.profiles?.full_name || '-'}</td>
-                  <td className={styles.email}>{code.profiles?.email || '-'}</td>
+                  <td>{code.profiles?.[0]?.full_name || '-'}</td>
+                  <td className={styles.email}>{code.profiles?.[0]?.email || '-'}</td>
                   <td>{new Date(code.created_at).toLocaleDateString('ar-EG')}</td>
                   <td>{code.used_at ? new Date(code.used_at).toLocaleDateString('ar-EG') : '-'}</td>
                   <td className={styles.actionsCell}>
