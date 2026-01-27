@@ -6,7 +6,6 @@ export async function deductWalletBalance(userId: string, amount: number, packag
   try {
     console.log('Deducting wallet balance:', { userId, amount, packageId, source })
 
-    // جلب الرصيد الحالي
     const { data: wallet, error: fetchError } = await adminClient
       .from('wallets')
       .select('id, balance')
@@ -29,7 +28,6 @@ export async function deductWalletBalance(userId: string, amount: number, packag
 
     const newBalance = currentBalance - amount
 
-    // خصم المبلغ من المحفظة
     const { error: updateError } = await adminClient
       .from('wallets')
       .update({
@@ -43,7 +41,6 @@ export async function deductWalletBalance(userId: string, amount: number, packag
       throw new Error(`فشل خصم المبلغ: ${updateError.message}`)
     }
 
-    // تسجيل العملية
     const { error: transactionError } = await adminClient
       .from('wallet_transactions')
       .insert({
@@ -57,7 +54,6 @@ export async function deductWalletBalance(userId: string, amount: number, packag
 
     if (transactionError) {
       console.error('Error recording transaction:', transactionError)
-      // لا نرفع خطأ هنا - المهم أن الرصيد تم خصمه
     }
 
     console.log('Wallet deduction successful:', { newBalance })
@@ -88,7 +84,7 @@ export async function markCodeAsUsed(codeId: string, userId: string) {
         used_at: new Date().toISOString()
       })
       .eq('id', codeId)
-      .eq('is_used', false) // شرط إضافي للتأكد من عدم الاستخدام المتزامن
+      .eq('is_used', false)
 
     if (error) {
       console.error('Error marking code as used:', error)

@@ -8,9 +8,10 @@ import {
   Wallet, BookOpen, Clock, Calendar, Loader2, GraduationCap,
   Users, Zap, TrendingUp, Award, Crown, Package,
   AlertCircle, CheckCircle2, PlayCircle, ArrowRight,
-  ShoppingCart, X, CreditCard
+  ShoppingCart, X, CreditCard, Ticket
 } from 'lucide-react'
 import styles from './GradePage.module.css'
+import PurchaseModal from '@/components/packages/PurchaseModal'
 
 interface Package {
   id: string
@@ -38,137 +39,126 @@ interface UserPackage {
   packages: Package
 }
 
-const SimplePackageCard = ({ 
+const PackageCard = ({ 
   pkg, 
   isPurchased,
   onEnter,
-  onPurchase
+  onPurchase,
+  theme
 }: { 
   pkg: Package, 
   isPurchased: boolean,
   onEnter?: () => void,
-  onPurchase?: () => void
+  onPurchase?: () => void,
+  theme?: any
 }) => {
-  return (
-    <div className={styles.packageCard}>
-      <div className={styles.packageHeader}>
-        <h3 className={styles.packageName}>{pkg.name}</h3>
-        {pkg.type === 'offer' && (
-          <span className={styles.offerBadge}>عرض خاص</span>
-        )}
-      </div>
-      
-      <p className={styles.packageDescription}>{pkg.description}</p>
-      
-      <div className={styles.packageDetails}>
-        <div className={styles.packageDetail}>
-          <PlayCircle size={16} />
-          <span>{pkg.lecture_count} محاضرة</span>
-        </div>
-        <div className={styles.packageDetail}>
-          <Clock size={16} />
-          <span>{pkg.duration_days} يوم</span>
-        </div>
-      </div>
-      
-      <div className={styles.packagePrice}>
-        <span className={styles.price}>{pkg.price.toLocaleString()} جنيه</span>
-        {pkg.type === 'offer' && (
-          <span className={styles.originalPrice}>
-            {(pkg.price * 1.2).toLocaleString()} جنيه
-          </span>
-        )}
-      </div>
-      
-      {isPurchased ? (
-        <button 
-          className={styles.enterButton}
-          onClick={onEnter}
-        >
-          <ArrowRight size={16} />
-          دخول إلى الباقة
-        </button>
-      ) : (
-        <button 
-          className={styles.purchaseButton}
-          onClick={onPurchase}
-        >
-          <ShoppingCart size={16} />
-          اشترك الآن
-        </button>
-      )}
-    </div>
-  )
-}
+  const getTypeLabel = () => {
+    switch (pkg.type) {
+      case 'weekly': return 'أسبوعي'
+      case 'monthly': return 'شهري'
+      case 'term': return 'ترم كامل'
+      case 'offer': return 'عرض خاص'
+      default: return 'خاص'
+    }
+  }
 
-const SimplePurchaseModal = ({
-  pkg,
-  onClose,
-  onConfirm
-}: {
-  pkg: Package,
-  onClose: () => void,
-  onConfirm: () => void
-}) => {
+  const getTypeColor = () => {
+    switch (pkg.type) {
+      case 'weekly': return '#3b82f6'
+      case 'monthly': return '#8b5cf6'
+      case 'term': return '#10b981'
+      case 'offer': return '#f59e0b'
+      default: return '#6366f1'
+    }
+  }
+
   return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.modalContent}>
-        <div className={styles.modalHeader}>
-          <h3>تأكيد الشراء</h3>
-          <button onClick={onClose} className={styles.closeButton}>
-            <X size={20} />
-          </button>
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      whileHover={{ y: -8 }}
+      className={styles.packageCard}
+    >
+      {isPurchased && (
+        <div 
+          className={styles.purchasedBadge}
+          style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+        >
+          <CheckCircle2 size={16} />
+          <span>مشترك</span>
         </div>
-        
-        <div className={styles.modalBody}>
-          <div className={styles.modalPackageInfo}>
-            <h4>{pkg.name}</h4>
-            <p>{pkg.description}</p>
-            <div className={styles.modalDetails}>
-              <div className={styles.modalDetail}>
-                <CheckCircle2 size={16} />
-                <span>{pkg.lecture_count} محاضرة</span>
-              </div>
-              <div className={styles.modalDetail}>
-                <CheckCircle2 size={16} />
-                <span>صلاحية {pkg.duration_days} يوم</span>
-              </div>
-              <div className={styles.modalDetail}>
-                <CheckCircle2 size={16} />
-                <span>مناسب للصف {pkg.grade}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className={styles.modalPrice}>
-            <span>السعر: </span>
-            <span className={styles.modalPriceValue}>
-              {pkg.price.toLocaleString()} جنيه
-            </span>
-          </div>
-          
-          <div className={styles.paymentOptions}>
-            <button className={styles.walletPayment}>
-              <Wallet size={18} />
-              الدفع من المحفظة
-            </button>
-            <button className={styles.cardPayment}>
-              <CreditCard size={18} />
-              بطاقة ائتمان
-            </button>
-          </div>
+      )}
+
+      {pkg.type === 'offer' && !isPurchased && (
+        <div 
+          className={styles.offerBadge}
+          style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
+        >
+          <Crown size={16} />
+          <span>عرض خاص</span>
         </div>
-        
-        <div className={styles.modalFooter}>
-          <button className={styles.cancelButton} onClick={onClose}>
-            إلغاء
-          </button>
-          <button className={styles.confirmButton} onClick={onConfirm}>
-            تأكيد الشراء
-          </button>
+      )}
+
+      <div className={styles.imageWrapper}>
+        {pkg.image_url ? (
+          <img src={pkg.image_url} alt={pkg.name} className={styles.packageImage} />
+        ) : (
+          <div 
+            className={styles.imagePlaceholder}
+            style={{ background: `linear-gradient(135deg, ${getTypeColor()}40, ${getTypeColor()}20)` }}
+          >
+            <BookOpen size={40} color={getTypeColor()} />
+          </div>
+        )}
+        <div 
+          className={styles.typeBadge}
+          style={{ background: getTypeColor() }}
+        >
+          {getTypeLabel()}
         </div>
       </div>
-    </div>
+
+      <div className={styles.cardContent}>
+        <h3 className={styles.packageName}>{pkg.name}</h3>
+        <p className={styles.packageDescription}>{pkg.description || ''}</p>
+
+        <div className={styles.packageStats}>
+          <div className={styles.stat}>
+            <PlayCircle size={16} />
+            <span>{pkg.lecture_count || 0} محاضرة</span>
+          </div>
+          <div className={styles.stat}>
+            <Clock size={16} />
+            <span>{pkg.duration_days || 30} يوم</span>
+          </div>
+        </div>
+
+        <div className={styles.priceSection}>
+          <div className={styles.price}>
+            <span className={styles.amount}>{(pkg.price || 0).toLocaleString()}</span>
+            <span className={styles.currency}>جنيه</span>
+          </div>
+        </div>
+
+        <button
+          onClick={isPurchased ? onEnter : onPurchase}
+          className={`${styles.actionButton} ${isPurchased ? styles.enterBtn : styles.purchaseBtn}`}
+          style={isPurchased ? { background: '#10b981' } : { background: getTypeColor() }}
+        >
+          {isPurchased ? (
+            <>
+              <ArrowRight size={16} />
+              دخول للباقة
+            </>
+          ) : (
+            <>
+              <ShoppingCart size={16} />
+              اشترك الآن
+            </>
+          )}
+        </button>
+      </div>
+    </motion.div>
   )
 }
 
@@ -190,12 +180,20 @@ export default function GradePage() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
 
-  const [stats] = useState({
+  const theme = {
+    primary: '#3b82f6',
+    accent: '#8b5cf6',
+    success: '#10b981',
+    warning: '#f59e0b',
+    text: '#1f2937'
+  }
+
+  const stats = {
     totalStudents: 1250,
     successRate: 94,
     activeCourses: 42,
     expertTeachers: 25
-  })
+  }
 
   useEffect(() => {
     if (gradeSlug) {
@@ -248,7 +246,7 @@ export default function GradePage() {
         
         if (walletData) setWalletBalance(walletData.balance || 0)
 
-        // جلب باقات المستخدم المشتراة مع تفاصيل الباقة
+        // جلب باقات المستخدم المشتراة
         const { data: userPackagesData, error: userPackagesError } = await supabase
           .from('user_packages')
           .select(`
@@ -291,7 +289,7 @@ export default function GradePage() {
   const termPackages = availablePackages.filter(p => p.type === 'term')
   const offerPackages = availablePackages.filter(p => p.type === 'offer')
 
-  const handlePurchaseClick = async (pkg: Package) => {
+  const handlePurchaseClick = (pkg: Package) => {
     if (!user) {
       router.push(`/login?returnUrl=/grades/${gradeSlug}`)
       return
@@ -310,50 +308,11 @@ export default function GradePage() {
     router.push(`/grades/${gradeSlug}/packages/${pkgId}`)
   }
 
-  const handlePurchaseSuccess = async () => {
-    if (!user?.id || !selectedPackage) {
-      setShowPurchaseModal(false)
-      return
-    }
-    
-    try {
-      const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + (selectedPackage.duration_days || 30))
-      
-      const { data: newUserPackage, error: insertError } = await supabase
-        .from('user_packages')
-        .insert({
-          user_id: user.id,
-          package_id: selectedPackage.id,
-          purchased_at: new Date().toISOString(),
-          expires_at: expiresAt.toISOString(),
-          is_active: true,
-          source: 'purchase'
-        })
-        .select(`
-          *,
-          packages:package_id (*)
-        `)
-        .single()
-
-      if (insertError) throw insertError
-
-      if (newUserPackage) {
-        setUserPackages(prev => [...prev, newUserPackage as UserPackage])
-      }
-      
-      setPackages(prev => prev.filter(p => p.id !== selectedPackage.id))
-      setShowPurchaseModal(false)
-      setSelectedPackage(null)
-      
-      setTimeout(() => {
-        router.push(`/grades/${gradeSlug}/packages/${selectedPackage.id}`)
-      }, 1000)
-      
-    } catch (err) {
-      console.error('Error purchasing package:', err)
-      alert('حدث خطأ أثناء الشراء، يرجى المحاولة مرة أخرى')
-    }
+  const handlePurchaseSuccess = (packageId: string) => {
+    fetchData()
+    setTimeout(() => {
+      router.push(`/grades/${gradeSlug}/packages/${packageId}`)
+    }, 1000)
   }
 
   const handleRetry = () => {
@@ -364,7 +323,7 @@ export default function GradePage() {
     return (
       <div className={styles.loadingContainer}>
         <Loader2 className={styles.loadingSpinner} />
-        <p className={styles.loadingText}>جاري تحميل بيانات الصف...</p>
+        <p className={styles.loadingText}>جاري تحميل البيانات...</p>
       </div>
     )
   }
@@ -377,7 +336,6 @@ export default function GradePage() {
           <h3 className={styles.errorTitle}>حدث خطأ</h3>
           <p className={styles.errorMessage}>{error}</p>
           <button onClick={handleRetry} className={styles.retryButton}>
-            <Loader2 className={styles.retryIcon} />
             إعادة المحاولة
           </button>
         </div>
@@ -389,48 +347,44 @@ export default function GradePage() {
     <div className={styles.pageContainer}>
       <header className={styles.header}>
         <div className={styles.headerContent}>
-          <div className={styles.platformBranding}>
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className={styles.platformInfo}>
-              <h1 className={styles.platformTitle}>الأبــارع محمود الـديــب</h1>
-              <p className={styles.platformSubtitle}>منارة العلم والتميز</p>
-            </motion.div>
-
-            {user && (
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={styles.walletContainer}>
-                <div className={styles.walletInfo}>
-                  <Wallet className={styles.walletIcon} />
-                  <div>
-                    <p className={styles.walletLabel}>رصيد المحفظة</p>
-                    <p className={styles.walletBalance}>
-                      {walletBalance.toLocaleString()} <span className={styles.walletCurrency}>جنيه</span>
-                    </p>
-                  </div>
-                </div>
-                {walletBalance < 100 && (
-                  <button className={styles.addBalanceButton} onClick={() => router.push('/wallet')}>
-                    إضافة رصيد
-                  </button>
-                )}
-              </motion.div>
-            )}
-          </div>
-
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className={styles.gradeTitle}>
-            <div className={styles.gradeCard}>
-              <div className={styles.gradeIconContainer}>
-                <GraduationCap className={styles.gradeIcon} />
-              </div>
-              <div className={styles.gradeInfo}>
-                <h2 className={styles.gradeName}>
-                  {grade?.name || (gradeSlug === 'first' ? 'الصف الأول الثانوي' : 
-                                 gradeSlug === 'second' ? 'الصف الثاني الثانوي' : 
-                                 'الصف الثالث الثانوي')}
-                </h2>
-                <p className={styles.gradeDescription}>رحلة نحو التميز الأكاديمي</p>
-              </div>
-            </div>
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className={styles.platformInfo}>
+            <h1 className={styles.platformTitle}>الأبــارع محمود الـديــب</h1>
+            <p className={styles.platformSubtitle}>منارة العلم والتميز</p>
+            <p className={styles.encouragement}>🌟 رحلتك نحو التميز تبدأ من هنا</p>
           </motion.div>
+
+          {user && (
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={styles.walletCard}>
+              <Wallet className={styles.walletIcon} />
+              <div>
+                <p className={styles.walletLabel}>رصيد المحفظة</p>
+                <p className={styles.walletBalance}>
+                  {walletBalance.toLocaleString()} <span>جنيه</span>
+                </p>
+              </div>
+              {walletBalance < 100 && (
+                <button 
+                  className={styles.addBalanceBtn}
+                  onClick={() => router.push('/wallet')}
+                >
+                  إضافة رصيد
+                </button>
+              )}
+            </motion.div>
+          )}
         </div>
+
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className={styles.gradeCard}>
+          <GraduationCap className={styles.gradeIcon} />
+          <div>
+            <h2 className={styles.gradeName}>
+              {grade?.name || (gradeSlug === 'first' ? 'الصف الأول الثانوي' : 
+                             gradeSlug === 'second' ? 'الصف الثاني الثانوي' : 
+                             'الصف الثالث الثانوي')}
+            </h2>
+            <p className={styles.gradeDesc}>رحلة نحو التميز الأكاديمي</p>
+          </div>
+        </motion.div>
       </header>
 
       <div className={styles.statsContainer}>
@@ -441,15 +395,17 @@ export default function GradePage() {
             { icon: Zap, label: 'دورة نشطة', value: stats.activeCourses, suffix: '+' },
             { icon: Award, label: 'خبير تعليمي', value: stats.expertTeachers, suffix: '+' },
           ].map((stat, index) => (
-            <motion.div key={index} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} className={styles.statCard}>
-              <div className={styles.statContent}>
-                <div className={styles.statIconContainer}>
-                  <stat.icon className={styles.statIcon} />
-                </div>
-                <div>
-                  <p className={styles.statValue}>{stat.value}{stat.suffix}</p>
-                  <p className={styles.statLabel}>{stat.label}</p>
-                </div>
+            <motion.div 
+              key={index} 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ delay: index * 0.1 }} 
+              className={styles.statCard}
+            >
+              <stat.icon className={styles.statIcon} />
+              <div>
+                <p className={styles.statValue}>{stat.value}{stat.suffix}</p>
+                <p className={styles.statLabel}>{stat.label}</p>
               </div>
             </motion.div>
           ))}
@@ -457,54 +413,63 @@ export default function GradePage() {
       </div>
 
       <main className={styles.mainContent}>
+        {/* القسم الأول: اشتراكاتك */}
         {purchasedPackages.length > 0 && (
-          <section className={styles.packagesSection}>
+          <section className={styles.section}>
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={styles.sectionHeader}>
-              <div className={styles.sectionIconContainer}>
-                <Package className={styles.sectionIcon} />
-              </div>
+              <Package className={styles.sectionIcon} />
               <div>
                 <h2 className={styles.sectionTitle}>اشتراكاتك</h2>
                 <p className={styles.sectionSubtitle}>الباقات التي قمت بشرائها</p>
               </div>
-              <div className={styles.sectionCount}>{purchasedPackages.length} باقة</div>
+              <span className={styles.badge}>{purchasedPackages.length}</span>
             </motion.div>
 
             <div className={styles.packagesGrid}>
               {purchasedPackages.map((pkg) => (
-                <SimplePackageCard key={pkg.id} pkg={pkg} isPurchased={true} onEnter={() => handleEnterPackage(pkg.id)} />
+                <PackageCard 
+                  key={pkg.id} 
+                  pkg={pkg} 
+                  isPurchased={true} 
+                  onEnter={() => handleEnterPackage(pkg.id)}
+                  theme={theme}
+                />
               ))}
             </div>
           </section>
         )}
 
+        {/* القسم الثاني: العروض VIP */}
         {offerPackages.length > 0 && (
-          <section className={styles.packagesSection}>
+          <section className={`${styles.section} ${styles.offerSection}`}>
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={styles.sectionHeader}>
-              <div className={styles.sectionIconContainer}>
-                <Crown className={styles.sectionIcon} />
-              </div>
+              <Crown className={styles.sectionIcon} />
               <div>
                 <h2 className={styles.sectionTitle}>عروض VIP حصرية</h2>
                 <p className={styles.sectionSubtitle}>فرص ذهبية بخصومات استثنائية</p>
               </div>
-              <div className={styles.sectionCount}>محدودة</div>
+              <span className={styles.badge}>محدودة</span>
             </motion.div>
 
             <div className={styles.packagesGrid}>
               {offerPackages.map((pkg) => (
-                <SimplePackageCard key={pkg.id} pkg={pkg} isPurchased={false} onPurchase={() => handlePurchaseClick(pkg)} />
+                <PackageCard 
+                  key={pkg.id} 
+                  pkg={pkg} 
+                  isPurchased={false} 
+                  onPurchase={() => handlePurchaseClick(pkg)}
+                  theme={theme}
+                />
               ))}
             </div>
           </section>
         )}
 
+        {/* القسم الثالث: باقات التميز (شهرية و ترم) */}
         {(monthlyPackages.length > 0 || termPackages.length > 0) && (
-          <section className={styles.packagesSection}>
+          <section className={`${styles.section} ${styles.premiumSection}`}>
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={styles.sectionHeader}>
-              <div className={styles.sectionIconContainer}>
-                <Calendar className={styles.sectionIcon} />
-              </div>
+              <Calendar className={styles.sectionIcon} />
               <div>
                 <h2 className={styles.sectionTitle}>باقات التميز</h2>
                 <p className={styles.sectionSubtitle}>برامج تعليمية متكاملة</p>
@@ -513,18 +478,23 @@ export default function GradePage() {
 
             <div className={styles.packagesGrid}>
               {[...monthlyPackages, ...termPackages].map((pkg) => (
-                <SimplePackageCard key={pkg.id} pkg={pkg} isPurchased={false} onPurchase={() => handlePurchaseClick(pkg)} />
+                <PackageCard 
+                  key={pkg.id} 
+                  pkg={pkg} 
+                  isPurchased={false} 
+                  onPurchase={() => handlePurchaseClick(pkg)}
+                  theme={theme}
+                />
               ))}
             </div>
           </section>
         )}
 
+        {/* القسم الرابع: باقات البداية (أسبوعية) */}
         {weeklyPackages.length > 0 && (
-          <section className={styles.packagesSection}>
+          <section className={`${styles.section} ${styles.starterSection}`}>
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={styles.sectionHeader}>
-              <div className={styles.sectionIconContainer}>
-                <Clock className={styles.sectionIcon} />
-              </div>
+              <Clock className={styles.sectionIcon} />
               <div>
                 <h2 className={styles.sectionTitle}>باقات البداية</h2>
                 <p className={styles.sectionSubtitle}>ابدأ رحلتك من اليوم</p>
@@ -533,17 +503,24 @@ export default function GradePage() {
 
             <div className={styles.packagesGrid}>
               {weeklyPackages.map((pkg) => (
-                <SimplePackageCard key={pkg.id} pkg={pkg} isPurchased={false} onPurchase={() => handlePurchaseClick(pkg)} />
+                <PackageCard 
+                  key={pkg.id} 
+                  pkg={pkg} 
+                  isPurchased={false} 
+                  onPurchase={() => handlePurchaseClick(pkg)}
+                  theme={theme}
+                />
               ))}
             </div>
           </section>
         )}
 
+        {/* رسالة عدم توفر الباقات */}
         {packages.length === 0 && purchasedPackages.length === 0 && (
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={styles.noPackages}>
-            <BookOpen className={styles.noPackagesIcon} />
-            <h3 className={styles.noPackagesTitle}>لا توجد باقات متاحة</h3>
-            <p className={styles.noPackagesText}>سيتم إضافة باقات جديدة قريباً</p>
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={styles.emptyState}>
+            <BookOpen className={styles.emptyIcon} />
+            <h3 className={styles.emptyTitle}>لا توجد باقات متاحة</h3>
+            <p className={styles.emptyText}>سيتم إضافة باقات جديدة قريباً</p>
           </motion.div>
         )}
       </main>
@@ -552,14 +529,14 @@ export default function GradePage() {
         <div className={styles.footerContent}>
           <div className={styles.footerBrand}>
             <Crown className={styles.footerIcon} />
-            <span className={styles.footerBrandName}>الابارع محمود الديب</span>
+            <span>الابارع محمود الديب</span>
           </div>
           <p className={styles.footerCopyright}>منارة العلم والتميز منذ 2010</p>
           <div className={styles.footerStats}>
             <span>+{stats.totalStudents} طالب متفوق</span>
-            <span className={styles.footerSeparator}>•</span>
+            <span className={styles.separator}>•</span>
             <span>{stats.successRate}% نسبة نجاح</span>
-            <span className={styles.footerSeparator}>•</span>
+            <span className={styles.separator}>•</span>
             <span>{stats.expertTeachers} خبير تعليمي</span>
           </div>
         </div>
@@ -567,10 +544,14 @@ export default function GradePage() {
 
       <AnimatePresence>
         {showPurchaseModal && selectedPackage && (
-          <SimplePurchaseModal
-            pkg={selectedPackage}
+          <PurchaseModal
+            package={selectedPackage}
+            user={user}
+            walletBalance={walletBalance}
+            gradeSlug={gradeSlug}
             onClose={() => setShowPurchaseModal(false)}
-            onConfirm={handlePurchaseSuccess}
+            onSuccess={handlePurchaseSuccess}
+            theme={theme}
           />
         )}
       </AnimatePresence>
