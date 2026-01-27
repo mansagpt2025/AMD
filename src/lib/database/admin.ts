@@ -189,18 +189,18 @@ export async function addWalletFunds(userId: string, amount: number, description
       .from('wallets')
       .select('id, balance')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
     let currentBalance = 0
     let walletId = ''
 
-    if (fetchError && fetchError.code === 'PGRST116') {
+    if (!wallet) {
       // المحفظة غير موجودة، نحتاج إلى إنشاء واحدة جديدة
       const { data: newWallet, error: insertError } = await supabase
         .from('wallets')
         .insert({
           user_id: userId,
-          balance: 0,
+          balance: amount,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -212,51 +212,54 @@ export async function addWalletFunds(userId: string, amount: number, description
         throw new Error(`فشل إنشاء المحفظة: ${insertError.message}`)
       }
 
-      currentBalance = 0
-      walletId = newWallet.id
-    } else if (fetchError) {
-      throw fetchError
-    } else {
-      currentBalance = wallet.balance || 0
-      walletId = wallet.id
+      walletId = newWallet?.id
+      const newBalance = amount
+
+      // تسجيل العملية للمحفظة الجديدة
+      await supabase
+        .from('wallet_transactions')
+        .insert({
+          user_id: userId,
+          amount: amount,
+          type: 'add',
+          description: description || 'إضافة أموال عن طريق المدير',
+          previous_balance: 0,
+          new_balance: newBalance,
+          created_at: new Date().toISOString()
+        })
+
+      return {
+        success: true,
+        newBalance: amount,
+        message: `تم إضافة ${amount} جنيه إلى المحفظة بنجاح`
+      }
     }
 
+    // المحفظة موجودة، نحدث الرصيد
+    currentBalance = wallet.balance || 0
+    walletId = wallet.id
     const newBalance = currentBalance + amount
 
     // Step 2: تحديث الرصيد
-    const { error: updateError } = await supabase
+    const { data: updateData, error: updateError } = await supabase
       .from('wallets')
       .update({
         balance: newBalance,
         updated_at: new Date().toISOString()
       })
       .eq('id', walletId)
+      .select('balance')
+      .single()
 
     if (updateError) {
       console.error('Error updating wallet balance:', updateError)
       throw new Error(`فشل تحديث الرصيد: ${updateError.message}`)
     }
 
-    // Step 3: التحقق من تحديث البيانات
-    const { data: verifyWallet, error: verifyError } = await supabase
-      .from('wallets')
-      .select('balance')
-      .eq('id', walletId)
-      .single()
+    const savedBalance = updateData?.balance || newBalance
 
-    if (verifyError) {
-      console.error('Error verifying wallet:', verifyError)
-      throw verifyError
-    }
-
-    const savedBalance = verifyWallet?.balance || 0
-    if (savedBalance !== newBalance) {
-      console.error('Balance verification failed:', { expected: newBalance, actual: savedBalance })
-      throw new Error('فشل التحقق من تحديث الرصيد')
-    }
-
-    // Step 4: تسجيل العملية
-    const { error: transactionError } = await supabase
+    // Step 3: تسجيل العملية
+    await supabase
       .from('wallet_transactions')
       .insert({
         user_id: userId,
@@ -264,14 +267,9 @@ export async function addWalletFunds(userId: string, amount: number, description
         type: 'add',
         description: description || 'إضافة أموال عن طريق المدير',
         previous_balance: currentBalance,
-        new_balance: newBalance,
+        new_balance: savedBalance,
         created_at: new Date().toISOString()
       })
-
-    if (transactionError) {
-      console.error('Error logging transaction:', transactionError)
-      // نستمر حتى لو فشل التسجيل، المهم أن الرصيد تم تحديثه
-    }
 
     return {
       success: true,
