@@ -455,12 +455,21 @@ export async function getRecentTransactions(limit = 10) {
 
     const userIds = [...new Set(data.map(t => t.user_id))]
     
+    if (userIds.length === 0) return []
+
     const { data: profiles, error: profileError } = await supabase
       .from('profiles')
       .select('id, full_name, email')
       .in('id', userIds)
 
-    if (profileError) throw profileError
+    if (profileError) {
+      console.error('Error fetching profiles:', profileError)
+      // Return data with placeholder profiles if fetching fails
+      return data.map(transaction => ({
+        ...transaction,
+        profiles: { full_name: 'Unknown', email: 'N/A' }
+      }))
+    }
 
     const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
 
