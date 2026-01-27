@@ -1,5 +1,3 @@
-import AdminSidebar from '@/components/admin/Sidebar';
-import AdminHeader from '@/components/admin/Header';
 import { verifyAdmin } from '@/lib/auth-admin';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
@@ -23,9 +21,7 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AdminSidebar />
       <div className="mr-64"> {/* مساحة للشريط الجانبي */}
-        <AdminHeader />
         <main className="p-8">
           {children}
         </main>

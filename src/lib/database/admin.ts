@@ -209,21 +209,27 @@ export async function addWalletFunds(userId: string, amount: number, description
         })
         .select('id, balance')
 
+      console.log('Insert response:', { newWalletData, insertError })
+
       if (insertError) {
         console.error('Error creating wallet:', insertError)
         throw new Error(`فشل إنشاء المحفظة: ${insertError.message}`)
       }
 
-      if (!newWalletData || (Array.isArray(newWalletData) && newWalletData.length === 0)) {
-        console.error('No data returned after wallet creation')
-        throw new Error('فشل في إنشاء المحفظة - لم يتم استرجاع البيانات')
+      let createdWalletId = ''
+      if (newWalletData) {
+        const newWallet = Array.isArray(newWalletData) ? newWalletData[0] : newWalletData
+        createdWalletId = newWallet?.id || ''
       }
 
-      const newWallet = Array.isArray(newWalletData) ? newWalletData[0] : newWalletData
-      walletId = newWallet?.id
+      if (!createdWalletId) {
+        console.error('No wallet ID returned after creation')
+        throw new Error('فشل في إنشاء المحفظة - لم يتم استرجاع معرف المحفظة')
+      }
+
       const newBalance = amount
 
-      console.log('New wallet created:', { walletId, newBalance })
+      console.log('New wallet created:', { walletId: createdWalletId, newBalance })
 
       // تسجيل العملية للمحفظة الجديدة
       const { error: transactionError } = await supabase
@@ -267,21 +273,26 @@ export async function addWalletFunds(userId: string, amount: number, description
       .eq('id', walletId)
       .select('balance')
 
+    console.log('Update response:', { updateDataArray, updateError })
+
     if (updateError) {
       console.error('Error updating wallet balance:', updateError)
       throw new Error(`فشل تحديث الرصيد: ${updateError.message}`)
     }
 
-    if (!updateDataArray || (Array.isArray(updateDataArray) && updateDataArray.length === 0)) {
-      console.error('No data returned after wallet update')
-      throw new Error('فشل في تحديث الرصيد - لم يتم استرجاع البيانات')
+    // معالجة النتيجة - قد تكون array أو single object أو null
+    let savedBalance = newBalance
+    
+    if (updateDataArray) {
+      const updateData = Array.isArray(updateDataArray) ? updateDataArray[0] : updateDataArray
+      if (updateData?.balance !== undefined) {
+        savedBalance = updateData.balance
+      }
+    } else {
+      console.warn('No data returned after update, using calculated balance:', newBalance)
     }
 
-    // الحصول على أول عنصر من المصفوفة
-    const updateData = Array.isArray(updateDataArray) ? updateDataArray[0] : updateDataArray
-    const savedBalance = updateData?.balance || newBalance
-
-    console.log('Wallet updated successfully:', { savedBalance })
+    console.log('Wallet updated successfully:', { savedBalance, newBalance })
 
     // Step 3: تسجيل العملية
     const { error: transactionError } = await supabase
