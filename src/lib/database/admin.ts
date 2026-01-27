@@ -184,30 +184,61 @@ export async function addWalletFunds(userId: string, amount: number, description
   const supabase = await createClientServer()
 
   try {
-    // الحصول على الرصيد الحالي
-    const { data: currentWallet, error: walletError } = await supabase
+    // الحصول على الرصيد الحالي أو إنشاء محفظة جديدة
+    let currentBalance = 0
+    
+    const { data: existingWallet, error: selectError } = await supabase
       .from('wallets')
-      .select('balance')
+      .select('id, balance')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
-    if (walletError) throw walletError
+    if (selectError && selectError.code !== 'PGRST116') {
+      throw selectError
+    }
 
-    const currentBalance = currentWallet?.balance || 0
+    if (existingWallet) {
+      currentBalance = existingWallet.balance || 0
+    } else {
+      // إنشاء محفظة جديدة إذا لم تكن موجودة
+      const { data: newWallet, error: createError } = await supabase
+        .from('wallets')
+        .insert({
+          user_id: userId,
+          balance: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('balance')
+        .single()
+
+      if (createError) {
+        console.error('Error creating wallet:', createError)
+        throw createError
+      }
+      
+      currentBalance = newWallet?.balance || 0
+    }
+
     const newBalance = currentBalance + amount
 
     // تحديث الرصيد
-    const { error: updateError } = await supabase
+    const { data: updatedWallet, error: updateError } = await supabase
       .from('wallets')
-      .upsert({
-        user_id: userId,
+      .update({
         balance: newBalance,
         updated_at: new Date().toISOString()
       })
+      .eq('user_id', userId)
+      .select('balance')
+      .single()
 
-    if (updateError) throw updateError
+    if (updateError) {
+      console.error('Error updating wallet:', updateError)
+      throw updateError
+    }
 
-    // تسجيل العملية (تأكد من وجود جدول wallet_transactions)
+    // تسجيل العملية
     const { error: transactionError } = await supabase
       .from('wallet_transactions')
       .insert({
@@ -216,7 +247,8 @@ export async function addWalletFunds(userId: string, amount: number, description
         type: 'add',
         description: description || 'إضافة أموال عن طريق المدير',
         previous_balance: currentBalance,
-        new_balance: newBalance
+        new_balance: newBalance,
+        created_at: new Date().toISOString()
       })
 
     if (transactionError) {
@@ -226,7 +258,7 @@ export async function addWalletFunds(userId: string, amount: number, description
 
     return {
       success: true,
-      newBalance,
+      newBalance: updatedWallet?.balance || newBalance,
       message: `تم إضافة ${amount} جنيه إلى المحفظة بنجاح`
     }
   } catch (error) {

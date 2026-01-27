@@ -146,12 +146,12 @@ export default function WalletPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-lg">
-            <Wallet className="w-8 h-8 text-white" />
+          <div className="p-3 bg-white bg-opacity-20 rounded-xl shadow-lg backdrop-blur-sm">
+            <Wallet className="w-8 h-8 text-white drop-shadow-lg" />
           </div>
           <div>
-            <h1 className={styles.title}>المحفظة المالية</h1>
-            <p className={styles.subtitle}>إدارة أرصدة الطلاب وإضافة الأموال</p>
+            <h1 className={styles.title}>المحفظة المالية 💰</h1>
+            <p className={styles.subtitle}>إدارة أرصدة الطلاب وإضافة الأموال بسهولة وأمان</p>
           </div>
         </div>
       </div>
@@ -297,17 +297,17 @@ export default function WalletPage() {
               </div>
 
               <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">المبالغ السريعة:</p>
+                <p className="text-sm text-gray-600 mb-3 font-semibold">المبالغ السريعة:</p>
                 <div className="flex flex-wrap gap-2">
                   {[100, 200, 500, 1000, 2000].map((quickAmount) => (
                     <button
                       key={quickAmount}
                       type="button"
                       onClick={() => setAmount(quickAmount.toString())}
-                      className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
+                      className={`px-4 py-2 text-sm font-bold rounded-lg border-2 transition-all ${
                         amount === quickAmount.toString()
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-purple-600 shadow-lg shadow-purple-500/50'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-blue-50'
                       }`}
                     >
                       {quickAmount} ج.م
@@ -331,8 +331,8 @@ export default function WalletPage() {
                 )}
               </button>
 
-              <p className="text-xs text-gray-500 mt-3 text-center">
-                سيتم تحديث الرصيد فوراً وسيكون متاحاً للطالب للشراء فوراً
+              <p className="text-xs text-gray-500 mt-3 text-center font-medium">
+                ✅ سيتم تحديث الرصيد فوراً وسيكون متاحاً للطالب للشراء مباشرة
               </p>
             </div>
           </div>
@@ -346,9 +346,9 @@ export default function WalletPage() {
             </h2>
             <button
               onClick={loadRecentTransactions}
-              className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm bg-gradient-to-r from-blue-100 to-purple-100 hover:from-blue-200 hover:to-purple-200 text-blue-700 font-bold rounded-lg transition-all shadow-sm hover:shadow-md"
             >
-              تحديث
+              🔄 تحديث
             </button>
           </div>
 

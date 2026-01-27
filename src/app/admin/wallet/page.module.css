@@ -1,96 +1,166 @@
 .container {
-  animation: slideIn 0.5s ease-out;
+  animation: slideIn 0.6s ease-out;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  padding: 2rem;
 }
 
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateX(-20px);
+    transform: translateY(-30px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 .header {
-  margin-bottom: 2.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 1rem;
-  padding: 2rem;
+  margin-bottom: 3rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  border-radius: 1.5rem;
+  padding: 3rem;
   color: white;
+  box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 300px;
+  height: 300px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(20px); }
+}
+
+.header > div {
+  position: relative;
+  z-index: 1;
 }
 
 .title {
-  font-size: 1.875rem;
-  font-weight: 800;
+  font-size: 2.5rem;
+  font-weight: 900;
   margin: 0;
   color: white;
+  letter-spacing: -1px;
 }
 
 .subtitle {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.95);
   font-size: 1.125rem;
-  margin: 0;
+  margin: 0.75rem 0 0 0;
+  font-weight: 300;
+  letter-spacing: 0.5px;
 }
 
 .content {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 2.5rem;
 }
 
 .searchSection {
   background: white;
-  border-radius: 1rem;
-  padding: 2rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  border: 1px solid #e5e7eb;
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  animation: fadeInUp 0.6s ease-out 0.1s both;
+  backdrop-filter: blur(10px);
 }
 
 .searchCard {
-  background: #f8fafc;
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  border: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #f5f7fa 0%, #f0f4f8 100%);
+  border-radius: 1.25rem;
+  padding: 2rem;
+  border: 1.5px solid rgba(102, 126, 234, 0.1);
 }
 
 .cardTitle {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin-bottom: 2rem;
   color: #1f2937;
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  letter-spacing: -0.5px;
+}
+
+.cardTitle svg {
+  color: #667eea;
+  filter: drop-shadow(0 4px 12px rgba(102, 126, 234, 0.3));
 }
 
 .searchType {
   display: flex;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
   flex-wrap: wrap;
 }
 
 .searchTypeBtn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  border: 2px solid #d1d5db;
+  padding: 0.9rem 1.8rem;
+  border-radius: 0.75rem;
+  border: 2px solid #e5e7eb;
   background: white;
   color: #4b5563;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.searchTypeBtn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  z-index: -1;
+  transition: left 0.3s ease;
 }
 
 .searchTypeBtn:hover {
-  border-color: #9ca3af;
-  background: #f9fafb;
+  border-color: #667eea;
+  color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
 }
 
 .searchTypeBtn.active {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border-color: #3b82f6;
+  border-color: transparent;
+  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.35);
+  transform: translateY(-3px);
 }
 
 .searchInputGroup {
@@ -100,19 +170,22 @@
 
 .searchInput {
   flex: 1;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  border: 2px solid #d1d5db;
+  padding: 1.1rem 1.5rem;
+  border-radius: 0.9rem;
+  border: 2px solid #e5e7eb;
   background: white;
   color: #1f2937;
   font-size: 1rem;
+  font-weight: 500;
   transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #667eea;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+  transform: translateY(-2px);
 }
 
 .searchInput::placeholder {
@@ -122,35 +195,56 @@
 .searchButton {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 2rem;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.1rem 2.5rem;
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
   border: none;
-  border-radius: 0.5rem;
-  font-weight: 600;
+  border-radius: 0.9rem;
+  font-weight: 700;
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.searchButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.2) 100%);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
 }
 
 .searchButton:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 15px 35px rgba(16, 185, 129, 0.4);
+}
+
+.searchButton:hover:not(:disabled)::before {
+  transform: translateX(100%);
 }
 
 .searchButton:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
 .searchButton.loading {
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
 .spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
   border-top-color: white;
   animation: spin 1s ease-in-out infinite;
@@ -163,29 +257,33 @@
 .message {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
-  border-radius: 0.75rem;
-  font-weight: 500;
-  animation: slideIn 0.3s ease;
+  gap: 1rem;
+  padding: 1.2rem 1.8rem;
+  border-radius: 1rem;
+  font-weight: 600;
+  animation: slideIn 0.4s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid;
 }
 
 .message.success {
-  background: #d1fae5;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
   color: #065f46;
-  border: 1px solid #a7f3d0;
+  border-left-color: #059669;
 }
 
 .message.error {
-  background: #fee2e2;
+  background: linear-gradient(135deg, #fee2e2 0%, #fca5a5 100%);
   color: #991b1b;
-  border: 1px solid #fca5a5;
+  border-left-color: #dc2626;
 }
 
 .userSection {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 2rem;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 2.5rem;
+  animation: fadeInUp 0.6s ease-out 0.2s both;
 }
 
 @media (max-width: 1024px) {
@@ -196,104 +294,156 @@
 
 .userCard {
   background: white;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  border-radius: 1.5rem;
+  padding: 2rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 2rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.userCard::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, transparent 100%);
+  border-radius: 50%;
+}
+
+.userCard:hover {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+  transform: translateY(-5px);
 }
 
 .userInfo {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
   flex: 1;
+  position: relative;
+  z-index: 1;
 }
 
 .userAvatar {
-  width: 4rem;
-  height: 4rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  border-radius: 50%;
+  width: 5rem;
+  height: 5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
   flex-shrink: 0;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
 }
 
 .userName {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
   color: #1f2937;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.75rem 0;
+  letter-spacing: -0.5px;
 }
 
 .userDetails {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .userDetailItem {
   color: #6b7280;
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   display: flex;
   align-items: center;
+  gap: 0.6rem;
+  font-weight: 500;
 }
 
 .balanceCard {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  padding: 1.5rem;
-  border-radius: 0.75rem;
+  padding: 2rem;
+  border-radius: 1.25rem;
   color: white;
-  min-width: 200px;
+  min-width: 240px;
+  box-shadow: 0 12px 36px rgba(16, 185, 129, 0.3);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.balanceCard::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 250px;
+  height: 250px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
 }
 
 .balanceLabel {
   display: block;
-  font-size: 0.875rem;
-  opacity: 0.9;
+  font-size: 0.95rem;
+  opacity: 0.95;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .balanceAmount {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  position: relative;
+  z-index: 1;
 }
 
 .amount {
-  font-size: 2rem;
-  font-weight: 800;
+  font-size: 2.5rem;
+  font-weight: 900;
+  letter-spacing: -1px;
 }
 
 .currency {
-  font-size: 1rem;
+  font-size: 1.1rem;
   opacity: 0.9;
+  font-weight: 500;
 }
 
 .addFundsCard {
   background: white;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  animation: fadeInUp 0.6s ease-out 0.3s both;
 }
 
 .formGroup {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .label {
   display: block;
-  color: #374151;
-  font-weight: 500;
-  margin-bottom: 0.5rem;
+  color: #1f2937;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  letter-spacing: 0.3px;
 }
 
 .amountInputGroup {
@@ -302,136 +452,196 @@
 
 .amountInput {
   width: 100%;
-  padding: 1rem;
-  padding-left: 4rem;
-  border: 2px solid #d1d5db;
-  border-radius: 0.5rem;
-  font-size: 1.25rem;
-  font-weight: 600;
+  padding: 1.2rem 1.5rem 1.2rem 4.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.9rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #667eea;
   transition: all 0.3s ease;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
 .amountInput:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+  transform: scale(1.02);
 }
 
 .currencyInput {
   position: absolute;
-  left: 1rem;
+  left: 1.5rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #6b7280;
-  font-weight: 600;
+  color: #667eea;
+  font-weight: 800;
+  font-size: 1.1rem;
 }
 
 .descriptionInput {
   width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #d1d5db;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
+  padding: 1rem 1.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.9rem;
+  font-size: 0.95rem;
   transition: all 0.3s ease;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
 }
 
 .descriptionInput:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
 }
 
 .addButton {
   width: 100%;
-  padding: 1rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  padding: 1.3rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  border-radius: 0.5rem;
-  font-size: 1.125rem;
-  font-weight: 600;
+  border-radius: 0.9rem;
+  font-size: 1.1rem;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.3);
+  position: relative;
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+.addButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.2) 100%);
+  transition: left 0.5s ease;
 }
 
 .addButton:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 18px 45px rgba(102, 126, 234, 0.4);
+}
+
+.addButton:hover:not(:disabled)::before {
+  left: 100%;
 }
 
 .addButton:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
 .addButton.loading {
-  opacity: 0.7;
+  opacity: 0.95;
 }
 
 .transactionsSection {
   background: white;
-  border-radius: 1rem;
-  padding: 2rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  animation: fadeInUp 0.6s ease-out 0.4s both;
 }
 
 .sectionTitle {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.75rem;
+  font-weight: 800;
   color: #1f2937;
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  letter-spacing: -0.5px;
+  margin-bottom: 2rem;
+}
+
+.sectionTitle svg {
+  color: #f59e0b;
+  filter: drop-shadow(0 4px 12px rgba(245, 158, 11, 0.3));
 }
 
 .transactionsList {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.2rem;
 }
 
 .transactionItem {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
-  padding: 1rem;
-  background: #f9fafb;
-  border-radius: 0.75rem;
-  border: 1px solid #e5e7eb;
-  transition: all 0.2s ease;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 1.1rem;
+  border: 1.5px solid rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.transactionItem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.3s ease;
 }
 
 .transactionItem:hover {
-  background: #f3f4f6;
-  transform: translateX(4px);
+  background: white;
+  transform: translateX(6px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.transactionItem:hover::before {
+  transform: scaleY(1);
 }
 
 .transactionIcon {
-  font-size: 1.25rem;
-  padding: 0.5rem;
+  font-size: 1.5rem;
+  padding: 0.75rem;
   background: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  width: 2.5rem;
-  height: 2.5rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  width: 3rem;
+  height: 3rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .transactionAdd {
   background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
 
 .transactionDeduct {
   background: linear-gradient(135deg, #fee2e2 0%, #fca5a5 100%);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
 }
 
 .transactionPurchase {
   background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
 }
 
 .transactionDetails {
@@ -442,25 +652,29 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  gap: 1rem;
 }
 
 .transactionUser {
-  font-weight: 600;
+  font-weight: 800;
   color: #1f2937;
   display: block;
+  font-size: 1rem;
 }
 
 .transactionDescription {
   color: #6b7280;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  margin-top: 0.35rem;
   display: block;
+  font-weight: 500;
 }
 
 .transactionAmount {
-  font-weight: 700;
-  font-size: 1.125rem;
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: -0.5px;
 }
 
 .transactionAmount.positive {
@@ -475,48 +689,85 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .transactionEmail {
   color: #6b7280;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .transactionTime {
   color: #9ca3af;
-  font-size: 0.75rem;
-  background: #f3f4f6;
-  padding: 0.25rem 0.75rem;
-  border-radius: 1rem;
+  font-size: 0.8rem;
+  background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+  padding: 0.35rem 0.9rem;
+  border-radius: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 @media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
   .header {
+    padding: 2rem 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .title {
+    font-size: 1.875rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .searchSection,
+  .addFundsCard,
+  .transactionsSection {
     padding: 1.5rem;
   }
-  
+
   .searchInputGroup {
     flex-direction: column;
   }
-  
+
   .searchButton {
+    width: 100%;
     justify-content: center;
   }
-  
+
   .userCard {
     flex-direction: column;
     align-items: flex-start;
-    gap: 1rem;
+    gap: 1.5rem;
+    padding: 1.5rem;
   }
-  
+
   .balanceCard {
     align-self: stretch;
+    min-width: unset;
   }
-  
+
   .transactionHeader,
   .transactionFooter {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.5rem;
+    gap: 0.75rem;
+  }
+
+  .cardTitle {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .sectionTitle {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
   }
 }
