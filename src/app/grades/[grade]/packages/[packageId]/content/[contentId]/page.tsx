@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClientBrowser } from '@/lib/supabase/sf-client'
 import {
   Video, FileText, BookOpen, Clock, CheckCircle,
   X, ArrowRight, AlertCircle, Loader2, Download,
   Target, Lock, Eye, Home, ChevronRight, Shield, 
-  Award, Zap, Users
+  Award, Zap
 } from 'lucide-react'
 import { getGradeTheme } from '@/lib/utils/grade-themes'
 import ProtectedVideoPlayer from '@/components/content/ProtectedVideoPlayer'
@@ -15,16 +15,40 @@ import PDFViewer from '@/components/content/PDFViewer'
 import ExamViewer from '@/components/content/ExamViewer'
 import styles from './ContentPage.module.css'
 
-export default function ContentPage() {
+function LoadingState() {
+  return (
+    <div className={styles.loadingContainer}>
+      <Loader2 className={styles.loadingSpinner} />
+      <p className={styles.loadingText}>جاري تحميل المحتوى...</p>
+    </div>
+  )
+}
+
+function ErrorState({ message, onBack }: { message: string; onBack: () => void }) {
+  return (
+    <div className={styles.errorContainer}>
+      <div className={styles.errorContent}>
+        <AlertCircle className={styles.errorIcon} />
+        <h2 className={styles.errorTitle}>حدث خطأ</h2>
+        <p className={styles.errorMessage}>{message}</p>
+        <button onClick={onBack} className={styles.backButton}>
+          العودة للباقة
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ContentViewer() {
   const router = useRouter()
   const params = useParams()
-  const supabase = createClientBrowser()
+  const [mounted, setMounted] = useState(false)
   
-  const gradeSlug = params?.grade as 'first' | 'second' | 'third'
+  const gradeSlug = params?.grade as string
   const packageId = params?.packageId as string
   const contentId = params?.contentId as string
   
-  const theme = getGradeTheme(gradeSlug)
+  const theme = getGradeTheme(gradeSlug as any)
 
   const [content, setContent] = useState<any>(null)
   const [lecture, setLecture] = useState<any>(null)
@@ -33,27 +57,36 @@ export default function ContentPage() {
   const [userPackage, setUserPackage] = useState<any>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
   const [videoProgress, setVideoProgress] = useState(0)
 
   useEffect(() => {
-    if (contentId && packageId && gradeSlug) {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted && contentId && packageId && gradeSlug) {
       loadContent()
     }
-  }, [contentId, packageId, gradeSlug])
+  }, [mounted, contentId, packageId, gradeSlug])
 
   const loadContent = async () => {
     try {
       setLoading(true)
+      setError(null)
       
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const supabase = createClientBrowser()
+      
+      // Check auth
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
         router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
         return
       }
       setCurrentUser(user)
 
+      // Fetch content
       const { data: contentData, error: contentError } = await supabase
         .from('lecture_contents')
         .select('*')
@@ -61,11 +94,12 @@ export default function ContentPage() {
         .single()
       
       if (contentError || !contentData) {
-        setError('المحتوى غير موجود')
+        setError('المحتوى غير موجود أو تم حذفه')
         return
       }
       setContent(contentData)
 
+      // Fetch lecture
       const { data: lectureData, error: lectureError } = await supabase
         .from('lectures')
         .select('*')
@@ -75,6 +109,7 @@ export default function ContentPage() {
       if (lectureError) throw lectureError
       setLecture(lectureData)
 
+      // Fetch package
       const { data: pkgData, error: pkgError } = await supabase
         .from('packages')
         .select('*')
@@ -84,6 +119,7 @@ export default function ContentPage() {
       if (pkgError) throw pkgError
       setPackageData(pkgData)
 
+      // Check access
       const { data: userPackageData } = await supabase
         .from('user_packages')
         .select('*')
@@ -99,6 +135,7 @@ export default function ContentPage() {
       }
       setUserPackage(userPackageData)
 
+      // Get or create progress
       const { data: progressData } = await supabase
         .from('user_progress')
         .select('*')
@@ -115,7 +152,7 @@ export default function ContentPage() {
             user_id: user.id,
             lecture_content_id: contentId,
             package_id: packageId,
-            status: 'not_started',
+            status: 'in_progress',
             last_accessed_at: now,
             created_at: now
           })
@@ -125,13 +162,23 @@ export default function ContentPage() {
         if (insertError) throw insertError
         setUserProgress(newProgress)
       } else {
-        await supabase.from('user_progress').update({ last_accessed_at: now, status: progressData.status === 'not_started' ? 'in_progress' : progressData.status }).eq('id', progressData.id)
-        setUserProgress({ ...progressData, last_accessed_at: now, status: progressData.status === 'not_started' ? 'in_progress' : progressData.status })
+        if (progressData.status === 'not_started') {
+          await supabase.from('user_progress').update({ 
+            status: 'in_progress', 
+            last_accessed_at: now 
+          }).eq('id', progressData.id)
+          setUserProgress({ ...progressData, status: 'in_progress', last_accessed_at: now })
+        } else {
+          await supabase.from('user_progress').update({ 
+            last_accessed_at: now 
+          }).eq('id', progressData.id)
+          setUserProgress(progressData)
+        }
       }
 
     } catch (err: any) {
       console.error('Error loading content:', err)
-      setError(err.message || 'حدث خطأ في تحميل المحتوى')
+      setError(err?.message || 'حدث خطأ في تحميل المحتوى')
     } finally {
       setLoading(false)
     }
@@ -145,13 +192,14 @@ export default function ContentPage() {
   }
 
   const markAsCompleted = async () => {
-    if (!userProgress || !content) return
+    if (!userProgress || !content || !currentUser) return
     if (userProgress.status === 'completed' || userProgress.status === 'passed') return
 
     const status = content.type === 'exam' ? 'passed' : 'completed'
     const now = new Date().toISOString()
     
     try {
+      const supabase = createClientBrowser()
       const { error } = await supabase
         .from('user_progress')
         .update({ status, completed_at: now })
@@ -161,7 +209,7 @@ export default function ContentPage() {
         setUserProgress({ ...userProgress, status, completed_at: now })
       }
     } catch (err) {
-      console.error('Error marking as completed:', err)
+      console.error('Error marking complete:', err)
     }
   }
 
@@ -237,29 +285,10 @@ export default function ContentPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className={styles.loadingContainer}>
-        <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
-        <p className={styles.loadingText}>جاري تحميل المحتوى...</p>
-      </div>
-    )
-  }
-
-  if (error || !content) {
-    return (
-      <div className={styles.errorContainer}>
-        <div className={styles.errorContent}>
-          <AlertCircle className={styles.errorIcon} />
-          <h2 className={styles.errorTitle}>حدث خطأ</h2>
-          <p className={styles.errorMessage}>{error || 'المحتوى غير موجود'}</p>
-          <button onClick={handleBack} className={styles.backButton} style={{ background: theme.primary }}>
-            العودة للباقة
-          </button>
-        </div>
-      </div>
-    )
-  }
+  if (!mounted) return <LoadingState />
+  if (loading) return <LoadingState />
+  if (error) return <ErrorState message={error} onBack={handleBack} />
+  if (!content) return <ErrorState message="المحتوى غير موجود" onBack={handleBack} />
 
   return (
     <div className={styles.pageContainer}>
@@ -267,17 +296,17 @@ export default function ContentPage() {
         <div className={styles.headerContent}>
           <div className={styles.breadcrumb}>
             <button onClick={() => router.push('/')} className={styles.breadcrumbItem}>
-              <Home className={styles.breadcrumbIcon} />الرئيسية
+              <Home size={16} />الرئيسية
             </button>
-            <ChevronRight className={styles.breadcrumbSeparator} />
+            <ChevronRight size={16} className={styles.breadcrumbSeparator} />
             <button onClick={() => router.push(`/grades/${gradeSlug}`)} className={styles.breadcrumbItem}>
               {gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}
             </button>
-            <ChevronRight className={styles.breadcrumbSeparator} />
+            <ChevronRight size={16} className={styles.breadcrumbSeparator} />
             <button onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)} className={styles.breadcrumbItem}>
-              {packageData?.name}
+              {packageData?.name || 'الباقة'}
             </button>
-            <ChevronRight className={styles.breadcrumbSeparator} />
+            <ChevronRight size={16} className={styles.breadcrumbSeparator} />
             <span className={styles.currentPage}>{content.title}</span>
           </div>
 
@@ -294,8 +323,12 @@ export default function ContentPage() {
             </div>
 
             <div className={styles.headerActions}>
-              <button onClick={handleBack} className={styles.backActionButton} style={{ borderColor: theme.primary, color: theme.primary }}>
-                <ArrowRight className={styles.backActionIcon} />العودة
+              <button 
+                onClick={handleBack} 
+                className={styles.backActionButton} 
+                style={{ borderColor: theme.primary, color: theme.primary }}
+              >
+                <ArrowRight size={18} />العودة
               </button>
             </div>
           </div>
@@ -306,11 +339,19 @@ export default function ContentPage() {
         <div className={styles.contentLayout}>
           <div className={styles.leftColumn}>
             <div className={styles.tabs}>
-              <button onClick={() => setActiveTab('viewer')} className={`${styles.tabButton} ${activeTab === 'viewer' ? styles.activeTab : ''}`} style={activeTab === 'viewer' ? { borderColor: theme.primary, color: theme.primary } : {}}>
-                <Eye className={styles.tabIcon} /><span>عارض المحتوى</span>
+              <button 
+                onClick={() => setActiveTab('viewer')} 
+                className={`${styles.tabButton} ${activeTab === 'viewer' ? styles.activeTab : ''}`} 
+                style={activeTab === 'viewer' ? { borderColor: theme.primary, color: theme.primary } : {}}
+              >
+                <Eye size={18} /><span>عارض المحتوى</span>
               </button>
-              <button onClick={() => setActiveTab('info')} className={`${styles.tabButton} ${activeTab === 'info' ? styles.activeTab : ''}`} style={activeTab === 'info' ? { borderColor: theme.primary, color: theme.primary } : {}}>
-                <BookOpen className={styles.tabIcon} /><span>معلومات المحتوى</span>
+              <button 
+                onClick={() => setActiveTab('info')} 
+                className={`${styles.tabButton} ${activeTab === 'info' ? styles.activeTab : ''}`} 
+                style={activeTab === 'info' ? { borderColor: theme.primary, color: theme.primary } : {}}
+              >
+                <BookOpen size={18} /><span>معلومات المحتوى</span>
               </button>
             </div>
 
@@ -331,10 +372,10 @@ export default function ContentPage() {
                           <div className={styles.detailLabel}>نوع المحتوى</div>
                           <div className={styles.detailValue}>
                             <span className={styles.detailBadge}>
-                              {content.type === 'video' ? (<><Video className={styles.detailIcon} />فيديو</>) : 
-                               content.type === 'pdf' ? (<><FileText className={styles.detailIcon} />ملف PDF</>) : 
-                               content.type === 'exam' ? (<><Target className={styles.detailIcon} />امتحان</>) : 
-                               (<><BookOpen className={styles.detailIcon} />نص</>)}
+                              {content.type === 'video' ? (<><Video size={16} />فيديو</>) : 
+                               content.type === 'pdf' ? (<><FileText size={16} />ملف PDF</>) : 
+                               content.type === 'exam' ? (<><Target size={16} />امتحان</>) : 
+                               (<><BookOpen size={16} />نص</>)}
                             </span>
                           </div>
                         </div>
@@ -342,7 +383,7 @@ export default function ContentPage() {
                           <div className={styles.detailItem}>
                             <div className={styles.detailLabel}>المدة الزمنية</div>
                             <div className={styles.detailValue}>
-                              <span className={styles.detailBadge}><Clock className={styles.detailIcon} />{content.duration_minutes} دقيقة</span>
+                              <span className={styles.detailBadge}><Clock size={14} />{content.duration_minutes} دقيقة</span>
                             </div>
                           </div>
                         )}
@@ -351,13 +392,13 @@ export default function ContentPage() {
                             <div className={styles.detailItem}>
                               <div className={styles.detailLabel}>درجة النجاح</div>
                               <div className={styles.detailValue}>
-                                <span className={styles.detailBadge}><Target className={styles.detailIcon} />{content.pass_score}%</span>
+                                <span className={styles.detailBadge}><Target size={14} />{content.pass_score}%</span>
                               </div>
                             </div>
                             <div className={styles.detailItem}>
                               <div className={styles.detailLabel}>عدد المحاولات</div>
                               <div className={styles.detailValue}>
-                                <span className={styles.detailBadge}><Users className={styles.detailIcon} />{content.max_attempts} محاولة</span>
+                                <span className={styles.detailBadge}><Clock size={14} />{content.max_attempts} محاولة</span>
                               </div>
                             </div>
                           </>
@@ -375,7 +416,10 @@ export default function ContentPage() {
                     <span className={styles.progressPercentage}>{videoProgress}%</span>
                   </div>
                   <div className={styles.progressBar}>
-                    <div className={styles.progressFill} style={{ width: `${videoProgress}%`, background: theme.primary }} />
+                    <div 
+                      className={styles.progressFill} 
+                      style={{ width: `${videoProgress}%`, background: theme.primary }} 
+                    />
                   </div>
                   <div className={styles.progressLabels}>
                     <span className={styles.progressLabel}>لم يشاهد</span>
@@ -389,19 +433,21 @@ export default function ContentPage() {
           <div className={styles.rightColumn}>
             <div className={styles.statusCard}>
               <h4 className={styles.cardTitle}>حالة المحتوى</h4>
-              <div className={`${styles.statusContent} ${
-                userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.statusCompleted :
-                userProgress?.status === 'failed' ? styles.statusFailed :
-                userProgress?.status === 'in_progress' ? styles.statusInProgress : styles.statusNotStarted
-              }`}>
+              <div 
+                className={`${styles.statusContent} ${
+                  userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.statusCompleted :
+                  userProgress?.status === 'failed' ? styles.statusFailed :
+                  userProgress?.status === 'in_progress' ? styles.statusInProgress : styles.statusNotStarted
+                }`}
+              >
                 {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? (
-                  <CheckCircle className={styles.statusIcon} />
+                  <CheckCircle size={24} />
                 ) : userProgress?.status === 'failed' ? (
-                  <X className={styles.statusIcon} />
+                  <X size={24} />
                 ) : userProgress?.status === 'in_progress' ? (
-                  <Loader2 className={`${styles.statusIcon} ${styles.spinning}`} />
+                  <Loader2 className={styles.spinning} size={24} />
                 ) : (
-                  <BookOpen className={styles.statusIcon} />
+                  <BookOpen size={24} />
                 )}
                 <div className={styles.statusInfo}>
                   <div className={styles.statusText}>
@@ -411,16 +457,25 @@ export default function ContentPage() {
                      userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}
                   </div>
                   {userProgress?.completed_at && (
-                    <div className={styles.statusDate}>تم الإكمال: {new Date(userProgress.completed_at).toLocaleDateString('ar-EG')}</div>
+                    <div className={styles.statusDate}>
+                      تم الإكمال: {new Date(userProgress.completed_at).toLocaleDateString('ar-EG')}
+                    </div>
                   )}
                 </div>
               </div>
 
               {content.type !== 'exam' && (
-                <button onClick={markAsCompleted} disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'}
+                <button 
+                  onClick={markAsCompleted} 
+                  disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'}
                   className={`${styles.completeButton} ${userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.completeButtonDisabled : ''}`}
-                  style={!(userProgress?.status === 'completed' || userProgress?.status === 'passed') ? { background: theme.success } : {}}>
-                  {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? (<><CheckCircle className={styles.completeIcon} />تم الإكمال</>) : (<><CheckCircle className={styles.completeIcon} />تمييز كمكتمل</>)}
+                  style={!(userProgress?.status === 'completed' || userProgress?.status === 'passed') ? { background: theme.success } : {}}
+                >
+                  {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? (
+                    <><CheckCircle size={18} />تم الإكمال</>
+                  ) : (
+                    <><CheckCircle size={18} />تمييز كمكتمل</>
+                  )}
                 </button>
               )}
             </div>
@@ -429,15 +484,30 @@ export default function ContentPage() {
               <h4 className={styles.cardTitle}>إجراءات سريعة</h4>
               <div className={styles.actionsList}>
                 {content.type === 'pdf' && content.content_url && (
-                  <a href={content.content_url} download target="_blank" rel="noopener noreferrer" className={styles.actionItem}>
-                    <span className={styles.actionText}>تحميل الملف</span><Download className={styles.actionIcon} />
+                  <a 
+                    href={content.content_url} 
+                    download 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className={styles.actionItem}
+                  >
+                    <span className={styles.actionText}>تحميل الملف</span>
+                    <Download size={18} />
                   </a>
                 )}
-                <button onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)} className={styles.actionItem}>
-                  <span className={styles.actionText}>العودة للباقة</span><ArrowRight className={styles.actionIcon} />
+                <button 
+                  onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)} 
+                  className={styles.actionItem}
+                >
+                  <span className={styles.actionText}>العودة للباقة</span>
+                  <ArrowRight size={18} />
                 </button>
-                <button onClick={() => router.push(`/grades/${gradeSlug}`)} className={styles.actionItem}>
-                  <span className={styles.actionText}>جميع باقات الصف</span><BookOpen className={styles.actionIcon} />
+                <button 
+                  onClick={() => router.push(`/grades/${gradeSlug}`)} 
+                  className={styles.actionItem}
+                >
+                  <span className={styles.actionText}>جميع باقات الصف</span>
+                  <BookOpen size={18} />
                 </button>
               </div>
             </div>
@@ -447,7 +517,7 @@ export default function ContentPage() {
               <div className={styles.packageInfo}>
                 <div className={styles.packageItem}>
                   <div className={styles.packageIcon} style={{ background: theme.primary }}>
-                    <Award className={styles.packageItemIcon} />
+                    <Award size={20} />
                   </div>
                   <div className={styles.packageDetails}>
                     <div className={styles.packageName}>{packageData?.name}</div>
@@ -458,12 +528,14 @@ export default function ContentPage() {
                 </div>
                 <div className={styles.packageItem}>
                   <div className={styles.packageIcon} style={{ background: theme.success }}>
-                    <Shield className={styles.packageItemIcon} />
+                    <Shield size={20} />
                   </div>
                   <div className={styles.packageDetails}>
                     <div className={styles.packageName}>حالة الاشتراك</div>
                     <div className={styles.packageStatus}>
-                      {userPackage?.expires_at ? `نشط حتى ${new Date(userPackage.expires_at).toLocaleDateString('ar-EG')}` : 'غير متاح'}
+                      {userPackage?.expires_at 
+                        ? `نشط حتى ${new Date(userPackage.expires_at).toLocaleDateString('ar-EG')}` 
+                        : 'غير متاح'}
                     </div>
                   </div>
                 </div>
@@ -485,5 +557,13 @@ export default function ContentPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ContentPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <ContentViewer />
+    </Suspense>
   )
 }
