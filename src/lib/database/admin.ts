@@ -140,25 +140,28 @@ export async function searchUser(identifier: string) {
 
   try {
     // البحث في profiles بواسطة الهاتف أو البريد الإلكتروني
-    const { data: profiles, error: profileError } = await supabase
+    const { data: profilesData, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .or(`phone.eq.${identifier},email.eq.${identifier}`)
-      .single()
 
     if (profileError) {
       console.error('Profile search error:', profileError)
       return null
     }
 
+    // الحصول على أول ملف شخصي من المصفوفة
+    const profiles = Array.isArray(profilesData) ? profilesData[0] : profilesData
+    
     if (!profiles) return null
 
     // الحصول على بيانات المحفظة
-    const { data: wallets, error: walletError } = await supabase
+    const { data: walletsData, error: walletError } = await supabase
       .from('wallets')
       .select('balance, updated_at')
       .eq('user_id', profiles.id)
-      .single()
+
+    const wallets = Array.isArray(walletsData) ? walletsData : [walletsData]
 
     if (walletError) {
       console.error('Wallet fetch error:', walletError)
@@ -171,7 +174,7 @@ export async function searchUser(identifier: string) {
 
     return {
       ...profiles,
-      wallets: wallets ? [wallets] : [{ balance: 0, updated_at: new Date().toISOString() }]
+      wallets: wallets && wallets.length > 0 ? wallets : [{ balance: 0, updated_at: new Date().toISOString() }]
     }
   } catch (error) {
     console.error('Error searching user:', error)
@@ -196,7 +199,7 @@ export async function addWalletFunds(userId: string, amount: number, description
 
     if (!wallet) {
       // المحفظة غير موجودة، نحتاج إلى إنشاء واحدة جديدة
-      const { data: newWallet, error: insertError } = await supabase
+      const { data: newWalletData, error: insertError } = await supabase
         .from('wallets')
         .insert({
           user_id: userId,
@@ -205,13 +208,13 @@ export async function addWalletFunds(userId: string, amount: number, description
           updated_at: new Date().toISOString()
         })
         .select('id, balance')
-        .single()
 
       if (insertError) {
         console.error('Error creating wallet:', insertError)
         throw new Error(`فشل إنشاء المحفظة: ${insertError.message}`)
       }
 
+      const newWallet = Array.isArray(newWalletData) ? newWalletData[0] : newWalletData
       walletId = newWallet?.id
       const newBalance = amount
 
@@ -241,7 +244,7 @@ export async function addWalletFunds(userId: string, amount: number, description
     const newBalance = currentBalance + amount
 
     // Step 2: تحديث الرصيد
-    const { data: updateData, error: updateError } = await supabase
+    const { data: updateDataArray, error: updateError } = await supabase
       .from('wallets')
       .update({
         balance: newBalance,
@@ -249,13 +252,14 @@ export async function addWalletFunds(userId: string, amount: number, description
       })
       .eq('id', walletId)
       .select('balance')
-      .single()
 
     if (updateError) {
       console.error('Error updating wallet balance:', updateError)
       throw new Error(`فشل تحديث الرصيد: ${updateError.message}`)
     }
 
+    // الحصول على أول عنصر من المصفوفة
+    const updateData = Array.isArray(updateDataArray) ? updateDataArray[0] : updateDataArray
     const savedBalance = updateData?.balance || newBalance
 
     // Step 3: تسجيل العملية
