@@ -1,19 +1,18 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClientBrowser } from '@/lib/supabase/sf2-client'
 import { 
-  Wallet, BookOpen, Clock, Calendar, Sparkles, CheckCircle2, 
+  Wallet, BookOpen, Clock, Calendar, CheckCircle2, 
   X, CreditCard, Ticket, Loader2, ArrowRight, GraduationCap,
   PlayCircle, Users, Zap, Star, Shield, TrendingUp, Crown,
   Award, Target, Brain, Rocket, Gem, Moon, Sun, Package,
-  ShoppingCart, Lock, Unlock, Tag, Percent, Gift
+  ShoppingCart, Lock, Unlock, Tag, Percent, Gift, AlertCircle
 } from 'lucide-react'
 import PurchaseModal from '@/components/packages/PurchaseModal'
 import PackageCard from '@/components/packages/PackageCard'
-import { getGradeTheme } from '@/lib/utils/grade-themes'
 import styles from './GradePage.module.css'
 
 // إضافة viewport في البداية
@@ -50,19 +49,17 @@ interface UserPackage {
   packages: Package
 }
 
-// نوع للثيم مع إضافة خاصية error
-interface Theme {
-  primary: string
-  primaryDark: string
-  accent: string
-  secondary: string
-  success: string
-  text: string
-  background: string
-  backgroundLight: string
-  header: string
-  border: string
-  error?: string
+// ثيم افتراضي بسيط
+const defaultTheme = {
+  primary: '#3b82f6',
+  secondary: '#10b981',
+  accent: '#8b5cf6',
+  success: '#10b981',
+  background: '#ffffff',
+  backgroundLight: '#f9fafb',
+  text: '#111827',
+  border: '#e5e7eb',
+  error: '#ef4444'
 }
 
 export default function GradePage() {
@@ -72,13 +69,6 @@ export default function GradePage() {
   
   const gradeSlug = params?.grade as 'first' | 'second' | 'third'
   
-  // الحصول على الثيم الخاص بالصف
-  const gradeTheme = getGradeTheme(gradeSlug)
-  const [theme, setTheme] = useState<Theme>({
-    ...gradeTheme,
-    error:'#ef4444' // قيمة افتراضية
-  })
-
   // State
   const [grade, setGrade] = useState<any>(null)
   const [packages, setPackages] = useState<Package[]>([])
@@ -93,7 +83,7 @@ export default function GradePage() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
 
-  // إحصائيات مزيفة مؤقتاً
+  // إحصائيات مؤقتة
   const [stats] = useState({
     totalStudents: 1250,
     successRate: 94,
@@ -107,12 +97,12 @@ export default function GradePage() {
       fetchData()
       checkUser()
       
-      // تحديث تلقائي كل 10 ثوانٍ
+      // تحديث تلقائي كل 30 ثانية
       const interval = setInterval(() => {
         if (!loading && !refreshing) {
           refreshUserData()
         }
-      }, 10000)
+      }, 30000)
 
       return () => clearInterval(interval)
     }
@@ -385,7 +375,7 @@ export default function GradePage() {
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
-        <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
+        <Loader2 className={styles.loadingSpinner} />
         <p className={styles.loadingText}>جاري تحميل بيانات الصف...</p>
       </div>
     )
@@ -395,13 +385,12 @@ export default function GradePage() {
     return (
       <div className={styles.errorContainer}>
         <div className={styles.errorCard}>
-          <AlertCircle className={styles.errorIcon} style={{ color: theme.error || '#ef4444' }} />
+          <AlertCircle className={styles.errorIcon} />
           <h3 className={styles.errorTitle}>حدث خطأ</h3>
           <p className={styles.errorMessage}>{error}</p>
           <button 
             onClick={handleRetry}
             className={styles.retryButton}
-            style={{ background: theme.primary }}
           >
             <Loader2 className={styles.retryIcon} />
             إعادة المحاولة
@@ -412,16 +401,7 @@ export default function GradePage() {
   }
 
   return (
-    <div className={styles.pageContainer} style={{ 
-      '--primary': theme.primary,
-      '--secondary': theme.secondary,
-      '--accent': theme.accent,
-      '--success': theme.success,
-      '--background': theme.background,
-      '--backgroundLight': theme.backgroundLight,
-      '--text': theme.text,
-      '--border': theme.border
-    } as React.CSSProperties}>
+    <div className={styles.pageContainer}>
       
       {/* مؤشر التحديث الخفي */}
       {refreshing && (
@@ -464,7 +444,6 @@ export default function GradePage() {
                   <button 
                     className={styles.addBalanceButton}
                     onClick={() => router.push('/wallet')}
-                    style={{ background: theme.accent }}
                   >
                     إضافة رصيد
                   </button>
@@ -501,13 +480,6 @@ export default function GradePage() {
             <motion.div
               key={i}
               className={styles.floatingShape}
-              style={{
-                background: `radial-gradient(circle, ${theme.accent}20 0%, transparent 70%)`,
-                width: Math.random() * 100 + 50,
-                height: Math.random() * 100 + 50,
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-              }}
               animate={{
                 y: [0, -30, 0],
                 x: [0, Math.sin(i) * 20, 0],
@@ -583,7 +555,7 @@ export default function GradePage() {
                   index={index}
                   isPurchased={true}
                   onEnter={() => handleEnterPackage(pkg.id)}
-                  theme={theme}
+                  theme={defaultTheme}
                 />
               ))}
             </div>
@@ -618,7 +590,7 @@ export default function GradePage() {
                   index={index}
                   isPurchased={false}
                   onPurchase={() => handlePurchaseClick(pkg)}
-                  theme={theme}
+                  theme={defaultTheme}
                   isHighlighted={true}
                 />
               ))}
@@ -651,7 +623,7 @@ export default function GradePage() {
                   index={index}
                   isPurchased={false}
                   onPurchase={() => handlePurchaseClick(pkg)}
-                  theme={theme}
+                  theme={defaultTheme}
                 />
               ))}
             </div>
@@ -683,7 +655,7 @@ export default function GradePage() {
                   index={index}
                   isPurchased={false}
                   onPurchase={() => handlePurchaseClick(pkg)}
-                  theme={theme}
+                  theme={defaultTheme}
                 />
               ))}
             </div>
@@ -733,17 +705,10 @@ export default function GradePage() {
             gradeSlug={gradeSlug}
             onClose={() => setShowPurchaseModal(false)}
             onSuccess={handlePurchaseSuccess}
-            theme={theme}
+            theme={defaultTheme}
           />
         )}
       </AnimatePresence>
     </div>
   )
 }
-
-// أيقونة AlertCircle لم يتم استيرادها في الأعلى، فلنضفها
-const AlertCircle = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
-  <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-)
