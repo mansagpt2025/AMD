@@ -15,6 +15,13 @@ import {
 import { getGradeTheme } from '@/lib/utils/grade-themes'
 import styles from './PackagePage.module.css'
 
+// إضافة viewport
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 // أنواع البيانات
 interface LectureContent {
   id: string
@@ -164,35 +171,35 @@ export default function PackagePage() {
         return
       }
 
-    // 2. التحقق من الاشتراك مع إعادة محاولة
-    let userPackageData = null
-    let retries = 0
-    const maxRetries = 5
-    
-    while (!userPackageData && retries < maxRetries) {
-      const { data: packageData } = await supabase
-        .from('user_packages')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('package_id', packageId)
-        .eq('is_active', true)
-        .single()
+      // 2. التحقق من الاشتراك مع إعادة محاولة
+      let userPackageData = null
+      let retries = 0
+      const maxRetries = 5
       
-      userPackageData = packageData
-      
-      if (!userPackageData) {
-        retries++
-        // انتظار 1 ثانية قبل المحاولة التالية
-        await new Promise(resolve => setTimeout(resolve, 1000))
+      while (!userPackageData && retries < maxRetries) {
+        const { data: packageData } = await supabase
+          .from('user_packages')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('package_id', packageId)
+          .eq('is_active', true)
+          .single()
+        
+        userPackageData = packageData
+        
+        if (!userPackageData) {
+          retries++
+          // انتظار 1 ثانية قبل المحاولة التالية
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
       }
-    }
 
-    if (!userPackageData) {
-      router.push(`/grades/${gradeSlug}?error=not_subscribed&package=${packageId}`)
-      return
-    }
-    
-    setUserPackage(userPackageData)
+      if (!userPackageData) {
+        router.push(`/grades/${gradeSlug}?error=not_subscribed&package=${packageId}`)
+        return
+      }
+      
+      setUserPackage(userPackageData)
 
       // 3. جلب بيانات الباقة
       const { data: packageData } = await supabase

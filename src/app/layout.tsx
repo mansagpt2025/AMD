@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Noto_Sans_Arabic, Inter } from 'next/font/google'
 import './globals.css'
+import logo from '@/public/logo.svg'
 
 // تحميل الخط العربي
 const notoSansArabic = Noto_Sans_Arabic({
@@ -8,6 +9,7 @@ const notoSansArabic = Noto_Sans_Arabic({
   variable: '--font-arabic',
   weight: ['300', '400', '500', '600', '700', '800'],
 })
+
 
 // تحميل الخط الإنجليزي للعناصر التي قد تحتاجه
 const inter = Inter({
@@ -81,6 +83,8 @@ export default function RootLayout({
           rel="stylesheet"
         />
         
+
+
         {/* Facebook Meta Tags */}
         <meta property="og:url" content="https://mahmoud-eldeeb.com/" />
         <meta property="og:type" content="website" />

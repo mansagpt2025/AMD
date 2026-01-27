@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClientBrowser } from '@/lib/supabase/sf-client'
+import { createClientBrowser } from '@/lib/supabase/sf2-client'
 import { 
   Wallet, BookOpen, Clock, Calendar, Sparkles, CheckCircle2, 
   X, CreditCard, Ticket, Loader2, ArrowRight, GraduationCap,
@@ -15,6 +15,13 @@ import PurchaseModal from '@/components/packages/PurchaseModal'
 import PackageCard from '@/components/packages/PackageCard'
 import { getGradeTheme } from '@/lib/utils/grade-themes'
 import styles from './GradePage.module.css'
+
+// إضافة viewport في البداية
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 // الأنواع المحدثة حسب قاعدة البيانات
 interface Package {

@@ -32,7 +32,7 @@ export default function PDFViewer({
 
   // إنشاء عميل Supabase
   const createClientBrowser = () => {
-    return require('@/lib/supabase/sf-client').createClientBrowser()
+    return require('@/lib/supabase/sf2-client').createClientBrowser()
   }
 
   // حفظ التقدم في قاعدة البيانات

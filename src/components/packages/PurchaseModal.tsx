@@ -8,7 +8,7 @@ import {
   AlertCircle, Lock, Sparkles, Gift,
   ShieldCheck, Clock, Zap
 } from 'lucide-react'
-import { createClientBrowser } from '@/lib/supabase/sf-client'
+import { createClientBrowser } from '@/lib/supabase/sf2-client'
 import styles from './PurchaseModal.module.css'
 
 interface PurchaseModalProps {
@@ -40,7 +40,7 @@ export default function PurchaseModal({
   const [validatedCode, setValidatedCode] = useState<any>(null)
   const [showConfetti, setShowConfetti] = useState(false)
 
-  // التحقق من الكود باستخدام Supabase مباشرة
+  // التحقق من الكود
   const validateCode = async () => {
     if (!code.trim()) {
       setValidationError('يرجى إدخال الكود')
@@ -85,7 +85,7 @@ export default function PurchaseModal({
     }
   }
 
-  // إتمام الشراء باستخدام Supabase مباشرة
+  // إتمام الشراء
   const handlePurchase = async () => {
     setIsPurchasing(true)
     setValidationError('')
@@ -102,53 +102,123 @@ export default function PurchaseModal({
     }
   }
 
-  // الشراء بالمحفظة
+  // الشراء بالمحفظة - نسخة بديلة بدون RPC
   const handleWalletPurchase = async () => {
     // التحقق من الرصيد
     if (walletBalance < pkg.price) {
       throw new Error(`رصيد المحفظة غير كافٍ. الرصيد المطلوب: ${pkg.price} جنيه`)
     }
 
-    // بدء المعاملة في Supabase
-    const { data, error } = await supabase.rpc('purchase_package_with_wallet', {
-      user_id: user.id,
-      package_id: pkg.id,
-      package_price: pkg.price
-    })
+    try {
+      // 1. خصم المبلغ من المحفظة
+      const { error: walletError } = await supabase
+        .from('wallets')
+        .update({ 
+          balance: walletBalance - pkg.price,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
 
-    if (error) {
-      throw new Error(error.message || 'فشل عملية الشراء من المحفظة')
+      if (walletError) throw new Error('فشل تحديث المحفظة')
+
+      // 2. إضافة الباقة للمستخدم
+      const expiresAt = new Date()
+      expiresAt.setDate(expiresAt.getDate() + pkg.duration_days)
+
+      const { error: packageError } = await supabase
+        .from('user_packages')
+        .insert({
+          user_id: user.id,
+          package_id: pkg.id,
+          purchased_at: new Date().toISOString(),
+          expires_at: expiresAt.toISOString(),
+          is_active: true,
+          source: 'wallet'
+        })
+
+      if (packageError) {
+        // إذا فشل إضافة الباقة، نعيد المبلغ للمحفظة
+        await supabase
+          .from('wallets')
+          .update({ 
+            balance: walletBalance,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id)
+        
+        throw new Error('فشل إضافة الباقة')
+      }
+
+      // نجاح الشراء
+      setShowConfetti(true)
+      setTimeout(() => {
+        onSuccess(pkg.id)
+      }, 2000)
+    } catch (err: any) {
+      throw new Error(err.message || 'فشل عملية الشراء')
     }
-
-    // نجاح الشراء
-    setShowConfetti(true)
-    setTimeout(() => {
-      onSuccess(pkg.id)
-    }, 2000)
   }
 
-  // الشراء بالكود
+  // الشراء بالكود - نسخة بديلة بدون RPC
   const handleCodePurchase = async () => {
+    if (!code.trim()) {
+      throw new Error('يرجى إدخال الكود أولاً')
+    }
+
     if (!validatedCode) {
       throw new Error('يرجى التحقق من صحة الكود أولاً')
     }
 
-    // استخدام المعاملة في Supabase
-    const { data, error } = await supabase.rpc('activate_package_with_code', {
-      user_id: user.id,
-      package_id: pkg.id,
-      code_id: validatedCode.id
-    })
+    try {
+      // 1. تحديث حالة الكود
+      const { error: codeError } = await supabase
+        .from('codes')
+        .update({
+          is_used: true,
+          used_by: user.id,
+          used_at: new Date().toISOString()
+        })
+        .eq('id', validatedCode.id)
 
-    if (error) {
-      throw new Error(error.message || 'فشل تفعيل الكود')
+      if (codeError) throw new Error('فشل تحديث حالة الكود')
+
+      // 2. إضافة الباقة للمستخدم
+      const expiresAt = new Date()
+      expiresAt.setDate(expiresAt.getDate() + pkg.duration_days)
+
+      const { error: packageError } = await supabase
+        .from('user_packages')
+        .insert({
+          user_id: user.id,
+          package_id: pkg.id,
+          purchased_at: new Date().toISOString(),
+          expires_at: expiresAt.toISOString(),
+          is_active: true,
+          source: 'code'
+        })
+
+      if (packageError) {
+        // إذا فشل إضافة الباقة، نعيد الكود لحالته السابقة
+        await supabase
+          .from('codes')
+          .update({
+            is_used: false,
+            used_by: null,
+            used_at: null
+          })
+          .eq('id', validatedCode.id)
+        
+        throw new Error('فشل إضافة الباقة')
+      }
+
+      // نجاح الشراء
+      setShowConfetti(true)
+      setTimeout(() => {
+        onSuccess(pkg.id)
+      }, 2000)
+    } catch (err: any) {
+      throw new Error(err.message || 'فشل تفعيل الكود')
     }
-
-    // نجاح الشراء
-    setShowConfetti(true)
-    setTimeout(() => {
-      onSuccess(pkg.id)
-    }, 2000)
   }
 
   const getPackageType = () => {

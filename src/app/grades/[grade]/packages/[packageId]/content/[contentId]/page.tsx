@@ -187,6 +187,7 @@ export default function ContentPage() {
             videoUrl={content.content_url || ''}
             contentId={contentId}
             userId={currentUser?.id}
+            packageId={packageId}
             onProgress={handleVideoProgress}
             theme={theme}
           />
@@ -196,6 +197,7 @@ export default function ContentPage() {
           <PDFViewer
             pdfUrl={content.content_url || ''}
             contentId={contentId}
+              packageId={packageId}   // ✅ أضف دي
             userId={currentUser?.id}
             theme={theme}
           />
