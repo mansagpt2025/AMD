@@ -18,25 +18,6 @@
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ==================== GLOBAL STYLES ==================== */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  direction: rtl;
-}
-
-body {
-  background-color: var(--bg-light);
-  color: var(--text);
-  line-height: 1.6;
-}
-
 /* ==================== PAGE CONTAINER ==================== */
 .pageContainer {
   min-height: 100vh;
@@ -1083,10 +1064,11 @@ body {
 
 /* ==================== ACCESSIBILITY ==================== */
 @media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  .platformTitle,
+  .encouragement,
+  .loadingSpinner,
+  .statValue {
+    animation: none !important;
   }
 }
 
