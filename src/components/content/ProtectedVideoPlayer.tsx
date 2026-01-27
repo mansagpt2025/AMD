@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Play, Pause, Volume2, Maximize, Settings, Lock, Loader2 } from 'lucide-react'
+import { Play, Pause, Volume2, Maximize, Lock, Loader2, AlertCircle } from 'lucide-react'
 import styles from './ProtectedVideoPlayer.module.css'
 
 interface ProtectedVideoPlayerProps {
@@ -23,105 +23,78 @@ export default function ProtectedVideoPlayer({
 }: ProtectedVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
-  const [playbackRate, setPlaybackRate] = useState(1)
-  const [showControls, setShowControls] = useState(true)
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [protectionLayer, setProtectionLayer] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
-  const [lastSavedProgress, setLastSavedProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [showControls, setShowControls] = useState(true)
+  const [lastSavedTime, setLastSavedTime] = useState(0)
+
+  // التحقق من نوع الرابط (YouTube أم ملف مباشر)
+  const isYouTube = videoUrl?.includes('youtube.com') || videoUrl?.includes('youtu.be')
+  
+  // استخراج ID الخاص بـ YouTube
+  const getYouTubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/
+    const match = url.match(regExp)
+    return (match && match[2].length === 11) ? match[2] : null
+  }
+
+  const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null
 
   // إنشاء عميل Supabase
   const createClientBrowser = () => {
+    if (typeof window === 'undefined') return null
     return require('@/lib/supabase/sf-client').createClientBrowser()
   }
 
-  // حفظ التقدم في قاعدة البيانات
-  const saveProgressToDB = useCallback(async (progress: number) => {
+  // حفظ التقدم
+  const saveProgress = useCallback(async (currentTime: number, totalDuration: number) => {
+    if (!userId || !contentId) return
+    
     try {
       const supabase = createClientBrowser()
-      
-      // التحقق مما إذا كان التقدم قد تغير بشكل كبير
-      if (Math.abs(progress - lastSavedProgress) < 5 && progress !== 100) {
-        return // لا تحفظ إذا كان التغيير أقل من 5% (ما لم يكن 100%)
-      }
+      if (!supabase) return
 
-      // تحديث أو إنشاء سجل التقدم
-      const { error } = await supabase
+      const progress = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0
+      
+      // لا تحفظ إلا كل 10 ثوانٍ أو عند الانتهاء
+      if (Math.abs(currentTime - lastSavedTime) < 10 && progress < 95) return
+      
+      await supabase
         .from('user_progress')
         .upsert({
           user_id: userId,
           lecture_content_id: contentId,
           package_id: packageId,
           status: progress >= 90 ? 'completed' : 'in_progress',
-          score: progress,
+          score: Math.round(progress),
           last_accessed_at: new Date().toISOString(),
           ...(progress >= 90 && { completed_at: new Date().toISOString() })
         }, {
           onConflict: 'user_id,lecture_content_id'
         })
 
-      if (!error) {
-        setLastSavedProgress(progress)
-        onProgress(progress) // تحديث المكون الأب
-      }
-    } catch (error) {
-      console.error('Error saving progress:', error)
+      setLastSavedTime(currentTime)
+      onProgress(Math.round(progress))
+    } catch (err) {
+      console.error('Error saving progress:', err)
     }
-  }, [userId, contentId, packageId, onProgress, lastSavedProgress])
+  }, [userId, contentId, packageId, onProgress, lastSavedTime])
 
-  // جلب التقدم الحالي
-  const fetchCurrentProgress = useCallback(async () => {
-    try {
-      const supabase = createClientBrowser()
-      const { data } = await supabase
-        .from('user_progress')
-        .select('score')
-        .eq('user_id', userId)
-        .eq('lecture_content_id', contentId)
-        .single()
-
-      if (data?.score) {
-        setLastSavedProgress(data.score)
-        return data.score
-      }
-    } catch (error) {
-      console.error('Error fetching progress:', error)
-    }
-    return 0
-  }, [userId, contentId])
-
+  // للفيديوهات المباشرة (MP4)
   useEffect(() => {
+    if (isYouTube || !videoRef.current) return
+
     const video = videoRef.current
-    if (!video) return
-
-    // تحميل التقدم عند البدء
-    fetchCurrentProgress().then(savedProgress => {
-      if (savedProgress > 0 && video.duration > 0) {
-        video.currentTime = (savedProgress / 100) * video.duration
-      }
-    })
-
+    
     const handleTimeUpdate = () => {
-      if (!video.duration) return
-      
-      const currentTime = video.currentTime
-      const progress = (currentTime / video.duration) * 100
-      
-      setCurrentTime(currentTime)
-      
-      // تحديث التقدم كل ثانية
-      if (progressTimerRef.current) {
-        clearTimeout(progressTimerRef.current)
+      setCurrentTime(video.currentTime)
+      if (Math.floor(video.currentTime) % 10 === 0) {
+        saveProgress(video.currentTime, video.duration)
       }
-      
-      progressTimerRef.current = setTimeout(() => {
-        saveProgressToDB(progress)
-      }, 1000)
     }
 
     const handleLoadedMetadata = () => {
@@ -131,75 +104,36 @@ export default function ProtectedVideoPlayer({
 
     const handleEnded = () => {
       setIsPlaying(false)
-      saveProgressToDB(100) // حفظ 100% عند الانتهاء
+      saveProgress(video.duration, video.duration)
       onProgress(100)
+    }
+
+    const handleError = () => {
+      setError('حدث خطأ في تحميل الفيديو. قد يكون الرابط غير صالح.')
+      setIsLoading(false)
     }
 
     video.addEventListener('timeupdate', handleTimeUpdate)
     video.addEventListener('loadedmetadata', handleLoadedMetadata)
     video.addEventListener('ended', handleEnded)
+    video.addEventListener('error', handleError)
 
     // حماية الفيديو
     const handleContextMenu = (e: MouseEvent) => e.preventDefault()
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // منع مفاتيح النسخ
-      if (e.ctrlKey && (e.key === 'c' || e.key === 's' || e.key === 'p')) {
-        e.preventDefault()
-      }
-      // منع F12
-      if (e.key === 'F12') {
-        e.preventDefault()
-      }
-      // منع مسطرة المسافات للتشغيل/الإيقاف
-      if (e.code === 'Space') {
-        e.preventDefault()
-        togglePlay()
-      }
-    }
-
-    // منع فك ترميز الفيديو
-    const handleCanPlay = () => {
-      video.setAttribute('controlslist', 'nodownload nofullscreen')
-    }
-
-    video.addEventListener('canplay', handleCanPlay)
     document.addEventListener('contextmenu', handleContextMenu)
-    document.addEventListener('keydown', handleKeyDown)
-
-    // حفظ التقدم عند مغادرة الصفحة
-    const handleBeforeUnload = () => {
-      if (video.duration > 0) {
-        const progress = (video.currentTime / video.duration) * 100
-        saveProgressToDB(progress)
-      }
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('loadedmetadata', handleLoadedMetadata)
       video.removeEventListener('ended', handleEnded)
-      video.removeEventListener('canplay', handleCanPlay)
+      video.removeEventListener('error', handleError)
       document.removeEventListener('contextmenu', handleContextMenu)
-      document.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      
-      if (progressTimerRef.current) {
-        clearTimeout(progressTimerRef.current)
-      }
-      
-      // حفظ التقدم النهائي
-      if (video.duration > 0) {
-        const progress = (video.currentTime / video.duration) * 100
-        saveProgressToDB(progress)
-      }
+      saveProgress(video.currentTime, video.duration)
     }
-  }, [saveProgressToDB, fetchCurrentProgress])
+  }, [isYouTube, saveProgress, onProgress])
 
   const togglePlay = () => {
     if (!videoRef.current) return
-    
     if (isPlaying) {
       videoRef.current.pause()
     } else {
@@ -210,39 +144,9 @@ export default function ProtectedVideoPlayer({
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!videoRef.current) return
-    
     const time = parseFloat(e.target.value)
     videoRef.current.currentTime = time
     setCurrentTime(time)
-    
-    // حفظ التقدم عند السحب
-    if (duration > 0) {
-      const progress = (time / duration) * 100
-      saveProgressToDB(progress)
-    }
-  }
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!videoRef.current) return
-    
-    const vol = parseFloat(e.target.value)
-    videoRef.current.volume = vol
-    setVolume(vol)
-  }
-
-  const toggleFullscreen = () => {
-    if (!containerRef.current) return
-    
-    if (!isFullscreen) {
-      if (containerRef.current.requestFullscreen) {
-        containerRef.current.requestFullscreen()
-      }
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen()
-      }
-    }
-    setIsFullscreen(!isFullscreen)
   }
 
   const formatTime = (seconds: number) => {
@@ -251,47 +155,65 @@ export default function ProtectedVideoPlayer({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  // عارض YouTube
+  if (isYouTube && youtubeId) {
+    return (
+      <div ref={containerRef} className={styles.videoPlayerContainer}>
+        <div className={styles.youtubeContainer}>
+          <iframe
+            src={`https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1&showinfo=0&controls=1&disablekb=1&fs=1`}
+            title="YouTube video player"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className={styles.youtubeIframe}
+          />
+        </div>
+        <div className={styles.protectionBadge}>
+          <Lock size={16} />
+          <span>محمي ضد النسخ</span>
+        </div>
+      </div>
+    )
+  }
+
+  // عارض الفيديو المباشر
+  if (error) {
+    return (
+      <div className={styles.errorContainer}>
+        <AlertCircle size={48} color="#ef4444" />
+        <p>{error}</p>
+        <p className={styles.errorHint}>تأكد من أن رابط الفيديو صحيح ومتاح</p>
+      </div>
+    )
+  }
+
   return (
     <div 
       ref={containerRef}
       className={styles.videoPlayerContainer}
       onMouseEnter={() => setShowControls(true)}
-      onMouseLeave={() => {
-        if (isPlaying) {
-          setTimeout(() => setShowControls(false), 2000)
-        }
-      }}
+      onMouseLeave={() => isPlaying && setTimeout(() => setShowControls(false), 3000)}
     >
       {isLoading && (
         <div className={styles.loadingOverlay}>
           <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
-          <p className={styles.loadingText}>جاري تحميل الفيديو...</p>
+          <p>جاري تحميل الفيديو...</p>
         </div>
       )}
 
-      {/* حماية الطبقة الشفافة */}
-      {protectionLayer && (
-        <div className={styles.protectionLayer} />
-      )}
-
-      {/* الفيديو */}
       <video
         ref={videoRef}
         src={videoUrl}
         className={styles.videoElement}
         controls={false}
-        onEnded={() => {
-          setIsPlaying(false)
-          saveProgressToDB(100)
-        }}
+        onClick={togglePlay}
         preload="metadata"
-        crossOrigin="anonymous"
+        playsInline
       />
 
-      {/* عناصر التحكم */}
-      {showControls && (
+      {showControls && !isLoading && (
         <div className={styles.controlsOverlay}>
-          {/* شريط التقدم */}
           <div className={styles.progressSection}>
             <input
               type="range"
@@ -300,87 +222,50 @@ export default function ProtectedVideoPlayer({
               value={currentTime}
               onChange={handleSeek}
               className={styles.progressBar}
-              style={{ '--progress': `${(currentTime / (duration || 1)) * 100}%` } as React.CSSProperties}
+              style={{'--progress': `${(currentTime / (duration || 1)) * 100}%`} as any}
             />
             <div className={styles.timeDisplay}>
-              <span className={styles.timeText}>{formatTime(currentTime)}</span>
-              <span className={styles.timeText}>{formatTime(duration)}</span>
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
             </div>
           </div>
 
-          {/* أزرار التحكم */}
           <div className={styles.controlsBar}>
-            <div className={styles.leftControls}>
-              {/* تشغيل/إيقاف */}
-              <button
-                onClick={togglePlay}
-                className={styles.controlButton}
-              >
-                {isPlaying ? (
-                  <Pause className={styles.controlIcon} />
-                ) : (
-                  <Play className={styles.controlIcon} />
-                )}
-              </button>
+            <button onClick={togglePlay} className={styles.controlButton}>
+              {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+            </button>
 
-              {/* الصوت */}
-              <div className={styles.volumeControl}>
-                <Volume2 className={styles.volumeIcon} />
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  value={volume}
-                  onChange={handleVolumeChange}
-                  className={styles.volumeSlider}
-                />
-              </div>
-
-              {/* السرعة */}
-              <select
-                value={playbackRate}
+            <div className={styles.volumeControl}>
+              <Volume2 size={20} />
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={volume}
                 onChange={(e) => {
-                  if (videoRef.current) {
-                    videoRef.current.playbackRate = parseFloat(e.target.value)
-                    setPlaybackRate(parseFloat(e.target.value))
-                  }
+                  const vol = parseFloat(e.target.value)
+                  setVolume(vol)
+                  if (videoRef.current) videoRef.current.volume = vol
                 }}
-                className={styles.playbackSelect}
-              >
-                <option value="0.5">0.5x</option>
-                <option value="0.75">0.75x</option>
-                <option value="1">1x</option>
-                <option value="1.25">1.25x</option>
-                <option value="1.5">1.5x</option>
-                <option value="2">2x</option>
-              </select>
+                className={styles.volumeSlider}
+              />
             </div>
 
-            <div className={styles.rightControls}>
-              {/* إشارة الحماية */}
-              <div className={styles.protectionIndicator}>
-                <Lock className={styles.protectionIcon} />
-                <span className={styles.protectionText}>محمي</span>
-              </div>
-
-              {/* ملء الشاشة */}
-              <button
-                onClick={toggleFullscreen}
-                className={styles.controlButton}
-              >
-                <Maximize className={styles.controlIcon} />
-              </button>
+            <div className={styles.protectionIndicator}>
+              <Lock size={16} />
+              <span>محمي</span>
             </div>
+
+            <button 
+              onClick={() => containerRef.current?.requestFullscreen()} 
+              className={styles.controlButton}
+            >
+              <Maximize size={20} />
+            </button>
           </div>
         </div>
       )}
-
-      {/* رسالة الحماية */}
-      <div className={styles.protectionBadge}>
-        <Lock className={styles.badgeIcon} />
-        <span className={styles.badgeText}>محمي ضد النسخ</span>
-      </div>
     </div>
   )
 }
