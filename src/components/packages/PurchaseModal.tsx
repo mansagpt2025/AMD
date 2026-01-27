@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   X, CreditCard, Ticket, Loader2, 
   CheckCircle2, Shield, Users, BookOpen,
   AlertCircle, Lock, Sparkles, Gift,
-  ShieldCheck, Clock, Zap
+  ShieldCheck, Clock, Zap, AlertTriangle,
+  Info
 } from 'lucide-react'
 import { createClientBrowser } from '@/lib/supabase/sf2-client'
 import styles from './PurchaseModal.module.css'
@@ -39,8 +40,42 @@ export default function PurchaseModal({
   const [validationSuccess, setValidationSuccess] = useState('')
   const [validatedCode, setValidatedCode] = useState<any>(null)
   const [showConfetti, setShowConfetti] = useState(false)
+  const [hasActivePackage, setHasActivePackage] = useState(false)
+  const [activePackageInfo, setActivePackageInfo] = useState<any>(null)
 
-  // التحقق من الكود
+  // التحقق مما إذا كان المستخدم لديه بالفعل باقة فعالة
+  useEffect(() => {
+    checkActivePackage()
+  }, [])
+
+  const checkActivePackage = async () => {
+    try {
+      const { data: activePackages, error } = await supabase
+        .from('user_packages')
+        .select(`
+          *,
+          package:packages(*)
+        `)
+        .eq('user_id', user.id)
+        .eq('package_id', pkg.id)
+        .eq('is_active', true)
+        .gt('expires_at', new Date().toISOString())
+
+      if (error) {
+        console.error('Error checking active packages:', error)
+        return
+      }
+
+      if (activePackages && activePackages.length > 0) {
+        setHasActivePackage(true)
+        setActivePackageInfo(activePackages[0])
+      }
+    } catch (err) {
+      console.error('Error in checkActivePackage:', err)
+    }
+  }
+
+  // التحقق الشامل من الكود
   const validateCode = async () => {
     if (!code.trim()) {
       setValidationError('يرجى إدخال الكود')
@@ -50,35 +85,85 @@ export default function PurchaseModal({
     setIsValidating(true)
     setValidationError('')
     setValidationSuccess('')
+    setValidatedCode(null)
 
     try {
+      // التحقق من تنسيق الكود
+      const trimmedCode = code.trim().toUpperCase()
+      if (!trimmedCode.match(/^[A-Z0-9]{8,16}$/)) {
+        throw new Error('تنسيق الكود غير صالح. يجب أن يحتوي على 8-16 حرف/رقم')
+      }
+
+      // التحقق من أن المستخدم ليس لديه باقة فعالة بالفعل
+      if (hasActivePackage) {
+        throw new Error('لديك بالفعل باقة فعالة لهذه المادة')
+      }
+
       // التحقق من الكود في جدول codes
       const { data: codeData, error } = await supabase
         .from('codes')
         .select('*')
-        .eq('code', code.trim().toUpperCase())
-        .eq('grade', gradeSlug)
-        .eq('is_used', false)
+        .eq('code', trimmedCode)
         .single()
 
       if (error || !codeData) {
-        throw new Error('كود غير صالح أو منتهي الصلاحية')
+        throw new Error('الكود غير موجود في النظام')
       }
 
-      // التحقق من أن الكود مخصص لهذه الباقة أو يمكن استخدامه لأي باقة
+      // التحقق 1: أن الكود لم يتم استخدامه من قبل
+      if (codeData.is_used) {
+        // التحقق إذا كان المستخدم الحالي هو من استخدمه
+        if (codeData.used_by === user.id) {
+          throw new Error('لقد استخدمت هذا الكود من قبل')
+        } else {
+          throw new Error('هذا الكود مستخدم بالفعل من قبل مستخدم آخر')
+        }
+      }
+
+      // التحقق 2: أن الكود مخصص للصف الصحيح
+      if (codeData.grade !== gradeSlug) {
+        throw new Error(`هذا الكود مخصص للصف ${codeData.grade} وليس ${gradeSlug}`)
+      }
+
+      // التحقق 3: أن الكود مخصص للباقة الصحيحة (إذا كان محدداً)
       if (codeData.package_id && codeData.package_id !== pkg.id) {
-        throw new Error('هذا الكود مخصص لباقة أخرى')
+        // جلب اسم الباقة المخصصة للكود لعرض رسالة واضحة
+        const { data: targetPackage } = await supabase
+          .from('packages')
+          .select('name')
+          .eq('id', codeData.package_id)
+          .single()
+        
+        const targetPackageName = targetPackage?.name || 'باقة أخرى'
+        throw new Error(`هذا الكود مخصص لـ "${targetPackageName}" وليس "${pkg.name}"`)
       }
 
-      // التحقق من تاريخ الانتهاء
-      if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
-        throw new Error('الكود منتهي الصلاحية')
+      // التحقق 4: أن تاريخ الانتهاء لم يمر
+      if (codeData.expires_at) {
+        const expiryDate = new Date(codeData.expires_at)
+        const now = new Date()
+        if (expiryDate < now) {
+          throw new Error('هذا الكود منتهي الصلاحية')
+        }
       }
 
-      setValidationSuccess('الكود صالح ويمكن استخدامه!')
+      // التحقق 5: أن المستخدم لم يشتر هذه الباقة من قبل باستخدام أي كود
+      const { data: previousPurchases } = await supabase
+        .from('user_packages')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('package_id', pkg.id)
+        .eq('source', 'code')
+
+      if (previousPurchases && previousPurchases.length > 0) {
+        throw new Error('لقد قمت بشراء هذه الباقة من قبل باستخدام كود')
+      }
+
+      // جميع التحققات ناجحة
+      setValidationSuccess('✅ الكود صالح ويمكن استخدامه!')
       setValidatedCode(codeData)
     } catch (err: any) {
-      setValidationError(err.message || 'كود غير صالح')
+      setValidationError(`❌ ${err.message}`)
       setValidatedCode(null)
     } finally {
       setIsValidating(false)
@@ -87,6 +172,11 @@ export default function PurchaseModal({
 
   // إتمام الشراء
   const handlePurchase = async () => {
+    if (hasActivePackage) {
+      setValidationError('لديك بالفعل باقة فعالة لهذه المادة. لا يمكنك الشراء مرة أخرى.')
+      return
+    }
+
     setIsPurchasing(true)
     setValidationError('')
 
@@ -102,70 +192,37 @@ export default function PurchaseModal({
     }
   }
 
-  // دالة RPC مبسطة للشراء
-  const purchasePackageRPC = async () => {
-    try {
-      // استخدام دالة RPC إذا كانت موجودة
-      const { data, error } = await supabase.rpc('simple_purchase_package', {
-        p_user_id: user.id,
-        p_package_id: pkg.id,
-        p_price: pkg.price
-      })
-
-      if (error) {
-        console.error('RPC Error:', error)
-        return { success: false, message: error.message }
-      }
-
-      return data
-    } catch (error: any) {
-      console.error('RPC Exception:', error)
-      return { success: false, message: error.message }
-    }
-  }
-
-  // الشراء بالمحفظة - محسنة
+  // الشراء بالمحفظة
   const handleWalletPurchase = async () => {
-    // التحقق من الرصيد
+    // التحقق 1: أن المستخدم ليس لديه باقة فعالة
+    if (hasActivePackage) {
+      throw new Error('لديك بالفعل باقة فعالة لهذه المادة')
+    }
+
+    // التحقق 2: أن الرصيد كافٍ
     if (walletBalance < pkg.price) {
-      throw new Error(`رصيد المحفظة غير كافٍ. الرصيد المطلوب: ${pkg.price} جنيه`)
+      throw new Error(`رصيد المحفظة غير كافٍ. المطلوب: ${pkg.price} جنيه، رصيدك: ${walletBalance} جنيه`)
     }
 
     try {
-      // المحاولة باستخدام RPC أولاً
-      const result = await purchasePackageRPC()
-      
-      if (!result.success) {
-        // إذا فشل RPC، استخدام الطريقة البديلة
-        console.log('Falling back to manual purchase...')
-        await handleManualWalletPurchase()
-      } else {
-        console.log('Purchase via RPC successful:', result.message)
-      }
+      // بدء المعاملة
+      const transactionId = `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-      // نجاح الشراء
-      setShowConfetti(true)
-      setTimeout(() => {
-        onSuccess(pkg.id)
-      }, 2000)
-    } catch (err: any) {
-      throw new Error(err.message || 'فشل عملية الشراء')
-    }
-  }
-
-  // الطريقة البديلة للشراء
-  const handleManualWalletPurchase = async () => {
-    try {
       // 1. خصم المبلغ من المحفظة
+      const newBalance = walletBalance - pkg.price
+      
       const { error: walletError } = await supabase
         .from('wallets')
         .update({ 
-          balance: walletBalance - pkg.price,
+          balance: newBalance,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', user.id)
 
-      if (walletError) throw new Error('فشل تحديث المحفظة: ' + walletError.message)
+      if (walletError) {
+        console.error('Wallet update error:', walletError)
+        throw new Error('فشل في خصم المبلغ من المحفظة')
+      }
 
       // 2. إضافة الباقة للمستخدم
       const expiresAt = new Date()
@@ -179,7 +236,8 @@ export default function PurchaseModal({
           purchased_at: new Date().toISOString(),
           expires_at: expiresAt.toISOString(),
           is_active: true,
-          source: 'wallet'
+          source: 'wallet',
+          transaction_id: transactionId
         })
 
       if (packageError) {
@@ -192,10 +250,26 @@ export default function PurchaseModal({
           })
           .eq('user_id', user.id)
         
-        throw new Error('فشل إضافة الباقة: ' + packageError.message)
+        throw new Error('فشل في إضافة الباقة لحسابك')
       }
+
+      // 3. إضافة إشعار للمستخدم
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: user.id,
+          title: 'شراء ناجح 🎉',
+          message: `تم شراء باقة "${pkg.name}" بنجاح بمبلغ ${pkg.price} جنيه. ساري حتى ${expiresAt.toLocaleDateString('ar-EG')}`,
+          type: 'success'
+        })
+
+      // نجاح الشراء
+      setShowConfetti(true)
+      setTimeout(() => {
+        onSuccess(pkg.id)
+      }, 2000)
     } catch (err: any) {
-      throw new Error(err.message || 'فشل عملية الشراء')
+      throw new Error(err.message || 'فشل عملية الشراء من المحفظة')
     }
   }
 
@@ -209,18 +283,38 @@ export default function PurchaseModal({
       throw new Error('يرجى التحقق من صحة الكود أولاً')
     }
 
+    // التحقق الإضافي قبل الشراء
     try {
-      // 1. تحديث حالة الكود
+      // التحقق النهائي من حالة الكود
+      const { data: finalCheck, error: checkError } = await supabase
+        .from('codes')
+        .select('*')
+        .eq('code', code.trim().toUpperCase())
+        .eq('is_used', false)
+        .single()
+
+      if (checkError || !finalCheck) {
+        throw new Error('الكود غير متاح أو تم استخدامه بالفعل')
+      }
+
+      // بدء المعاملة
+      const transactionId = `code_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+      // 1. تحديث حالة الكود (استخدام Transaction إذا أمكن)
       const { error: codeError } = await supabase
         .from('codes')
         .update({
           is_used: true,
           used_by: user.id,
-          used_at: new Date().toISOString()
+          used_at: new Date().toISOString(),
+          transaction_id: transactionId
         })
         .eq('id', validatedCode.id)
+        .eq('is_used', false) // شرط إضافي للتأكد من عدم الاستخدام المتزامن
 
-      if (codeError) throw new Error('فشل تحديث حالة الكود: ' + codeError.message)
+      if (codeError) {
+        throw new Error('فشل في استخدام الكود. قد يكون مستخدمًا بالفعل.')
+      }
 
       // 2. إضافة الباقة للمستخدم
       const expiresAt = new Date()
@@ -234,7 +328,9 @@ export default function PurchaseModal({
           purchased_at: new Date().toISOString(),
           expires_at: expiresAt.toISOString(),
           is_active: true,
-          source: 'code'
+          source: 'code',
+          transaction_id: transactionId,
+          code_used: validatedCode.code
         })
 
       if (packageError) {
@@ -244,12 +340,23 @@ export default function PurchaseModal({
           .update({
             is_used: false,
             used_by: null,
-            used_at: null
+            used_at: null,
+            transaction_id: null
           })
           .eq('id', validatedCode.id)
         
-        throw new Error('فشل إضافة الباقة: ' + packageError.message)
+        throw new Error('فشل في تفعيل الباقة. حاول مرة أخرى.')
       }
+
+      // 3. إضافة إشعار للمستخدم
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: user.id,
+          title: 'تفعيل ناجح 🎉',
+          message: `تم تفعيل باقة "${pkg.name}" بنجاح باستخدام الكود. ساري حتى ${expiresAt.toLocaleDateString('ar-EG')}`,
+          type: 'success'
+        })
 
       // نجاح الشراء
       setShowConfetti(true)
@@ -257,7 +364,7 @@ export default function PurchaseModal({
         onSuccess(pkg.id)
       }, 2000)
     } catch (err: any) {
-      throw new Error(err.message || 'فشل تفعيل الكود')
+      throw new Error(err.message || 'فشل عملية التفعيل بالكود')
     }
   }
 
@@ -266,8 +373,17 @@ export default function PurchaseModal({
       case 'weekly': return 'أسبوعية'
       case 'monthly': return 'شهرية'
       case 'term': return 'ترم كامل'
+      case 'offer': return 'عرض خاص'
       default: return 'خاص'
     }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('ar-EG', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
   }
 
   return (
@@ -298,6 +414,32 @@ export default function PurchaseModal({
               <p className={styles.modalSubtitle}>باقة {getPackageType()}</p>
             </div>
           </div>
+
+          {/* Warning if has active package */}
+          <AnimatePresence>
+            {hasActivePackage && activePackageInfo && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className={styles.warningSection}
+              >
+                <div className={styles.warningContent}>
+                  <AlertTriangle className={styles.warningIcon} />
+                  <div className={styles.warningText}>
+                    <h4 className={styles.warningTitle}>لديك باقة فعالة بالفعل!</h4>
+                    <p className={styles.warningDescription}>
+                      تم شراء هذه الباقة بتاريخ {formatDate(activePackageInfo.purchased_at)} وتنتهي في {formatDate(activePackageInfo.expires_at)}
+                    </p>
+                  </div>
+                </div>
+                <div className={styles.activePackageInfo}>
+                  <Info className={styles.infoIcon} />
+                  <span>لا يمكنك شراء نفس الباقة مرة أخرى حتى تنتهي صلاحيتها</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Price Section */}
           <div className={styles.priceSection}>
@@ -352,9 +494,10 @@ export default function PurchaseModal({
             <div className={styles.paymentMethods}>
               <button
                 onClick={() => setPaymentMethod('wallet')}
+                disabled={hasActivePackage}
                 className={`${styles.paymentMethod} ${
                   paymentMethod === 'wallet' ? styles.selectedMethod : ''
-                }`}
+                } ${hasActivePackage ? styles.disabledMethod : ''}`}
               >
                 <div className={styles.methodIcon}>
                   <CreditCard className={styles.methodSvg} />
@@ -364,6 +507,12 @@ export default function PurchaseModal({
                   <div className={styles.methodDescription}>
                     رصيدك: <span className={styles.balanceAmount}>{walletBalance.toLocaleString()}</span> جنيه
                   </div>
+                  {walletBalance < pkg.price && paymentMethod === 'wallet' && (
+                    <div className={styles.balanceWarning}>
+                      <AlertCircle className={styles.warningIconSmall} />
+                      <span>رصيد غير كافٍ</span>
+                    </div>
+                  )}
                 </div>
                 {paymentMethod === 'wallet' && (
                   <CheckCircle2 className={styles.checkIcon} style={{ color: theme.primary }} />
@@ -372,9 +521,10 @@ export default function PurchaseModal({
 
               <button
                 onClick={() => setPaymentMethod('code')}
+                disabled={hasActivePackage}
                 className={`${styles.paymentMethod} ${
                   paymentMethod === 'code' ? styles.selectedMethod : ''
-                }`}
+                } ${hasActivePackage ? styles.disabledMethod : ''}`}
               >
                 <div className={styles.methodIcon}>
                   <Ticket className={styles.methodSvg} />
@@ -397,14 +547,15 @@ export default function PurchaseModal({
                 <input
                   type="text"
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
                   className={styles.codeInput}
-                  placeholder="أدخل كود التفعيل"
+                  placeholder="أدخل كود التفعيل (8-16 حرف/رقم)"
                   dir="ltr"
+                  disabled={hasActivePackage}
                 />
                 <button
                   onClick={validateCode}
-                  disabled={isValidating || !code.trim()}
+                  disabled={isValidating || !code.trim() || hasActivePackage}
                   className={styles.validateButton}
                   style={{ background: theme.primary }}
                 >
@@ -453,16 +604,22 @@ export default function PurchaseModal({
                   <div className={styles.codeInfoGrid}>
                     <div className={styles.infoItem}>
                       <Lock className={styles.itemIcon} />
-                      <span>الكود صالح للاستخدام مرة واحدة</span>
+                      <span>الكود صالح للاستخدام مرة واحدة فقط</span>
                     </div>
                     <div className={styles.infoItem}>
                       <Users className={styles.itemIcon} />
-                      <span>مخصص لمستخدم واحد فقط</span>
+                      <span>مخصص لمستخدم واحد فقط (أنت)</span>
                     </div>
                     <div className={styles.infoItem}>
                       <BookOpen className={styles.itemIcon} />
-                      <span>مخصص لباقة: {pkg.name}</span>
+                      <span>مخصص للصف: {validatedCode.grade}</span>
                     </div>
+                    {validatedCode.expires_at && (
+                      <div className={styles.infoItem}>
+                        <Clock className={styles.itemIcon} />
+                        <span>ينتهي في: {formatDate(validatedCode.expires_at)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -473,8 +630,15 @@ export default function PurchaseModal({
           <div className={styles.actionSection}>
             <button
               onClick={handlePurchase}
-              disabled={isPurchasing || (paymentMethod === 'code' && !validatedCode)}
-              className={styles.purchaseButton}
+              disabled={
+                isPurchasing || 
+                hasActivePackage ||
+                (paymentMethod === 'wallet' && walletBalance < pkg.price) ||
+                (paymentMethod === 'code' && !validatedCode)
+              }
+              className={`${styles.purchaseButton} ${
+                hasActivePackage ? styles.disabledButton : ''
+              }`}
               style={{ 
                 background: paymentMethod === 'code' && validatedCode ? theme.success : theme.primary
               }}
@@ -484,10 +648,12 @@ export default function PurchaseModal({
                   <Loader2 className={`${styles.purchaseIcon} ${styles.spinning}`} />
                   جاري المعالجة...
                 </>
+              ) : hasActivePackage ? (
+                'الباقة مفعلة بالفعل'
               ) : paymentMethod === 'code' ? (
                 'تفعيل الكود'
               ) : (
-                'تأكيد الشراء من المحفظة'
+                `تأكيد الشراء بمبلغ ${pkg.price.toLocaleString()} جنيه`
               )}
             </button>
 
@@ -499,7 +665,7 @@ export default function PurchaseModal({
             {/* Security Badge */}
             <div className={styles.securityBadge}>
               <ShieldCheck className={styles.securityIcon} />
-              <span>معاملة آمنة ومشفرة</span>
+              <span>معاملة آمنة ومشفرة - كل كود لاستخدام واحد فقط</span>
             </div>
           </div>
         </motion.div>
