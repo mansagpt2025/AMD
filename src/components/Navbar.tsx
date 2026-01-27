@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from './Navbar.module.css';
@@ -27,8 +27,49 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User>(user);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+
+  // دالة للتحقق من حالة المصادقة
+  const checkAuthStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/auth/status', {
+        credentials: 'include', // لإرسال الكوكيز
+        cache: 'no-store', // لمنع التخزين المؤقت
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentUser(data);
+      } else {
+        // إذا فشل الطلب، نفترض أن المستخدم غير مسجل دخول
+        setCurrentUser({
+          isLoggedIn: false,
+          role: null,
+          name: '',
+          profileImage: ''
+        });
+      }
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      // في حالة الخطأ، نحتفظ بالحالة الحالية
+    }
+  }, []);
+
+  // التحقق من حالة المصادقة كل ثانية
+  useEffect(() => {
+    // التحقق الفوري عند التحميل
+    checkAuthStatus();
+    
+    // تعيين interval للتحقق كل ثانية
+    const intervalId = setInterval(() => {
+      checkAuthStatus();
+    }, 1000); // 1000 مللي ثانية = 1 ثانية
+    
+    // تنظيف interval عند إلغاء التحميل
+    return () => clearInterval(intervalId);
+  }, [checkAuthStatus]);
 
   // إغلاق القائمة المنسدلة عند النقر خارجها
   useEffect(() => {
@@ -61,8 +102,13 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
     { href: '/contact', label: 'تواصل معنا' },
   ];
 
-  if (user.isLoggedIn && user.role === 'admin') {
-    navLinks.push({ href: '/dashboard', label: 'لوحة التحكم' });
+  // إضافة روابط بناءً على دور المستخدم
+  if (currentUser.isLoggedIn) {
+    if (currentUser.role === 'admin') {
+      navLinks.push({ href: '/dashboard', label: 'لوحة التحكم' });
+    } else if (currentUser.role === 'student') {
+      navLinks.push({ href: '/student/dashboard', label: 'لوحة تحكم الطالب' });
+    }
   }
 
   return (
@@ -74,14 +120,14 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
             <Link href="/" className={styles.logoLink}>
               <div className={styles.logoWrapper}>
                 <div className={styles.logoImage}>
-<Image
-  src="/logo.svg"
-  alt="Logo"
-  width={50}
-  height={50}
-  className={styles.logoImage}
-  priority
-/>
+                  <Image
+                    src="/logo.svg"
+                    alt="Logo"
+                    width={50}
+                    height={50}
+                    className={styles.logoImage}
+                    priority
+                  />
                 </div>
                 <div className={styles.logoText}>
                   <h1 className={styles.logoTitle}>البارع</h1>
@@ -108,7 +154,7 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
           <div className={styles.actionsSection}>
 
             {/* أزرار المصادقة */}
-            {!user.isLoggedIn ? (
+            {!currentUser.isLoggedIn ? (
               <div className={styles.authButtons}>
                 <Link href="/login" className={styles.loginButton}>
                   تسجيل الدخول
@@ -117,7 +163,7 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
                   إنشاء حساب
                 </Link>
               </div>
-            ) : user.role === 'student' ? (
+            ) : currentUser.role === 'student' ? (
               // القائمة المنسدلة للطالب
               <div className={styles.profileDropdown} ref={dropdownRef}>
                 <button
@@ -129,7 +175,7 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
                     <div className={styles.profileImage}>
                       <FiUser className={styles.profileIcon} />
                     </div>
-                    <span className={styles.profileName}>{user.name.split(' ')[0]}</span>
+                    <span className={styles.profileName}>{currentUser.name.split(' ')[0]}</span>
                     <HiChevronDown className={`${styles.chevron} ${dropdownOpen ? styles.rotate : ''}`} />
                   </div>
                 </button>
@@ -142,7 +188,7 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
                       </div>
                       <div className={styles.dropdownProfileInfo}>
                         <p className={styles.dropdownProfileRole}>أهلًا :</p>
-                        <p className={styles.dropdownProfileName}>{user.name}</p>
+                        <p className={styles.dropdownProfileName}>{currentUser.name}</p>
                       </div>
                     </div>
                     <div className={styles.dropdownDivider}></div>
@@ -194,15 +240,15 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
         <div className={styles.mobileMenuContent}>
           <div className={styles.mobileMenuHeader}>
             <div className={styles.mobileProfile}>
-              {user.isLoggedIn ? (
+              {currentUser.isLoggedIn ? (
                 <>
                   <div className={styles.mobileProfileImage}>
                     <FiUser />
                   </div>
                   <div className={styles.mobileProfileInfo}>
-                    <p className={styles.mobileProfileName}>{user.name}</p>
+                    <p className={styles.mobileProfileName}>{currentUser.name}</p>
                     <p className={styles.mobileProfileRole}>
-                      {user.role === 'admin' ? 'أدمن' : 'طالب'}
+                      {currentUser.role === 'admin' ? 'أدمن' : 'طالب'}
                     </p>
                   </div>
                 </>
@@ -229,7 +275,7 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
           </div>
 
           <div className={styles.mobileActions}>
-            {!user.isLoggedIn ? (
+            {!currentUser.isLoggedIn ? (
               <div className={styles.mobileAuthButtons}>
                 <Link
                   href="/login"
