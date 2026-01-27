@@ -234,9 +234,9 @@ const Navbar = ({ toggleTheme, onLogout, theme }: NavbarProps) => {
   // إضافة روابط بناءً على دور المستخدم
   if (currentUser.isLoggedIn) {
     if (currentUser.role === 'admin') {
-      navLinks.push({ href: '/dashboard', label: 'لوحة التحكم' });
+      navLinks.push({ href: '/admin', label: 'لوحة التحكم' });
     } else if (currentUser.role === 'student') {
-      navLinks.push({ href: '/student-dashboard', label: 'لوحة تحكم الطالب' });
+      navLinks.push({ href: '/dashboard', label: 'لوحة تحكم الطالب' });
     }
   }
 

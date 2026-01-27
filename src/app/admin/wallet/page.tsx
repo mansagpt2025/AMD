@@ -91,10 +91,14 @@ export default function WalletPage() {
 
     setLoading(true);
     try {
+      console.log('Adding funds:', { userId: userData.id, amount: parseFloat(amount), description });
+      
       const result = await addWalletFundsAction(userData.id, parseFloat(amount), description);
       
+      console.log('Add funds result:', result);
+      
       if (result.success) {
-        setMessage({ type: 'success', text: 'تم إضافة الأموال بنجاح' });
+        setMessage({ type: 'success', text: result.data?.message || 'تم إضافة الأموال بنجاح' });
         
         // تحديث بيانات المستخدم
         const searchResult = await searchUserAction(userData.email);
@@ -112,7 +116,8 @@ export default function WalletPage() {
         setMessage({ type: 'error', text: result.error || 'حدث خطأ أثناء إضافة الأموال' });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'حدث خطأ غير متوقع' });
+      const errorMsg = error instanceof Error ? error.message : 'حدث خطأ غير متوقع';
+      setMessage({ type: 'error', text: errorMsg });
       console.error('Add funds error:', error);
     } finally {
       setLoading(false);

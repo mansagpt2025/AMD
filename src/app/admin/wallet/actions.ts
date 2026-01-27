@@ -14,11 +14,25 @@ export async function searchUserAction(identifier: string) {
 
 export async function addWalletFundsAction(userId: string, amount: number, description: string) {
   try {
+    console.log('Starting addWalletFundsAction:', { userId, amount, description });
+    
     const result = await addWalletFunds(userId, amount, description);
-    return { success: true, data: result };
+    
+    console.log('addWalletFunds result:', result);
+    
+    if (!result.success) {
+      return { success: false, error: result.message };
+    }
+
+    return { 
+      success: true, 
+      data: result,
+      newBalance: result.newBalance 
+    };
   } catch (error) {
     console.error('Add funds error:', error);
-    return { success: false, error: 'حدث خطأ أثناء إضافة الأموال' };
+    const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء إضافة الأموال';
+    return { success: false, error: errorMessage };
   }
 }
 
