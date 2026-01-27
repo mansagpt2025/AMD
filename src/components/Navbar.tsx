@@ -17,10 +17,11 @@ interface User {
 }
 
 interface NavbarProps {
-  toggleTheme: () => void;
-  onLogin: () => void;
-  onLogout: () => void;
-  theme: 'light' | 'dark';
+  user: User | null   // 👈 أضف السطر ده
+  toggleTheme: () => void
+  onLogin: () => void
+  onLogout: () => void
+  theme: 'light' | 'dark'
 }
 
 const Navbar = ({ toggleTheme, onLogout, theme }: NavbarProps) => {
