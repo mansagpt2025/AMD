@@ -1,7 +1,6 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Noto_Sans_Arabic, Inter } from 'next/font/google'
 import './globals.css'
-import logo from '@/public/logo.svg'
 
 // تحميل الخط العربي
 const notoSansArabic = Noto_Sans_Arabic({
@@ -10,22 +9,30 @@ const notoSansArabic = Noto_Sans_Arabic({
   weight: ['300', '400', '500', '600', '700', '800'],
 })
 
-
 // تحميل الخط الإنجليزي للعناصر التي قد تحتاجه
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
 })
 
+// تصدير viewport بشكل منفصل (مطلوب في Next.js 14+)
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
+
 export const metadata: Metadata = {
   title: 'البارع محمود الديب',
+  description: 'منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن التفوق و التميز في اللغة العربية.',
   keywords: ['اللغة العربية', 'الثانوية العامة', 'محمود الديب', 'البارع', 'تعليم'],
   authors: [{ name: 'محمود الديب' }],
   openGraph: {
     type: 'website',
     locale: 'ar_AR',
     url: 'https://mahmoud-eldeeb.com/',
-    title: 'البارع محمود الديب ',
+    title: 'البارع محمود الديب',
     description: 'منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن التفوق و التميز في اللغة العربية.',
     siteName: 'البارع محمود الديب',
     images: [
@@ -39,7 +46,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'البارع محمود الديب ',
+    title: 'البارع محمود الديب',
     description: 'منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن التفوق و التميز في اللغة العربية.',
     images: ['/logo.svg'],
   },
@@ -53,11 +60,6 @@ export const metadata: Metadata = {
       'max-image-preview': 'large',
       'max-snippet': -1,
     },
-  },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
   },
 }
 
@@ -82,27 +84,24 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
-        
-
 
         {/* Facebook Meta Tags */}
         <meta property="og:url" content="https://mahmoud-eldeeb.com/" />
         <meta property="og:type" content="website" />
         <meta property="og:title" content="البارع محمود الديب" />
         <meta property="og:description" content="منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن التفوق و التميز في اللغة العربية." />
-        <meta property="og:image" content="https://al-bare3.com/logo.svg" />
+        <meta property="og:image" content="https://mahmoud-eldeeb.com/logo.svg" />
         
         {/* Twitter Meta Tags */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta property="twitter:domain" content="al-bare3.com" />
+        <meta property="twitter:domain" content="mahmoud-eldeeb.com" />
         <meta property="twitter:url" content="https://mahmoud-eldeeb.com/" />
         <meta name="twitter:title" content="البارع محمود الديب" />
         <meta name="twitter:description" content="منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن التفوق و التميز في اللغة العربية." />
-        <meta name="twitter:image" content="https://al-bare3.com/logo.svg" />
+        <meta name="twitter:image" content="https://mahmoud-eldeeb.com/logo.svg" />
       </head>
       <body className={`${notoSansArabic.className} antialiased`}>
         <div id="root">
-          
           {children}
         </div>
         
@@ -151,7 +150,9 @@ export default function RootLayout({
                 if ('loading' in HTMLImageElement.prototype) {
                   const images = document.querySelectorAll('img[loading="lazy"]');
                   images.forEach(img => {
-                    img.src = img.dataset.src;
+                    if (img.dataset.src) {
+                      img.src = img.dataset.src;
+                    }
                   });
                 }
               })();

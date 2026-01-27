@@ -8,15 +8,9 @@ import {
   Wallet, BookOpen, Clock, Calendar, Loader2, GraduationCap,
   Users, Zap, TrendingUp, Award, Crown, Package,
   AlertCircle, CheckCircle2, PlayCircle, ArrowRight,
-  ShoppingCart, X, CreditCard, Ticket
+  ShoppingCart, X, CreditCard
 } from 'lucide-react'
 import styles from './GradePage.module.css'
-
-export const viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-};
 
 // الأنواع المحدثة حسب قاعدة البيانات
 interface Package {
@@ -196,7 +190,6 @@ export default function GradePage() {
   const [walletBalance, setWalletBalance] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [refreshing, setRefreshing] = useState(false)
   
   // Modal State
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
@@ -242,7 +235,6 @@ export default function GradePage() {
 
         if (packagesError) {
           console.error('Error fetching packages:', packagesError)
-          // استخدام بيانات وهمية إذا فشل الاتصال
           createDummyPackages()
         } else {
           setPackages(packagesData || [])
@@ -394,32 +386,35 @@ export default function GradePage() {
 
   // بعد الشراء الناجح
   const handlePurchaseSuccess = async () => {
-    if (selectedPackage) {
-      // إضافة الباقة مباشرة إلى userPackages لظهورها فوراً
-      const tempUserPackage: UserPackage = {
-        id: 'temp-' + Date.now(),
-        user_id: user.id,
-        package_id: selectedPackage.id,
-        purchased_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + (selectedPackage.duration_days || 30) * 24 * 60 * 60 * 1000).toISOString(),
-        is_active: true,
-        source: 'purchase',
-        packages: selectedPackage
-      }
-      
-      setUserPackages(prev => [...prev, tempUserPackage])
-      
-      // إزالة الباقة من القائمة المتاحة
-      setPackages(prev => prev.filter(p => p.id !== selectedPackage.id))
-      
-      // الانتقال إلى الباقة بعد ثانية
-      setTimeout(() => {
-        router.push(`/grades/${gradeSlug}/packages/${selectedPackage.id}`)
-      }, 1000)
+    if (!user?.id || !selectedPackage) {
+      setShowPurchaseModal(false)
+      return
     }
+    
+    // إضافة الباقة مباشرة إلى userPackages لظهورها فوراً
+    const tempUserPackage: UserPackage = {
+      id: 'temp-' + Date.now(),
+      user_id: user.id,
+      package_id: selectedPackage.id,
+      purchased_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + (selectedPackage.duration_days || 30) * 24 * 60 * 60 * 1000).toISOString(),
+      is_active: true,
+      source: 'purchase',
+      packages: selectedPackage
+    }
+    
+    setUserPackages(prev => [...prev, tempUserPackage])
+    
+    // إزالة الباقة من القائمة المتاحة
+    setPackages(prev => prev.filter(p => p.id !== selectedPackage.id))
     
     setShowPurchaseModal(false)
     setSelectedPackage(null)
+    
+    // الانتقال إلى الباقة بعد ثانية
+    setTimeout(() => {
+      router.push(`/grades/${gradeSlug}/packages/${tempUserPackage.package_id}`)
+    }, 1000)
   }
 
   // إعادة تحميل البيانات
