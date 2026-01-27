@@ -35,18 +35,22 @@ export const CodesTable: React.FC<{ refreshTrigger?: number }> = ({ refreshTrigg
     setLoading(true);
     try {
       let fetchedCodes: any[] = [];
+      let fetchedTotal = 0;
       
       if (searchQuery) {
         fetchedCodes = await codesService.searchCodes(searchQuery);
+        fetchedTotal = fetchedCodes.length;
       } else if (filterStatus === 'used') {
         fetchedCodes = await codesService.getUsedCodes();
+        fetchedTotal = fetchedCodes.length;
       } else if (filterStatus === 'unused') {
         fetchedCodes = await codesService.getUnusedCodes();
+        fetchedTotal = fetchedCodes.length;
       } else {
         const offset = (currentPage - 1) * itemsPerPage;
         const response = await codesService.getAllCodes(itemsPerPage, offset);
         fetchedCodes = response.data || response || [];
-        setTotalCodes(response.total || fetchedCodes.length || 0);
+        fetchedTotal = response.total || fetchedCodes.length || 0;
       }
 
       // تحويل البيانات لتتوافق مع interface Code
@@ -65,13 +69,7 @@ export const CodesTable: React.FC<{ refreshTrigger?: number }> = ({ refreshTrigg
       }));
 
       setCodes(formattedCodes);
-      
-      // تحديث العدد الإجمالي إذا لم يكن قد تم تحديثه بالفعل
-      if (!searchQuery && filterStatus === 'all') {
-        setTotalCodes(response.total || formattedCodes.length || 0);
-      } else {
-        setTotalCodes(formattedCodes.length);
-      }
+      setTotalCodes(fetchedTotal);
     } catch (error) {
       console.error('Error fetching codes:', error);
       setCodes([]);
