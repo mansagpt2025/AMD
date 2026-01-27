@@ -1,4 +1,5 @@
 import { createClientServer } from '../supabase-server'
+import { adminClient } from '../supabase-admin'
 
 // أنواع البيانات
 export interface User {
@@ -184,15 +185,17 @@ export async function searchUser(identifier: string) {
 
 // إضافة أموال للمحفظة
 export async function addWalletFunds(userId: string, amount: number, description?: string) {
-  const supabase = await createClientServer()
-
   try {
+    // استخدام Admin Client لتجاوز RLS
+    
     // Step 1: جلب الرصيد الحالي
-    const { data: wallet, error: fetchError } = await supabase
+    const { data: wallet, error: fetchError } = await adminClient
       .from('wallets')
       .select('id, balance')
       .eq('user_id', userId)
       .maybeSingle()
+
+    console.log('Fetch wallet result:', { wallet, fetchError })
 
     let currentBalance = 0
     let walletId = ''
@@ -201,7 +204,7 @@ export async function addWalletFunds(userId: string, amount: number, description
       // المحفظة غير موجودة، نحتاج إلى إنشاء واحدة جديدة
       console.log('Creating new wallet for user:', userId, 'with amount:', amount)
       
-      const { data: newWalletData, error: insertError } = await supabase
+      const { data: newWalletData, error: insertError } = await adminClient
         .from('wallets')
         .insert({
           user_id: userId,
@@ -232,7 +235,7 @@ export async function addWalletFunds(userId: string, amount: number, description
       console.log('New wallet created:', { walletId: createdWalletId, newBalance })
 
       // تسجيل العملية للمحفظة الجديدة
-      const { error: transactionError } = await supabase
+      const { error: transactionError } = await adminClient
         .from('wallet_transactions')
         .insert({
           user_id: userId,
@@ -277,7 +280,7 @@ export async function addWalletFunds(userId: string, amount: number, description
 
     console.log('Update payload:', updatePayload)
 
-    const { data: updateDataArray, error: updateError } = await supabase
+    const { data: updateDataArray, error: updateError } = await adminClient
       .from('wallets')
       .update(updatePayload)
       .eq('id', walletId)
@@ -311,7 +314,7 @@ export async function addWalletFunds(userId: string, amount: number, description
     console.log('Wallet updated successfully:', { savedBalance, newBalance })
 
     // التحقق من أن البيانات تم حفظها بالفعل بفحص مباشر
-    const { data: verifyData, error: verifyError } = await supabase
+    const { data: verifyData, error: verifyError } = await adminClient
       .from('wallets')
       .select('id, balance, updated_at')
       .eq('id', walletId)
@@ -324,7 +327,7 @@ export async function addWalletFunds(userId: string, amount: number, description
     })
 
     // Step 3: تسجيل العملية
-    const { error: transactionError } = await supabase
+    const { error: transactionError } = await adminClient
       .from('wallet_transactions')
       .insert({
         user_id: userId,
