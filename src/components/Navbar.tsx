@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from './Navbar.module.css';
 import { FiMenu, FiX, FiSun, FiMoon, FiUser, FiLogOut } from 'react-icons/fi';
 import { HiChevronDown } from 'react-icons/hi';
 import Image from 'next/image';
+import { supabase } from '@/lib/supabase/supabase-client';
 
 interface User {
   isLoggedIn: boolean;
@@ -16,14 +17,13 @@ interface User {
 }
 
 interface NavbarProps {
-  user: User;
   toggleTheme: () => void;
   onLogin: () => void;
   onLogout: () => void;
   theme: 'light' | 'dark';
 }
 
-const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
+const Navbar = ({ toggleTheme, onLogout, theme }: NavbarProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -33,112 +33,149 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
     name: '',
     profileImage: ''
   });
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // دالة للتحقق من حالة المصادقة مع إدارة الحالة
-  const checkAuthStatus = useCallback(async (isInitialCheck = false) => {
-    if (isInitialCheck) {
-      setIsCheckingAuth(true);
+  // دالة لتحميل بيانات المستخدم من Supabase
+  const loadUserData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // 1. الحصول على الجلسة الحالية من Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setCurrentUser({
+          isLoggedIn: false,
+          role: null,
+          name: '',
+          profileImage: ''
+        });
+        
+        // حذف من localStorage
+        localStorage.removeItem('supabase_auth_data');
+        return;
+      }
+
+      // 2. الحصول على بيانات المستخدم من جدول profiles
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) {
+        console.error('Error loading profile:', error);
+        
+        // إذا فشل تحميل الـ profile، نستخدم بيانات المستخدم الأساسية
+        setCurrentUser({
+          isLoggedIn: true,
+          role: 'student', // افتراضياً طالب
+          name: session.user.email?.split('@')[0] || 'مستخدم',
+          profileImage: '',
+        });
+      } else {
+        // تحديد دور المستخدم
+        let role: 'student' | 'admin' = 'student';
+        if (profileData.is_admin === true) {
+          role = 'admin';
+        }
+
+        setCurrentUser({
+          isLoggedIn: true,
+          role,
+          name: profileData.full_name || profileData.name || session.user.email?.split('@')[0] || 'مستخدم',
+          profileImage: profileData.avatar_url || profileData.profile_image || '',
+        });
+
+        // حفظ في localStorage للاستخدام السريع
+        localStorage.setItem('supabase_auth_data', JSON.stringify({
+          isLoggedIn: true,
+          role,
+          name: profileData.full_name || profileData.name || session.user.email?.split('@')[0] || 'مستخدم',
+          profileImage: profileData.avatar_url || profileData.profile_image || '',
+          lastUpdated: Date.now()
+        }));
+      }
+    } catch (err) {
+      console.error('Error in loadUserData:', err);
+      
+      // التحقق من localStorage كنسخة احتياطية
+      const storedData = localStorage.getItem('supabase_auth_data');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        // إذا كانت البيانات أقل من 5 دقائق، نستخدمها
+        if (Date.now() - parsedData.lastUpdated < 5 * 60 * 1000) {
+          setCurrentUser(parsedData);
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // التحقق من حالة المصادقة عند التحميل
+  useEffect(() => {
+    // أولاً: التحقق من localStorage للتحميل السريع
+    const storedData = localStorage.getItem('supabase_auth_data');
+    if (storedData) {
+      const parsedData = JSON.parse(storedData);
+      setCurrentUser(parsedData);
     }
     
-    try {
-      // استخدام fetch مع no-cache للتأكد من الحصول على أحدث حالة
-      const response = await fetch('/api/auth/status', {
-        method: 'GET',
-        credentials: 'include', // لإرسال الكوكيز
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-        },
-        cache: 'no-store'
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.isLoggedIn !== currentUser.isLoggedIn || 
-            data.role !== currentUser.role || 
-            data.name !== currentUser.name) {
-          setCurrentUser(data);
-          
-          // تخزين في localStorage للاستخدام الفوري
-          if (data.isLoggedIn) {
-            localStorage.setItem('userData', JSON.stringify(data));
-          } else {
-            localStorage.removeItem('userData');
-          }
-        }
-      } else {
-        // إذا فشل الطلب، نتحقق من localStorage
-        const storedUser = localStorage.getItem('userData');
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          setCurrentUser(parsedUser);
-        } else {
+    // ثانياً: التحقق من Supabase للحصول على أحدث البيانات
+    loadUserData();
+    
+    // ثالثاً: إعداد استماع لتغييرات المصادقة
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Supabase auth state changed:', event);
+        
+        if (event === 'SIGNED_IN' && session) {
+          await loadUserData();
+        } else if (event === 'SIGNED_OUT') {
           setCurrentUser({
             isLoggedIn: false,
             role: null,
             name: '',
             profileImage: ''
           });
+          localStorage.removeItem('supabase_auth_data');
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          await loadUserData();
         }
       }
-    } catch (error) {
-      console.error('Error checking auth status:', error);
-      // التحقق من localStorage في حالة الخطأ
-      const storedUser = localStorage.getItem('userData');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setCurrentUser(parsedUser);
-      }
-    } finally {
-      if (isInitialCheck) {
-        setIsCheckingAuth(false);
-      }
-    }
-  }, [currentUser]);
+    );
 
-  // التحقق من localStorage عند التحميل الأولي
-  useEffect(() => {
-    const storedUser = localStorage.getItem('userData');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setCurrentUser(parsedUser);
-    }
-    
-    // التحقق الفوري من الخادم
-    checkAuthStatus(true);
-  }, []);
-
-  // إعداد interval للتحقق كل 5 ثواني (بدلاً من كل ثانية لتقليل الحمل)
-  useEffect(() => {
+    // رابعاً: إعداد interval للتحقق كل 30 ثانية
     intervalRef.current = setInterval(() => {
-      checkAuthStatus();
-    }, 5000);
-    
+      loadUserData();
+    }, 30000);
+
+    // تنظيف
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      subscription.unsubscribe();
     };
-  }, [checkAuthStatus]);
+  }, []);
 
-  // تحديث عند تغيير pathname
+  // إعادة تحميل بيانات المستخدم عند تغيير المسار
   useEffect(() => {
-    checkAuthStatus();
+    if (pathname !== '/login' && pathname !== '/register') {
+      loadUserData();
+    }
   }, [pathname]);
 
-  // دالة تسجيل الخروج المحسنة
-  const handleLogout = useCallback(async () => {
+  // دالة تسجيل الخروج
+  const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       
-      // تحديث الحالة المحلية فورًا
       setCurrentUser({
         isLoggedIn: false,
         role: null,
@@ -146,31 +183,22 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
         profileImage: ''
       });
       
-      // إزالة من localStorage
-      localStorage.removeItem('userData');
+      localStorage.removeItem('supabase_auth_data');
       
-      // إغلاق القوائم المنسدلة
       setDropdownOpen(false);
       setMobileMenuOpen(false);
       
-      // استدعاء دالة تسجيل الخروج من props
-      onLogout();
+      // إذا كان هناك دالة onLogout من الـ props، استدعها
+      if (onLogout) {
+        onLogout();
+      }
       
       // إعادة التوجيه للصفحة الرئيسية
       window.location.href = '/';
-    } catch (error) {
-      console.error('Logout error:', error);
-      // حتى إذا فشل الطلب، نظهر المستخدم أنه تم تسجيل الخروج
-      setCurrentUser({
-        isLoggedIn: false,
-        role: null,
-        name: '',
-        profileImage: ''
-      });
-      localStorage.removeItem('userData');
-      window.location.href = '/';
+    } catch (err) {
+      console.error('Error logging out:', err);
     }
-  }, [onLogout]);
+  };
 
   // إغلاق القائمة المنسدلة عند النقر خارجها
   useEffect(() => {
@@ -212,14 +240,33 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
     }
   }
 
-  // عرض مؤشر تحميل أثناء التحقق من الحالة
-  if (isCheckingAuth && !currentUser.isLoggedIn) {
+  // عرض مؤشر تحميل أثناء جلب البيانات
+  if (isLoading && !currentUser.name) {
     return (
       <nav className={`${styles.navbar} ${scrolled ? styles.scrolled : ''} ${theme === 'dark' ? styles.dark : ''}`}>
         <div className={styles.navContainer}>
+          <div className={styles.logoSection}>
+            <Link href="/" className={styles.logoLink}>
+              <div className={styles.logoWrapper}>
+                <div className={styles.logoImage}>
+                  <Image
+                    src="@/public/logo.svg"
+                    alt="Logo"
+                    width={50}
+                    height={50}
+                    className={styles.logoImage}
+                    priority
+                  />
+                </div>
+                <div className={styles.logoText}>
+                  <h1 className={styles.logoTitle}>البارع</h1>
+                  <p className={styles.logoSubtitle}>محمود الديب</p>
+                </div>
+              </div>
+            </Link>
+          </div>
           <div className={styles.loadingState}>
             <div className={styles.spinner}></div>
-            <span>جاري التحقق من الحالة...</span>
           </div>
         </div>
       </nav>

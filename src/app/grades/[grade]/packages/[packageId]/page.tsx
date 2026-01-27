@@ -164,20 +164,35 @@ export default function PackagePage() {
         return
       }
 
-      // 2. التحقق من الاشتراك
-      const { data: userPackageData } = await supabase
+    // 2. التحقق من الاشتراك مع إعادة محاولة
+    let userPackageData = null
+    let retries = 0
+    const maxRetries = 5
+    
+    while (!userPackageData && retries < maxRetries) {
+      const { data: packageData } = await supabase
         .from('user_packages')
         .select('*')
         .eq('user_id', user.id)
         .eq('package_id', packageId)
         .eq('is_active', true)
         .single()
-
+      
+      userPackageData = packageData
+      
       if (!userPackageData) {
-        router.push(`/grades/${gradeSlug}?error=not_subscribed`)
-        return
+        retries++
+        // انتظار 1 ثانية قبل المحاولة التالية
+        await new Promise(resolve => setTimeout(resolve, 1000))
       }
-      setUserPackage(userPackageData)
+    }
+
+    if (!userPackageData) {
+      router.push(`/grades/${gradeSlug}?error=not_subscribed&package=${packageId}`)
+      return
+    }
+    
+    setUserPackage(userPackageData)
 
       // 3. جلب بيانات الباقة
       const { data: packageData } = await supabase

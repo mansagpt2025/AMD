@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 }
 
 // Type Definitions
-interface Package {
+interface PackageData {
   id: string;
   name: string;
   description: string | null;
@@ -28,14 +28,18 @@ interface Package {
   lecture_count: number | null;
   duration_days: number | null;
   type: string;
+  grade: string;
 }
 
 interface UserPackage {
   id: string;
+  user_id: string;
+  package_id: string;
   is_active: boolean;
   purchased_at: string;
   expires_at: string | null;
-  packages: Package;
+  source: string | null;
+  packages: PackageData;
 }
 
 interface Notification {
@@ -99,34 +103,46 @@ export default async function DashboardPage() {
   }
 
   // =========================
-  // PURCHASED PACKAGES (SAFE)
+  // PURCHASED PACKAGES - الطريقة الصحيحة
   // =========================
-  const { data: purchasedPackages, error: packagesError } = await supabase
-    .from('user_packages')
-    .select(`
-      id,
-      is_active,
-      purchased_at,
-      expires_at,
-      packages (
-        id,
-        name,
-        description,
-        image_url,
-        lecture_count,
-        duration_days,
-        type
-      )
-    `)
-    .eq('user_id', user.id)
-    .eq('is_active', true)
+  let userPackages: UserPackage[] | null = null
+  
+  try {
+    // الطريقة الأولى: جلب user_packages ثم جلب كل package على حدة
+    const { data: purchasedPackages, error: packagesError } = await supabase
+      .from('user_packages')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
 
-  if (packagesError) {
-    console.error('Packages error:', packagesError)
+    if (packagesError) {
+      console.error('Packages error:', packagesError)
+    }
+
+    if (purchasedPackages && purchasedPackages.length > 0) {
+      // جلب تفاصيل كل package
+      const packageIds = purchasedPackages.map(p => p.package_id)
+      const { data: packagesData, error: packagesDataError } = await supabase
+        .from('packages')
+        .select('*')
+        .in('id', packageIds)
+
+      if (packagesDataError) {
+        console.error('Packages data error:', packagesDataError)
+      }
+
+      // دمج البيانات
+      userPackages = purchasedPackages.map(up => {
+        const packageDetails = packagesData?.find(p => p.id === up.package_id)
+        return {
+          ...up,
+          packages: packageDetails
+        } as UserPackage
+      })
+    }
+  } catch (error) {
+    console.error('Error fetching packages:', error)
   }
-
-  // Cast the data to the correct type
-  const userPackages = purchasedPackages as unknown as UserPackage[] | null
 
   // =========================
   // STATISTICS
@@ -146,20 +162,26 @@ export default async function DashboardPage() {
   // =========================
   // NOTIFICATIONS
   // =========================
-  const { data: notifications, error: notificationsError } = await supabase
-    .from('notifications')
-    .select('*')
-    .or(`user_id.eq.${user.id},target_grade.eq.${profile.grade},target_grade.is.null`)
-    .eq('is_read', false)
-    .order('created_at', { ascending: false })
-    .limit(5)
+  let userNotifications: Notification[] | null = null
+  
+  try {
+    // جلب الإشعارات العامة والإشعارات المخصصة للصف
+    const { data: notifications, error: notificationsError } = await supabase
+      .from('notifications')
+      .select('*')
+      .or(`user_id.eq.${user.id},and(target_grade.eq.${profile.grade},user_id.is.null)`)
+      .eq('is_read', false)
+      .order('created_at', { ascending: false })
+      .limit(5)
 
-  if (notificationsError) {
-    console.error('Notifications error:', notificationsError)
+    if (notificationsError) {
+      console.error('Notifications error:', notificationsError)
+    }
+
+    userNotifications = notifications as unknown as Notification[] | null
+  } catch (error) {
+    console.error('Error fetching notifications:', error)
   }
-
-  // Cast notifications
-  const userNotifications = notifications as unknown as Notification[] | null
 
   // Helpers
   const getGradeText = (grade: string): string => {
@@ -197,6 +219,20 @@ export default async function DashboardPage() {
       month: 'long',
       day: 'numeric',
     })
+  }
+
+  const calculateDaysRemaining = (expiryDate: string | null): string => {
+    if (!expiryDate) return 'لا يوجد'
+    
+    const now = new Date()
+    const expiry = new Date(expiryDate)
+    const diffTime = expiry.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays < 0) return 'منتهي'
+    if (diffDays === 0) return 'ينتهي اليوم'
+    if (diffDays === 1) return 'يوم واحد'
+    return `${diffDays} يوم`
   }
 
   return (
@@ -354,8 +390,8 @@ export default async function DashboardPage() {
               </div>
               <div className="stat-content">
                 <h4 className="stat-value">
-                  {userPackages?.[0]?.expires_at 
-                    ? `يوم ${new Date(userPackages[0].expires_at).getDate()}`
+                  {userPackages && userPackages.length > 0 
+                    ? calculateDaysRemaining(userPackages[0].expires_at)
                     : 'لا يوجد'
                   }
                 </h4>
@@ -413,7 +449,7 @@ export default async function DashboardPage() {
                 <div key={userPackage.id} className="package-card">
                   <div className="package-header">
                     <div className="package-badge">
-                      {getPackageTypeText(userPackage.packages.type)}
+                      {getPackageTypeText(userPackage.packages?.type || '')}
                     </div>
                     <div className="package-status">
                       <span className={`status-indicator ${userPackage.is_active ? 'active' : 'inactive'}`}></span>
@@ -422,19 +458,19 @@ export default async function DashboardPage() {
                   </div>
                   
                   <div className="package-content">
-                    <h4>{userPackage.packages.name}</h4>
+                    <h4>{userPackage.packages?.name || 'باقة غير معروفة'}</h4>
                     <p className="package-description">
-                      {userPackage.packages.description}
+                      {userPackage.packages?.description || 'لا يوجد وصف'}
                     </p>
                     
                     <div className="package-details">
                       <div className="detail-item">
                         <BookOpen size={16} />
-                        <span>{userPackage.packages.lecture_count || 0} محاضرة</span>
+                        <span>{userPackage.packages?.lecture_count || 0} محاضرة</span>
                       </div>
                       <div className="detail-item">
                         <Clock size={16} />
-                        <span>{userPackage.packages.duration_days || 0} يوم</span>
+                        <span>{userPackage.packages?.duration_days || 0} يوم</span>
                       </div>
                     </div>
                     
@@ -443,7 +479,7 @@ export default async function DashboardPage() {
                         مشترك منذ {formatDate(userPackage.purchased_at)}
                       </span>
                       <Link
-                        href={`/grades/${profile.grade}/packages/${userPackage.packages.id}`}
+                        href={`/grades/${userPackage.packages?.grade || profile.grade}/packages/${userPackage.packages?.id}`}
                         className="access-button"
                       >
                         دخول الباقة

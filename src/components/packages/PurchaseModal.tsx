@@ -8,6 +8,7 @@ import {
   AlertCircle, Lock, Sparkles, Gift,
   ShieldCheck, Clock, Zap
 } from 'lucide-react'
+import { createClientBrowser } from '@/lib/supabase/sf-client'
 import styles from './PurchaseModal.module.css'
 
 interface PurchaseModalProps {
@@ -29,6 +30,7 @@ export default function PurchaseModal({
   onSuccess,
   theme
 }: PurchaseModalProps) {
+  const supabase = createClientBrowser()
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'code'>('wallet')
   const [code, setCode] = useState('')
   const [isValidating, setIsValidating] = useState(false)
@@ -38,7 +40,7 @@ export default function PurchaseModal({
   const [validatedCode, setValidatedCode] = useState<any>(null)
   const [showConfetti, setShowConfetti] = useState(false)
 
-  // التحقق من الكود
+  // التحقق من الكود باستخدام Supabase مباشرة
   const validateCode = async () => {
     if (!code.trim()) {
       setValidationError('يرجى إدخال الكود')
@@ -50,60 +52,103 @@ export default function PurchaseModal({
     setValidationSuccess('')
 
     try {
-      // محاكاة للتحقق من الكود - يمكن استبدالها بطلب API حقيقي
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // التحقق من الكود في جدول codes
+      const { data: codeData, error } = await supabase
+        .from('codes')
+        .select('*')
+        .eq('code', code.trim().toUpperCase())
+        .eq('grade', gradeSlug)
+        .eq('is_used', false)
+        .single()
 
-      // محاكاة نجاح التحقق
+      if (error || !codeData) {
+        throw new Error('كود غير صالح أو منتهي الصلاحية')
+      }
+
+      // التحقق من أن الكود مخصص لهذه الباقة أو يمكن استخدامه لأي باقة
+      if (codeData.package_id && codeData.package_id !== pkg.id) {
+        throw new Error('هذا الكود مخصص لباقة أخرى')
+      }
+
+      // التحقق من تاريخ الانتهاء
+      if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
+        throw new Error('الكود منتهي الصلاحية')
+      }
+
       setValidationSuccess('الكود صالح ويمكن استخدامه!')
-      setValidatedCode({
-        id: 'temp-code-id',
-        code: code,
-        packageId: pkg.id
-      })
+      setValidatedCode(codeData)
     } catch (err: any) {
-      setValidationError('كود غير صالح أو منتهي الصلاحية')
+      setValidationError(err.message || 'كود غير صالح')
       setValidatedCode(null)
     } finally {
       setIsValidating(false)
     }
   }
 
-  // إتمام الشراء
+  // إتمام الشراء باستخدام Supabase مباشرة
   const handlePurchase = async () => {
     setIsPurchasing(true)
+    setValidationError('')
 
     try {
       if (paymentMethod === 'wallet') {
-        // التحقق من الرصيد
-        if (walletBalance < pkg.price) {
-          throw new Error(`رصيد المحفظة غير كافٍ. الرصيد المطلوب: ${pkg.price} جنيه`)
-        }
-
-        // محاكاة عملية الشراء
-        await new Promise(resolve => setTimeout(resolve, 1500))
-
-        setShowConfetti(true)
-        setTimeout(() => {
-          onSuccess(pkg.id)
-        }, 2000)
+        await handleWalletPurchase()
       } else {
-        // الشراء بالكود
-        if (!validatedCode) {
-          throw new Error('يرجى التحقق من صحة الكود أولاً')
-        }
-
-        // محاكاة عملية الشراء بالكود
-        await new Promise(resolve => setTimeout(resolve, 1500))
-
-        setShowConfetti(true)
-        setTimeout(() => {
-          onSuccess(pkg.id)
-        }, 2000)
+        await handleCodePurchase()
       }
     } catch (err: any) {
-      setValidationError(err.message)
+      setValidationError(err.message || 'حدث خطأ أثناء عملية الشراء')
       setIsPurchasing(false)
     }
+  }
+
+  // الشراء بالمحفظة
+  const handleWalletPurchase = async () => {
+    // التحقق من الرصيد
+    if (walletBalance < pkg.price) {
+      throw new Error(`رصيد المحفظة غير كافٍ. الرصيد المطلوب: ${pkg.price} جنيه`)
+    }
+
+    // بدء المعاملة في Supabase
+    const { data, error } = await supabase.rpc('purchase_package_with_wallet', {
+      user_id: user.id,
+      package_id: pkg.id,
+      package_price: pkg.price
+    })
+
+    if (error) {
+      throw new Error(error.message || 'فشل عملية الشراء من المحفظة')
+    }
+
+    // نجاح الشراء
+    setShowConfetti(true)
+    setTimeout(() => {
+      onSuccess(pkg.id)
+    }, 2000)
+  }
+
+  // الشراء بالكود
+  const handleCodePurchase = async () => {
+    if (!validatedCode) {
+      throw new Error('يرجى التحقق من صحة الكود أولاً')
+    }
+
+    // استخدام المعاملة في Supabase
+    const { data, error } = await supabase.rpc('activate_package_with_code', {
+      user_id: user.id,
+      package_id: pkg.id,
+      code_id: validatedCode.id
+    })
+
+    if (error) {
+      throw new Error(error.message || 'فشل تفعيل الكود')
+    }
+
+    // نجاح الشراء
+    setShowConfetti(true)
+    setTimeout(() => {
+      onSuccess(pkg.id)
+    }, 2000)
   }
 
   const getPackageType = () => {
