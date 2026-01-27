@@ -199,13 +199,13 @@ export async function addWalletFunds(userId: string, amount: number, description
 
     if (!wallet) {
       // المحفظة غير موجودة، نحتاج إلى إنشاء واحدة جديدة
+      console.log('Creating new wallet for user:', userId, 'with amount:', amount)
+      
       const { data: newWalletData, error: insertError } = await supabase
         .from('wallets')
         .insert({
           user_id: userId,
-          balance: amount,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          balance: amount
         })
         .select('id, balance')
 
@@ -214,12 +214,19 @@ export async function addWalletFunds(userId: string, amount: number, description
         throw new Error(`فشل إنشاء المحفظة: ${insertError.message}`)
       }
 
+      if (!newWalletData || (Array.isArray(newWalletData) && newWalletData.length === 0)) {
+        console.error('No data returned after wallet creation')
+        throw new Error('فشل في إنشاء المحفظة - لم يتم استرجاع البيانات')
+      }
+
       const newWallet = Array.isArray(newWalletData) ? newWalletData[0] : newWalletData
       walletId = newWallet?.id
       const newBalance = amount
 
+      console.log('New wallet created:', { walletId, newBalance })
+
       // تسجيل العملية للمحفظة الجديدة
-      await supabase
+      const { error: transactionError } = await supabase
         .from('wallet_transactions')
         .insert({
           user_id: userId,
@@ -227,10 +234,15 @@ export async function addWalletFunds(userId: string, amount: number, description
           type: 'add',
           description: description || 'إضافة أموال عن طريق المدير',
           previous_balance: 0,
-          new_balance: newBalance,
-          created_at: new Date().toISOString()
+          new_balance: newBalance
         })
 
+      if (transactionError) {
+        console.error('Error recording transaction:', transactionError)
+      }
+
+      console.log('Wallet funds addition complete for new wallet')
+      
       return {
         success: true,
         newBalance: amount,
@@ -242,6 +254,8 @@ export async function addWalletFunds(userId: string, amount: number, description
     currentBalance = wallet.balance || 0
     walletId = wallet.id
     const newBalance = currentBalance + amount
+
+    console.log('Updating existing wallet:', { walletId, currentBalance, newBalance })
 
     // Step 2: تحديث الرصيد
     const { data: updateDataArray, error: updateError } = await supabase
@@ -258,12 +272,19 @@ export async function addWalletFunds(userId: string, amount: number, description
       throw new Error(`فشل تحديث الرصيد: ${updateError.message}`)
     }
 
+    if (!updateDataArray || (Array.isArray(updateDataArray) && updateDataArray.length === 0)) {
+      console.error('No data returned after wallet update')
+      throw new Error('فشل في تحديث الرصيد - لم يتم استرجاع البيانات')
+    }
+
     // الحصول على أول عنصر من المصفوفة
     const updateData = Array.isArray(updateDataArray) ? updateDataArray[0] : updateDataArray
     const savedBalance = updateData?.balance || newBalance
 
+    console.log('Wallet updated successfully:', { savedBalance })
+
     // Step 3: تسجيل العملية
-    await supabase
+    const { error: transactionError } = await supabase
       .from('wallet_transactions')
       .insert({
         user_id: userId,
@@ -271,9 +292,14 @@ export async function addWalletFunds(userId: string, amount: number, description
         type: 'add',
         description: description || 'إضافة أموال عن طريق المدير',
         previous_balance: currentBalance,
-        new_balance: savedBalance,
-        created_at: new Date().toISOString()
+        new_balance: savedBalance
       })
+
+    if (transactionError) {
+      console.error('Error recording transaction:', transactionError)
+    }
+
+    console.log('Wallet funds addition complete for existing wallet')
 
     return {
       success: true,
