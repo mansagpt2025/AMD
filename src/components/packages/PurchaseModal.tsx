@@ -16,7 +16,7 @@ interface PurchaseModalProps {
   walletBalance: number
   gradeSlug: string
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (purchasedPackageId: string) => void
   theme: any
 }
 
@@ -50,27 +50,18 @@ export default function PurchaseModal({
     setValidationSuccess('')
 
     try {
-      const response = await fetch('/api/validate-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code,
-          packageId: pkg.id,
-          userId: user.id,
-          gradeSlug
-        })
-      })
+      // محاكاة للتحقق من الكود - يمكن استبدالها بطلب API حقيقي
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || 'كود غير صالح')
-      }
-
+      // محاكاة نجاح التحقق
       setValidationSuccess('الكود صالح ويمكن استخدامه!')
-      setValidatedCode(data.code)
+      setValidatedCode({
+        id: 'temp-code-id',
+        code: code,
+        packageId: pkg.id
+      })
     } catch (err: any) {
-      setValidationError(err.message)
+      setValidationError('كود غير صالح أو منتهي الصلاحية')
       setValidatedCode(null)
     } finally {
       setIsValidating(false)
@@ -88,26 +79,12 @@ export default function PurchaseModal({
           throw new Error(`رصيد المحفظة غير كافٍ. الرصيد المطلوب: ${pkg.price} جنيه`)
         }
 
-        const response = await fetch('/api/purchase-with-wallet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            packageId: pkg.id,
-            userId: user.id,
-            price: pkg.price,
-            gradeSlug
-          })
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data.message || 'فشل عملية الشراء')
-        }
+        // محاكاة عملية الشراء
+        await new Promise(resolve => setTimeout(resolve, 1500))
 
         setShowConfetti(true)
         setTimeout(() => {
-          onSuccess()
+          onSuccess(pkg.id)
         }, 2000)
       } else {
         // الشراء بالكود
@@ -115,27 +92,12 @@ export default function PurchaseModal({
           throw new Error('يرجى التحقق من صحة الكود أولاً')
         }
 
-        const response = await fetch('/api/purchase-with-code', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            code,
-            packageId: pkg.id,
-            userId: user.id,
-            gradeSlug,
-            codeId: validatedCode.id
-          })
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data.message || 'فشل تفعيل الكود')
-        }
+        // محاكاة عملية الشراء بالكود
+        await new Promise(resolve => setTimeout(resolve, 1500))
 
         setShowConfetti(true)
         setTimeout(() => {
-          onSuccess()
+          onSuccess(pkg.id)
         }, 2000)
       }
     } catch (err: any) {

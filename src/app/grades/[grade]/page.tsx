@@ -16,7 +16,7 @@ import PackageCard from '@/components/packages/PackageCard'
 import { getGradeTheme } from '@/lib/utils/grade-themes'
 import styles from './GradePage.module.css'
 
-// الأنواع
+// الأنواع المحدثة حسب قاعدة البيانات
 interface Package {
   id: string
   name: string
@@ -28,14 +28,18 @@ interface Package {
   grade: string
   duration_days: number
   is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 interface UserPackage {
   id: string
+  user_id: string
   package_id: string
   purchased_at: string
   expires_at: string
   is_active: boolean
+  source: string
   packages: Package
 }
 
@@ -58,6 +62,7 @@ export default function GradePage() {
   const [walletBalance, setWalletBalance] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
   
   // Modal State
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
@@ -76,6 +81,15 @@ export default function GradePage() {
     if (gradeSlug) {
       fetchData()
       checkUser()
+      
+      // تحديث تلقائي كل 5 ثوانٍ
+      const interval = setInterval(() => {
+        if (!loading && !refreshing) {
+          refreshUserData()
+        }
+      }, 5000)
+
+      return () => clearInterval(interval)
     }
   }, [gradeSlug])
 
@@ -84,16 +98,20 @@ export default function GradePage() {
     setError(null)
 
     try {
-      // جلب بيانات الصف
+      // جلب بيانات الصف من جدول grades
       const { data: gradeData } = await supabase
         .from('grades')
         .select('*')
         .eq('slug', gradeSlug)
         .single()
 
-      setGrade(gradeData || { name: `الصف ${gradeSlug === 'first' ? 'الأول' : gradeSlug === 'second' ? 'الثاني' : 'الثالث'} الثانوي` })
+      setGrade(gradeData || { 
+        name: gradeSlug === 'first' ? 'الصف الأول الثانوي' : 
+              gradeSlug === 'second' ? 'الصف الثاني الثانوي' : 
+              'الصف الثالث الثانوي' 
+      })
 
-      // جلب الباقات
+      // جلب الباقات من جدول packages
       const { data: packagesData } = await supabase
         .from('packages')
         .select('*')
@@ -104,6 +122,7 @@ export default function GradePage() {
       setPackages(packagesData || [])
 
     } catch (err: any) {
+      console.error('Error fetching data:', err)
       setError(err.message)
     } finally {
       setLoading(false)
@@ -117,7 +136,7 @@ export default function GradePage() {
       if (currentUser) {
         setUser(currentUser)
         
-        // جلب رصيد المحفظة
+        // جلب رصيد المحفظة من جدول wallets
         const { data: walletData } = await supabase
           .from('wallets')
           .select('balance')
@@ -126,10 +145,45 @@ export default function GradePage() {
 
         if (walletData) setWalletBalance(walletData.balance)
 
-        // جلب باقات المستخدم
+        // جلب باقات المستخدم من جدول user_packages
         const { data: userPackagesData } = await supabase
           .from('user_packages')
-          .select(`*, packages (*)`)
+          .select(`
+            *,
+            packages (*)
+          `)
+          .eq('user_id', currentUser.id)
+          .eq('is_active', true)
+
+        if (userPackagesData) {
+          // تصفية الباقات الخاصة بهذا الصف فقط
+          const filtered = userPackagesData.filter((up: any) => 
+            up.packages?.grade === gradeSlug
+          )
+          setUserPackages(filtered)
+        }
+      }
+    } catch (err) {
+      console.error('Error checking user:', err)
+    }
+  }
+
+  // تحديث بيانات المستخدم فقط
+  const refreshUserData = async () => {
+    if (!user || refreshing) return
+    
+    setRefreshing(true)
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      
+      if (currentUser) {
+        // تحديث باقات المستخدم
+        const { data: userPackagesData } = await supabase
+          .from('user_packages')
+          .select(`
+            *,
+            packages (*)
+          `)
           .eq('user_id', currentUser.id)
           .eq('is_active', true)
 
@@ -139,9 +193,20 @@ export default function GradePage() {
           )
           setUserPackages(filtered)
         }
+
+        // تحديث رصيد المحفظة
+        const { data: walletData } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', currentUser.id)
+          .single()
+
+        if (walletData) setWalletBalance(walletData.balance)
       }
     } catch (err) {
-      console.error('Error checking user:', err)
+      console.error('Error refreshing user data:', err)
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -186,10 +251,51 @@ export default function GradePage() {
   }
 
   // بعد الشراء الناجح
-  const handlePurchaseSuccess = async () => {
-    await checkUser()
-    fetchData()
-    setShowPurchaseModal(false)
+  const handlePurchaseSuccess = async (purchasedPackageId: string) => {
+    try {
+      // تحديث فوري للمنظر
+      if (selectedPackage) {
+        // إضافة الباقة مباشرة إلى userPackages لظهورها فوراً
+        const tempUserPackage: UserPackage = {
+          id: 'temp-' + Date.now(),
+          user_id: user.id,
+          package_id: selectedPackage.id,
+          purchased_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
+          is_active: true,
+          source: 'purchase',
+          packages: selectedPackage
+        }
+        
+        setUserPackages(prev => [...prev, tempUserPackage])
+        
+        // إزالة الباقة من القائمة المتاحة
+        setPackages(prev => prev.filter(p => p.id !== selectedPackage.id))
+      }
+
+      // إعادة تحميل البيانات من الخادم للتأكد
+      await checkUser()
+      
+      // إعادة تحميل الباقات
+      const { data: packagesData } = await supabase
+        .from('packages')
+        .select('*')
+        .eq('grade', gradeSlug)
+        .eq('is_active', true)
+        .order('price', { ascending: true })
+
+      setPackages(packagesData || [])
+
+      // الانتقال إلى الباقة بعد ثانية
+      setTimeout(() => {
+        router.push(`/grades/${gradeSlug}/packages/${purchasedPackageId}`)
+      }, 1500)
+    } catch (error) {
+      console.error('Error updating after purchase:', error)
+    } finally {
+      setShowPurchaseModal(false)
+      setSelectedPackage(null)
+    }
   }
 
   if (loading) {
@@ -212,6 +318,14 @@ export default function GradePage() {
       '--text': theme.text,
       '--border': theme.border
     } as React.CSSProperties}>
+      
+      {/* مؤشر التحديث الخفي */}
+      {refreshing && (
+        <div className={styles.refreshIndicator}>
+          <Loader2 className={styles.refreshSpinner} size={16} />
+        </div>
+      )}
+
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerContent}>
@@ -257,7 +371,9 @@ export default function GradePage() {
               </div>
               <div className={styles.gradeInfo}>
                 <h2 className={styles.gradeName}>
-                  {grade?.name || `الصف ${gradeSlug === 'first' ? 'الأول' : gradeSlug === 'second' ? 'الثاني' : 'الثالث'} الثانوي`}
+                  {grade?.name || (gradeSlug === 'first' ? 'الصف الأول الثانوي' : 
+                                 gradeSlug === 'second' ? 'الصف الثاني الثانوي' : 
+                                 'الصف الثالث الثانوي')}
                 </h2>
                 <p className={styles.gradeDescription}>رحلة نحو التميز الأكاديمي</p>
               </div>
@@ -461,7 +577,7 @@ export default function GradePage() {
         )}
 
         {/* حالة عدم وجود باقات */}
-        {packages.length === 0 && (
+        {packages.length === 0 && purchasedPackages.length === 0 && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}

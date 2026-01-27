@@ -27,57 +27,97 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User>(user);
+  const [currentUser, setCurrentUser] = useState<User>({
+    isLoggedIn: false,
+    role: null,
+    name: '',
+    profileImage: ''
+  });
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // دالة للتحقق من حالة المصادقة
-  const checkAuthStatus = useCallback(async () => {
+  // دالة للتحقق من حالة المصادقة مع إدارة الحالة
+  const checkAuthStatus = useCallback(async (isInitialCheck = false) => {
+    if (isInitialCheck) {
+      setIsCheckingAuth(true);
+    }
+    
     try {
-      const response = await fetch('/api/auth/check-session', {
+      // استخدام fetch مع no-cache للتأكد من الحصول على أحدث حالة
+      const response = await fetch('/api/auth/status', {
         method: 'GET',
-        credentials: 'include',
+        credentials: 'include', // لإرسال الكوكيز
         headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+        cache: 'no-store'
       });
       
       if (response.ok) {
         const data = await response.json();
-        setCurrentUser(data);
+        if (data.isLoggedIn !== currentUser.isLoggedIn || 
+            data.role !== currentUser.role || 
+            data.name !== currentUser.name) {
+          setCurrentUser(data);
+          
+          // تخزين في localStorage للاستخدام الفوري
+          if (data.isLoggedIn) {
+            localStorage.setItem('userData', JSON.stringify(data));
+          } else {
+            localStorage.removeItem('userData');
+          }
+        }
       } else {
-        // إذا فشل الطلب، نفترض أن المستخدم غير مسجل دخول
-        setCurrentUser({
-          isLoggedIn: false,
-          role: null,
-          name: '',
-          profileImage: ''
-        });
+        // إذا فشل الطلب، نتحقق من localStorage
+        const storedUser = localStorage.getItem('userData');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          setCurrentUser(parsedUser);
+        } else {
+          setCurrentUser({
+            isLoggedIn: false,
+            role: null,
+            name: '',
+            profileImage: ''
+          });
+        }
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
-      // في حالة الخطأ، نحتفظ بالحالة الحالية
+      // التحقق من localStorage في حالة الخطأ
+      const storedUser = localStorage.getItem('userData');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setCurrentUser(parsedUser);
+      }
+    } finally {
+      if (isInitialCheck) {
+        setIsCheckingAuth(false);
+      }
     }
+  }, [currentUser]);
+
+  // التحقق من localStorage عند التحميل الأولي
+  useEffect(() => {
+    const storedUser = localStorage.getItem('userData');
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setCurrentUser(parsedUser);
+    }
+    
+    // التحقق الفوري من الخادم
+    checkAuthStatus(true);
   }, []);
 
-  // تحديث حالة المستخدم عندما تتغير من props
+  // إعداد interval للتحقق كل 5 ثواني (بدلاً من كل ثانية لتقليل الحمل)
   useEffect(() => {
-    setCurrentUser(user);
-  }, [user]);
-
-  // التحقق من حالة المصادقة كل ثانية
-  useEffect(() => {
-    // التحقق الفوري عند التحميل
-    checkAuthStatus();
-    
-    // تعيين interval للتحقق كل ثانية
     intervalRef.current = setInterval(() => {
       checkAuthStatus();
-    }, 1000);
+    }, 5000);
     
-    // تنظيف interval عند إلغاء التحميل
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -85,7 +125,12 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
     };
   }, [checkAuthStatus]);
 
-  // دالة تسجيل الخروج المدمجة
+  // تحديث عند تغيير pathname
+  useEffect(() => {
+    checkAuthStatus();
+  }, [pathname]);
+
+  // دالة تسجيل الخروج المحسنة
   const handleLogout = useCallback(async () => {
     try {
       await fetch('/api/auth/logout', {
@@ -101,14 +146,29 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
         profileImage: ''
       });
       
+      // إزالة من localStorage
+      localStorage.removeItem('userData');
+      
       // إغلاق القوائم المنسدلة
       setDropdownOpen(false);
       setMobileMenuOpen(false);
       
       // استدعاء دالة تسجيل الخروج من props
       onLogout();
+      
+      // إعادة التوجيه للصفحة الرئيسية
+      window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
+      // حتى إذا فشل الطلب، نظهر المستخدم أنه تم تسجيل الخروج
+      setCurrentUser({
+        isLoggedIn: false,
+        role: null,
+        name: '',
+        profileImage: ''
+      });
+      localStorage.removeItem('userData');
+      window.location.href = '/';
     }
   }, [onLogout]);
 
@@ -150,6 +210,20 @@ const Navbar = ({ user, toggleTheme, onLogout, theme }: NavbarProps) => {
     } else if (currentUser.role === 'student') {
       navLinks.push({ href: '/student-dashboard', label: 'لوحة تحكم الطالب' });
     }
+  }
+
+  // عرض مؤشر تحميل أثناء التحقق من الحالة
+  if (isCheckingAuth && !currentUser.isLoggedIn) {
+    return (
+      <nav className={`${styles.navbar} ${scrolled ? styles.scrolled : ''} ${theme === 'dark' ? styles.dark : ''}`}>
+        <div className={styles.navContainer}>
+          <div className={styles.loadingState}>
+            <div className={styles.spinner}></div>
+            <span>جاري التحقق من الحالة...</span>
+          </div>
+        </div>
+      </nav>
+    );
   }
 
   return (

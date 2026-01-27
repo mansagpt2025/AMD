@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { createClientBrowser } from '@/lib/supabase/sf-client'
@@ -15,6 +15,71 @@ import {
 import { getGradeTheme } from '@/lib/utils/grade-themes'
 import styles from './PackagePage.module.css'
 
+// أنواع البيانات
+interface LectureContent {
+  id: string
+  lecture_id: string
+  type: 'video' | 'pdf' | 'exam' | 'text'
+  title: string
+  description: string
+  content_url: string
+  duration_minutes: number
+  order_number: number
+  is_active: boolean
+  max_attempts: number
+  pass_score: number
+  created_at: string
+}
+
+interface Lecture {
+  id: string
+  package_id: string
+  title: string
+  description: string
+  image_url: string
+  order_number: number
+  is_active: boolean
+  created_at: string
+}
+
+interface Package {
+  id: string
+  name: string
+  description: string
+  price: number
+  image_url: string
+  grade: string
+  type: 'weekly' | 'monthly' | 'term' | 'offer'
+  lecture_count: number
+  duration_days: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+interface UserProgress {
+  id: string
+  user_id: string
+  lecture_content_id: string
+  package_id: string
+  status: 'not_started' | 'in_progress' | 'completed' | 'passed' | 'failed'
+  score: number
+  attempts: number
+  last_accessed_at: string
+  completed_at: string
+  created_at: string
+}
+
+interface UserPackage {
+  id: string
+  user_id: string
+  package_id: string
+  purchased_at: string
+  expires_at: string
+  is_active: boolean
+  source: string
+}
+
 export default function PackagePage() {
   const router = useRouter()
   const params = useParams()
@@ -25,22 +90,73 @@ export default function PackagePage() {
   
   const theme = getGradeTheme(gradeSlug)
 
-  const [packageData, setPackageData] = useState<any>(null)
-  const [lectures, setLectures] = useState<any[]>([])
-  const [contents, setContents] = useState<any[]>([])
-  const [userProgress, setUserProgress] = useState<any[]>([])
-  const [userPackage, setUserPackage] = useState<any>(null)
+  const [packageData, setPackageData] = useState<Package | null>(null)
+  const [lectures, setLectures] = useState<Lecture[]>([])
+  const [contents, setContents] = useState<LectureContent[]>([])
+  const [userProgress, setUserProgress] = useState<UserProgress[]>([])
+  const [userPackage, setUserPackage] = useState<UserPackage | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [completion, setCompletion] = useState(0)
   const [activeSection, setActiveSection] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
+  // دالة حساب نسبة الإتمام
+  const calculateCompletion = useCallback((progress: UserProgress[], allContents: LectureContent[]) => {
+    if (allContents.length === 0) {
+      setCompletion(0)
+      return
+    }
+
+    const completed = progress.filter(p => 
+      p.status === 'completed' || p.status === 'passed'
+    ).length
+
+    const calculatedCompletion = Math.round((completed / allContents.length) * 100)
+    setCompletion(calculatedCompletion)
+  }, [])
+
+  // دالة جلب تقدم المستخدم
+  const fetchUserProgress = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || !packageId) return
+
+      const { data: progressData } = await supabase
+        .from('user_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('package_id', packageId)
+
+      if (progressData) {
+        setUserProgress(progressData)
+        calculateCompletion(progressData, contents)
+      }
+    } catch (err) {
+      console.error('Error fetching progress:', err)
+    }
+  }, [packageId, contents, supabase, calculateCompletion])
+
+  // بدء التحديث التلقائي
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!refreshing && contents.length > 0) {
+        fetchUserProgress()
+      }
+    }, 1000) // تحديث كل ثانية
+
+    return () => clearInterval(interval)
+  }, [fetchUserProgress, refreshing, contents.length])
+
+  // تحميل البيانات الأولية
   useEffect(() => {
     checkAccessAndLoadData()
   }, [])
 
   const checkAccessAndLoadData = async () => {
     try {
+      setLoading(true)
+      
       // 1. التحقق من تسجيل الدخول
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -69,6 +185,11 @@ export default function PackagePage() {
         .select('*')
         .eq('id', packageId)
         .single()
+
+      if (!packageData) {
+        setError('الباقة غير موجودة')
+        return
+      }
       setPackageData(packageData)
 
       // 4. جلب المحاضرات
@@ -78,9 +199,11 @@ export default function PackagePage() {
         .eq('package_id', packageId)
         .eq('is_active', true)
         .order('order_number')
+
       setLectures(lecturesData || [])
 
       // 5. جلب محتويات المحاضرات
+      let fetchedContents: LectureContent[] = []
       if (lecturesData?.length) {
         const lectureIds = lecturesData.map(l => l.id)
         const { data: contentsData } = await supabase
@@ -89,7 +212,9 @@ export default function PackagePage() {
           .in('lecture_id', lectureIds)
           .eq('is_active', true)
           .order('order_number')
-        setContents(contentsData || [])
+
+        fetchedContents = contentsData || []
+        setContents(fetchedContents)
       }
 
       // 6. جلب تقدم المستخدم
@@ -98,32 +223,21 @@ export default function PackagePage() {
         .select('*')
         .eq('user_id', user.id)
         .eq('package_id', packageId)
+
       setUserProgress(progressData || [])
 
       // 7. حساب نسبة الإتمام
-      calculateCompletion(progressData || [], contents)
+      calculateCompletion(progressData || [], fetchedContents)
 
     } catch (err: any) {
-      setError(err.message)
+      console.error('Error loading data:', err)
+      setError(err.message || 'حدث خطأ في تحميل البيانات')
     } finally {
       setLoading(false)
     }
   }
 
-  const calculateCompletion = (progress: any[], allContents: any[]) => {
-    if (allContents.length === 0) {
-      setCompletion(0)
-      return
-    }
-
-    const completed = progress.filter(p => 
-      p.status === 'completed' || p.status === 'passed'
-    ).length
-
-    setCompletion(Math.round((completed / allContents.length) * 100))
-  }
-
-  const isContentAccessible = (lectureIndex: number, contentIndex: number, content: any) => {
+  const isContentAccessible = (lectureIndex: number, contentIndex: number, content: LectureContent) => {
     // الباقات الأسبوعية: كل المحتويات مفتوحة
     if (packageData?.type === 'weekly') return true
 
@@ -153,7 +267,7 @@ export default function PackagePage() {
   }
 
   const getPreviousContents = (lectureIndex: number, contentIndex: number) => {
-    const previous: any[] = []
+    const previous: LectureContent[] = []
     
     // جمع محتويات المحاضرات السابقة
     for (let i = 0; i < lectureIndex; i++) {
@@ -185,7 +299,7 @@ export default function PackagePage() {
     return progress?.status || 'not_started'
   }
 
-  const handleContentClick = (content: any, lectureIndex: number, contentIndex: number) => {
+  const handleContentClick = (content: LectureContent, lectureIndex: number, contentIndex: number) => {
     if (!isContentAccessible(lectureIndex, contentIndex, content)) {
       alert('يجب إتمام المحتوى السابق أولاً')
       return
@@ -228,6 +342,13 @@ export default function PackagePage() {
 
   return (
     <div className={styles.pageContainer}>
+      {/* مؤشر التحديث الخفي */}
+      {refreshing && (
+        <div className={styles.refreshIndicator}>
+          <Loader2 className={styles.refreshSpinner} size={16} />
+        </div>
+      )}
+
       {/* Header */}
       <div className={styles.header} style={{ background: theme.header }}>
         <div className={styles.headerContent}>
@@ -245,7 +366,9 @@ export default function PackagePage() {
               onClick={() => router.push(`/grades/${gradeSlug}`)}
               className={styles.breadcrumbItem}
             >
-              {gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}
+              {gradeSlug === 'first' ? 'الصف الأول' : 
+               gradeSlug === 'second' ? 'الصف الثاني' : 
+               'الصف الثالث'}
             </button>
             <ChevronRight className={styles.breadcrumbSeparator} />
             <span className={styles.currentPage}>{packageData.name}</span>
@@ -535,10 +658,12 @@ export default function PackagePage() {
                   </li>
                 </>
               )}
-              <li className={styles.noteItem}>
-                <Calendar className={styles.noteIcon} />
-                مدة الاشتراك تنتهي في: {new Date(userPackage?.expires_at).toLocaleDateString('ar-EG')}
-              </li>
+              {userPackage?.expires_at && (
+                <li className={styles.noteItem}>
+                  <Calendar className={styles.noteIcon} />
+                  مدة الاشتراك تنتهي في: {new Date(userPackage.expires_at).toLocaleDateString('ar-EG')}
+                </li>
+              )}
             </ul>
           </div>
         </section>

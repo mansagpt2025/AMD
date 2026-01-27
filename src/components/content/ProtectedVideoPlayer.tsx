@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { Play, Pause, Volume2, Maximize, Settings, Lock } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Play, Pause, Volume2, Maximize, Settings, Lock, Loader2 } from 'lucide-react'
 import styles from './ProtectedVideoPlayer.module.css'
 
 interface ProtectedVideoPlayerProps {
   videoUrl: string
   contentId: string
   userId: string
+  packageId: string
   onProgress: (progress: number) => void
   theme: any
 }
@@ -16,11 +17,13 @@ export default function ProtectedVideoPlayer({
   videoUrl,
   contentId,
   userId,
+  packageId,
   onProgress,
   theme
 }: ProtectedVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -29,23 +32,112 @@ export default function ProtectedVideoPlayer({
   const [showControls, setShowControls] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [protectionLayer, setProtectionLayer] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
+  const [lastSavedProgress, setLastSavedProgress] = useState(0)
+
+  // إنشاء عميل Supabase
+  const createClientBrowser = () => {
+    return require('@/lib/supabase/sf-client').createClientBrowser()
+  }
+
+  // حفظ التقدم في قاعدة البيانات
+  const saveProgressToDB = useCallback(async (progress: number) => {
+    try {
+      const supabase = createClientBrowser()
+      
+      // التحقق مما إذا كان التقدم قد تغير بشكل كبير
+      if (Math.abs(progress - lastSavedProgress) < 5 && progress !== 100) {
+        return // لا تحفظ إذا كان التغيير أقل من 5% (ما لم يكن 100%)
+      }
+
+      // تحديث أو إنشاء سجل التقدم
+      const { error } = await supabase
+        .from('user_progress')
+        .upsert({
+          user_id: userId,
+          lecture_content_id: contentId,
+          package_id: packageId,
+          status: progress >= 90 ? 'completed' : 'in_progress',
+          score: progress,
+          last_accessed_at: new Date().toISOString(),
+          ...(progress >= 90 && { completed_at: new Date().toISOString() })
+        }, {
+          onConflict: 'user_id,lecture_content_id'
+        })
+
+      if (!error) {
+        setLastSavedProgress(progress)
+        onProgress(progress) // تحديث المكون الأب
+      }
+    } catch (error) {
+      console.error('Error saving progress:', error)
+    }
+  }, [userId, contentId, packageId, onProgress, lastSavedProgress])
+
+  // جلب التقدم الحالي
+  const fetchCurrentProgress = useCallback(async () => {
+    try {
+      const supabase = createClientBrowser()
+      const { data } = await supabase
+        .from('user_progress')
+        .select('score')
+        .eq('user_id', userId)
+        .eq('lecture_content_id', contentId)
+        .single()
+
+      if (data?.score) {
+        setLastSavedProgress(data.score)
+        return data.score
+      }
+    } catch (error) {
+      console.error('Error fetching progress:', error)
+    }
+    return 0
+  }, [userId, contentId])
 
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
 
+    // تحميل التقدم عند البدء
+    fetchCurrentProgress().then(savedProgress => {
+      if (savedProgress > 0 && video.duration > 0) {
+        video.currentTime = (savedProgress / 100) * video.duration
+      }
+    })
+
     const handleTimeUpdate = () => {
-      setCurrentTime(video.currentTime)
-      const progress = (video.currentTime / video.duration) * 100
-      onProgress(progress)
+      if (!video.duration) return
+      
+      const currentTime = video.currentTime
+      const progress = (currentTime / video.duration) * 100
+      
+      setCurrentTime(currentTime)
+      
+      // تحديث التقدم كل ثانية
+      if (progressTimerRef.current) {
+        clearTimeout(progressTimerRef.current)
+      }
+      
+      progressTimerRef.current = setTimeout(() => {
+        saveProgressToDB(progress)
+      }, 1000)
     }
 
     const handleLoadedMetadata = () => {
       setDuration(video.duration)
+      setIsLoading(false)
+    }
+
+    const handleEnded = () => {
+      setIsPlaying(false)
+      saveProgressToDB(100) // حفظ 100% عند الانتهاء
+      onProgress(100)
     }
 
     video.addEventListener('timeupdate', handleTimeUpdate)
     video.addEventListener('loadedmetadata', handleLoadedMetadata)
+    video.addEventListener('ended', handleEnded)
 
     // حماية الفيديو
     const handleContextMenu = (e: MouseEvent) => e.preventDefault()
@@ -58,18 +150,52 @@ export default function ProtectedVideoPlayer({
       if (e.key === 'F12') {
         e.preventDefault()
       }
+      // منع مسطرة المسافات للتشغيل/الإيقاف
+      if (e.code === 'Space') {
+        e.preventDefault()
+        togglePlay()
+      }
     }
 
+    // منع فك ترميز الفيديو
+    const handleCanPlay = () => {
+      video.setAttribute('controlslist', 'nodownload nofullscreen')
+    }
+
+    video.addEventListener('canplay', handleCanPlay)
     document.addEventListener('contextmenu', handleContextMenu)
     document.addEventListener('keydown', handleKeyDown)
+
+    // حفظ التقدم عند مغادرة الصفحة
+    const handleBeforeUnload = () => {
+      if (video.duration > 0) {
+        const progress = (video.currentTime / video.duration) * 100
+        saveProgressToDB(progress)
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      video.removeEventListener('ended', handleEnded)
+      video.removeEventListener('canplay', handleCanPlay)
       document.removeEventListener('contextmenu', handleContextMenu)
       document.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      
+      if (progressTimerRef.current) {
+        clearTimeout(progressTimerRef.current)
+      }
+      
+      // حفظ التقدم النهائي
+      if (video.duration > 0) {
+        const progress = (video.currentTime / video.duration) * 100
+        saveProgressToDB(progress)
+      }
     }
-  }, [])
+  }, [saveProgressToDB, fetchCurrentProgress])
 
   const togglePlay = () => {
     if (!videoRef.current) return
@@ -88,6 +214,12 @@ export default function ProtectedVideoPlayer({
     const time = parseFloat(e.target.value)
     videoRef.current.currentTime = time
     setCurrentTime(time)
+    
+    // حفظ التقدم عند السحب
+    if (duration > 0) {
+      const progress = (time / duration) * 100
+      saveProgressToDB(progress)
+    }
   }
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,8 +256,19 @@ export default function ProtectedVideoPlayer({
       ref={containerRef}
       className={styles.videoPlayerContainer}
       onMouseEnter={() => setShowControls(true)}
-      onMouseLeave={() => setShowControls(false)}
+      onMouseLeave={() => {
+        if (isPlaying) {
+          setTimeout(() => setShowControls(false), 2000)
+        }
+      }}
     >
+      {isLoading && (
+        <div className={styles.loadingOverlay}>
+          <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
+          <p className={styles.loadingText}>جاري تحميل الفيديو...</p>
+        </div>
+      )}
+
       {/* حماية الطبقة الشفافة */}
       {protectionLayer && (
         <div className={styles.protectionLayer} />
@@ -139,8 +282,10 @@ export default function ProtectedVideoPlayer({
         controls={false}
         onEnded={() => {
           setIsPlaying(false)
-          onProgress(100)
+          saveProgressToDB(100)
         }}
+        preload="metadata"
+        crossOrigin="anonymous"
       />
 
       {/* عناصر التحكم */}
@@ -155,6 +300,7 @@ export default function ProtectedVideoPlayer({
               value={currentTime}
               onChange={handleSeek}
               className={styles.progressBar}
+              style={{ '--progress': `${(currentTime / (duration || 1)) * 100}%` } as React.CSSProperties}
             />
             <div className={styles.timeDisplay}>
               <span className={styles.timeText}>{formatTime(currentTime)}</span>
