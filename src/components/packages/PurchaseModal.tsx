@@ -10,6 +10,11 @@ import {
   Info
 } from 'lucide-react'
 import { createClientBrowser } from '@/lib/supabase/sf2-client'
+import { 
+  deductWalletBalance, 
+  markCodeAsUsed, 
+  createUserPackage 
+} from '@/app/grades/[grade]/actions'
 import styles from './PurchaseModal.module.css'
 
 interface PurchaseModalProps {
@@ -205,55 +210,24 @@ export default function PurchaseModal({
     }
 
     try {
-      // بدء المعاملة
-      const transactionId = `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-      // 1. خصم المبلغ من المحفظة
-      const newBalance = walletBalance - pkg.price
+      // 1. خصم المبلغ من المحفظة باستخدام Server Action
+      const deductResult = await deductWalletBalance(user.id, pkg.price, pkg.id, 'wallet')
       
-      const { error: walletError } = await supabase
-        .from('wallets')
-        .update({ 
-          balance: newBalance,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id)
-
-      if (walletError) {
-        console.error('Wallet update error:', walletError)
-        throw new Error('فشل في خصم المبلغ من المحفظة')
+      if (!deductResult.success) {
+        throw new Error(deductResult.message)
       }
 
       // 2. إضافة الباقة للمستخدم
-      const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + (pkg.duration_days || 30))
-
-      const { error: packageError } = await supabase
-        .from('user_packages')
-        .insert({
-          user_id: user.id,
-          package_id: pkg.id,
-          purchased_at: new Date().toISOString(),
-          expires_at: expiresAt.toISOString(),
-          is_active: true,
-          source: 'wallet',
-          transaction_id: transactionId
-        })
-
-      if (packageError) {
-        // إذا فشل إضافة الباقة، نعيد المبلغ للمحفظة
-        await supabase
-          .from('wallets')
-          .update({ 
-            balance: walletBalance,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id)
-        
-        throw new Error('فشل في إضافة الباقة لحسابك')
+      const packageResult = await createUserPackage(user.id, pkg.id, pkg.duration_days || 30, 'wallet')
+      
+      if (!packageResult.success) {
+        throw new Error(packageResult.message)
       }
 
       // 3. إضافة إشعار للمستخدم
+      const expiresAt = new Date()
+      expiresAt.setDate(expiresAt.getDate() + (pkg.duration_days || 30))
+
       await supabase
         .from('notifications')
         .insert({
@@ -297,58 +271,34 @@ export default function PurchaseModal({
         throw new Error('الكود غير متاح أو تم استخدامه بالفعل')
       }
 
-      // بدء المعاملة
-      const transactionId = `code_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-      // 1. تحديث حالة الكود (استخدام Transaction إذا أمكن)
-      const { error: codeError } = await supabase
-        .from('codes')
-        .update({
-          is_used: true,
-          used_by: user.id,
-          used_at: new Date().toISOString(),
-          transaction_id: transactionId
-        })
-        .eq('id', validatedCode.id)
-        .eq('is_used', false) // شرط إضافي للتأكد من عدم الاستخدام المتزامن
-
-      if (codeError) {
-        throw new Error('فشل في استخدام الكود. قد يكون مستخدمًا بالفعل.')
+      // 1. تحديث حالة الكود (استخدام Server Action)
+      const codeResult = await markCodeAsUsed(validatedCode.id, user.id)
+      
+      if (!codeResult.success) {
+        throw new Error(codeResult.message)
       }
 
-      // 2. إضافة الباقة للمستخدم
-      const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + (pkg.duration_days || 30))
-
-      const { error: packageError } = await supabase
-        .from('user_packages')
-        .insert({
-          user_id: user.id,
-          package_id: pkg.id,
-          purchased_at: new Date().toISOString(),
-          expires_at: expiresAt.toISOString(),
-          is_active: true,
-          source: 'code',
-          transaction_id: transactionId,
-          code_used: validatedCode.code
-        })
-
-      if (packageError) {
+      // 2. إضافة الباقة للمستخدم (Server Action)
+      const packageResult = await createUserPackage(user.id, pkg.id, pkg.duration_days || 30, 'code')
+      
+      if (!packageResult.success) {
         // إذا فشل إضافة الباقة، نعيد الكود لحالته السابقة
         await supabase
           .from('codes')
           .update({
             is_used: false,
             used_by: null,
-            used_at: null,
-            transaction_id: null
+            used_at: null
           })
           .eq('id', validatedCode.id)
         
-        throw new Error('فشل في تفعيل الباقة. حاول مرة أخرى.')
+        throw new Error(packageResult.message)
       }
 
       // 3. إضافة إشعار للمستخدم
+      const expiresAt = new Date()
+      expiresAt.setDate(expiresAt.getDate() + (pkg.duration_days || 30))
+
       await supabase
         .from('notifications')
         .insert({
