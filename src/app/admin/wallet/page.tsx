@@ -1,8 +1,33 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Wallet, AlertCircle, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Wallet, AlertCircle, CheckCircle, User, CreditCard, History } from 'lucide-react';
 import styles from './page.module.css';
+import { searchUser, addWalletFunds, getRecentTransactions } from '@/lib/database/admin';
+import { createClient } from '@/lib/supabase';
+
+interface UserProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  grade: string;
+  role: string;
+  created_at: string;
+  wallets: { balance: number }[];
+}
+
+interface Transaction {
+  id: string;
+  amount: number;
+  type: string;
+  description: string;
+  created_at: string;
+  profiles: {
+    full_name: string;
+    email: string;
+  };
+}
 
 export default function WalletPage() {
   const [searchType, setSearchType] = useState<'phone' | 'email'>('phone');
@@ -10,7 +35,23 @@ export default function WalletPage() {
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [userData, setUserData] = useState<any>(null);
+  const [userData, setUserData] = useState<UserProfile | null>(null);
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [description, setDescription] = useState('');
+
+  // جلب آخر العمليات عند تحميل الصفحة
+  useEffect(() => {
+    loadRecentTransactions();
+  }, []);
+
+  const loadRecentTransactions = async () => {
+    try {
+      const transactions = await getRecentTransactions(5);
+      setRecentTransactions(transactions as any);
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    }
+  };
 
   const handleSearch = async () => {
     if (!identifier.trim()) {
@@ -19,19 +60,20 @@ export default function WalletPage() {
     }
 
     setLoading(true);
+    setMessage(null);
+
     try {
-      // هنا سيتم استدعاء API للبحث عن المستخدم
-      const mockUser = {
-        id: '123',
-        fullName: 'أحمد محمد',
-        email: 'ahmed@example.com',
-        phone: '01012345678',
-        currentBalance: 1500
-      };
-      setUserData(mockUser);
-      setMessage(null);
+      const user = await searchUser(identifier);
+      if (user) {
+        setUserData(user);
+        setMessage({ type: 'success', text: 'تم العثور على المستخدم بنجاح' });
+      } else {
+        setMessage({ type: 'error', text: 'لم يتم العثور على المستخدم' });
+        setUserData(null);
+      }
     } catch (error) {
-      setMessage({ type: 'error', text: 'لم يتم العثور على المستخدم' });
+      setMessage({ type: 'error', text: 'حدث خطأ أثناء البحث' });
+      console.error('Search error:', error);
     } finally {
       setLoading(false);
     }
@@ -45,37 +87,66 @@ export default function WalletPage() {
 
     setLoading(true);
     try {
-      // هنا سيتم استدعاء API لإضافة الأموال
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const result = await addWalletFunds(userData.id, parseFloat(amount), description);
       
-      setMessage({ 
-        type: 'success', 
-        text: `تم إضافة ${amount} جنيه إلى محفظة ${userData.fullName} بنجاح` 
-      });
-      
-      // تحديث الرصيد الظاهري
-      setUserData({
-        ...userData,
-        currentBalance: userData.currentBalance + parseFloat(amount)
-      });
-      
-      setAmount('');
+      if (result.success) {
+        setMessage({ type: 'success', text: result.message });
+        
+        // تحديث بيانات المستخدم
+        const updatedUser = await searchUser(userData.email);
+        if (updatedUser) {
+          setUserData(updatedUser);
+        }
+        
+        // تحديث قائمة العمليات
+        loadRecentTransactions();
+        
+        // إعادة تعيين الحقول
+        setAmount('');
+        setDescription('');
+      } else {
+        setMessage({ type: 'error', text: result.message });
+      }
     } catch (error) {
-      setMessage({ type: 'error', text: 'حدث خطأ أثناء إضافة الأموال' });
+      setMessage({ type: 'error', text: 'حدث خطأ غير متوقع' });
+      console.error('Add funds error:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `قبل ${diffMins} دقيقة`;
+    if (diffHours < 24) return `قبل ${diffHours} ساعة`;
+    if (diffDays < 7) return `قبل ${diffDays} يوم`;
+    return date.toLocaleDateString('ar-EG');
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-blue-100 rounded-xl">
-            <Wallet className="w-8 h-8 text-blue-600" />
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-lg">
+            <Wallet className="w-8 h-8 text-white" />
           </div>
           <div>
-            <h1 className={styles.title}>المحفظة</h1>
+            <h1 className={styles.title}>المحفظة المالية</h1>
             <p className={styles.subtitle}>إدارة أرصدة الطلاب وإضافة الأموال</p>
           </div>
         </div>
@@ -84,20 +155,25 @@ export default function WalletPage() {
       <div className={styles.content}>
         <div className={styles.searchSection}>
           <div className={styles.searchCard}>
-            <h2 className={styles.cardTitle}>البحث عن الطالب</h2>
+            <h2 className={styles.cardTitle}>
+              <Search className="inline-block w-5 h-5 ml-2" />
+              البحث عن الطالب
+            </h2>
             
             <div className={styles.searchType}>
               <button
+                type="button"
                 className={`${styles.searchTypeBtn} ${searchType === 'phone' ? styles.active : ''}`}
                 onClick={() => setSearchType('phone')}
               >
-                البحث برقم الهاتف
+                📱 البحث برقم الهاتف
               </button>
               <button
+                type="button"
                 className={`${styles.searchTypeBtn} ${searchType === 'email' ? styles.active : ''}`}
                 onClick={() => setSearchType('email')}
               >
-                البحث بالبريد الإلكتروني
+                📧 البحث بالبريد الإلكتروني
               </button>
             </div>
 
@@ -106,16 +182,26 @@ export default function WalletPage() {
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder={searchType === 'phone' ? 'أدخل رقم الهاتف' : 'أدخل البريد الإلكتروني'}
+                placeholder={searchType === 'phone' ? 'أدخل رقم الهاتف (مثال: 01012345678)' : 'أدخل البريد الإلكتروني'}
                 className={styles.searchInput}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               />
               <button
                 onClick={handleSearch}
-                disabled={loading}
-                className={styles.searchButton}
+                disabled={loading || !identifier}
+                className={`${styles.searchButton} ${loading ? styles.loading : ''}`}
               >
-                <Search className="w-5 h-5" />
-                بحث
+                {loading ? (
+                  <>
+                    <div className={styles.spinner}></div>
+                    جاري البحث...
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-5 h-5" />
+                    بحث
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -137,94 +223,180 @@ export default function WalletPage() {
             <div className={styles.userCard}>
               <div className={styles.userInfo}>
                 <div className={styles.userAvatar}>
-                  {userData.fullName.charAt(0)}
+                  {getInitials(userData.full_name)}
                 </div>
-                <div>
-                  <h3 className={styles.userName}>{userData.fullName}</h3>
+                <div className="flex-1">
+                  <h3 className={styles.userName}>{userData.full_name}</h3>
                   <div className={styles.userDetails}>
-                    <span>📧 {userData.email}</span>
-                    <span>📱 {userData.phone}</span>
+                    <span className={styles.userDetailItem}>
+                      <User className="inline-block w-4 h-4 ml-1" />
+                      {userData.grade}
+                    </span>
+                    <span className={styles.userDetailItem}>
+                      📧 {userData.email}
+                    </span>
+                    <span className={styles.userDetailItem}>
+                      📱 {userData.phone}
+                    </span>
+                    <span className={styles.userDetailItem}>
+                      📅 عضو منذ {formatDate(userData.created_at)}
+                    </span>
                   </div>
                 </div>
               </div>
 
               <div className={styles.balanceCard}>
-                <span className={styles.balanceLabel}>الرصيد الحالي</span>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={styles.balanceLabel}>الرصيد الحالي</span>
+                  <Wallet className="w-6 h-6 text-green-100" />
+                </div>
                 <div className={styles.balanceAmount}>
-                  <Wallet className="w-6 h-6 text-green-600" />
-                  <span className={styles.amount}>{userData.currentBalance.toLocaleString()} جنيه</span>
+                  <span className={styles.amount}>
+                    {(userData.wallets?.[0]?.balance || 0).toLocaleString()}
+                  </span>
+                  <span className={styles.currency}>جنيه مصري</span>
                 </div>
               </div>
             </div>
 
             <div className={styles.addFundsCard}>
-              <h3 className={styles.cardTitle}>إضافة أموال</h3>
+              <h3 className={styles.cardTitle}>
+                <CreditCard className="inline-block w-5 h-5 ml-2" />
+                إضافة أموال للمحفظة
+              </h3>
               
-              <div className={styles.amountInputGroup}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>المبلغ</label>
+                <div className={styles.amountInputGroup}>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0"
+                    className={styles.amountInput}
+                    min="1"
+                    step="1"
+                  />
+                  <span className={styles.currencyInput}>ج.م</span>
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>وصف العملية (اختياري)</label>
                 <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="المبلغ بالجنيه"
-                  className={styles.amountInput}
-                  min="1"
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="مثال: إضافة رصيد لشراء باقة الرياضيات"
+                  className={styles.descriptionInput}
                 />
-                <span className={styles.currency}>جنيه</span>
+              </div>
+
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">المبالغ السريعة:</p>
+                <div className="flex flex-wrap gap-2">
+                  {[100, 200, 500, 1000, 2000].map((quickAmount) => (
+                    <button
+                      key={quickAmount}
+                      type="button"
+                      onClick={() => setAmount(quickAmount.toString())}
+                      className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
+                        amount === quickAmount.toString()
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                      }`}
+                    >
+                      {quickAmount} ج.م
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <button
                 onClick={handleAddFunds}
-                disabled={loading || !amount}
-                className={styles.addButton}
+                disabled={loading || !amount || parseFloat(amount) <= 0}
+                className={`${styles.addButton} ${loading ? styles.loading : ''}`}
               >
-                {loading ? 'جاري الإضافة...' : 'إضافة إلى المحفظة'}
+                {loading ? (
+                  <>
+                    <div className={styles.spinner}></div>
+                    جاري الإضافة...
+                  </>
+                ) : (
+                  'إضافة إلى المحفظة'
+                )}
               </button>
 
-              <div className={styles.quickAmounts}>
-                <span>المبالغ السريعة:</span>
-                {[100, 200, 500, 1000].map((quickAmount) => (
-                  <button
-                    key={quickAmount}
-                    onClick={() => setAmount(quickAmount.toString())}
-                    className={styles.quickAmountBtn}
-                  >
-                    {quickAmount} جنيه
-                  </button>
-                ))}
-              </div>
+              <p className="text-xs text-gray-500 mt-3 text-center">
+                سيتم تحديث الرصيد فوراً وسيكون متاحاً للطالب للشراء فوراً
+              </p>
             </div>
           </div>
         )}
 
         <div className={styles.transactionsSection}>
-          <h2 className={styles.sectionTitle}>آخر العمليات</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className={styles.sectionTitle}>
+              <History className="inline-block w-5 h-5 ml-2" />
+              آخر العمليات
+            </h2>
+            <button
+              onClick={loadRecentTransactions}
+              className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+            >
+              تحديث
+            </button>
+          </div>
+
           <div className={styles.transactionsList}>
-            {transactions.map((transaction, index) => (
-              <div key={index} className={styles.transactionItem}>
-                <div className={styles.transactionIcon}>
-                  {transaction.type === 'add' ? '➕' : '➖'}
-                </div>
-                <div className={styles.transactionDetails}>
-                  <div className={styles.transactionHeader}>
-                    <span className={styles.transactionUser}>{transaction.user}</span>
-                    <span className={`${styles.transactionAmount} ${transaction.type === 'add' ? styles.positive : styles.negative}`}>
-                      {transaction.amount} جنيه
-                    </span>
+            {recentTransactions.length > 0 ? (
+              recentTransactions.map((transaction) => (
+                <div key={transaction.id} className={styles.transactionItem}>
+                  <div className={`${styles.transactionIcon} ${
+                    transaction.type === 'add' ? styles.transactionAdd : 
+                    transaction.type === 'deduct' ? styles.transactionDeduct : 
+                    styles.transactionPurchase
+                  }`}>
+                    {transaction.type === 'add' ? '➕' : 
+                     transaction.type === 'deduct' ? '➖' : '🛒'}
                   </div>
-                  <span className={styles.transactionTime}>{transaction.time}</span>
+                  <div className={styles.transactionDetails}>
+                    <div className={styles.transactionHeader}>
+                      <div>
+                        <span className={styles.transactionUser}>
+                          {transaction.profiles.full_name}
+                        </span>
+                        <span className={styles.transactionDescription}>
+                          {transaction.description}
+                        </span>
+                      </div>
+                      <span className={`${styles.transactionAmount} ${
+                        transaction.type === 'add' ? styles.positive : styles.negative
+                      }`}>
+                        {transaction.type === 'add' ? '+' : '-'}
+                        {transaction.amount.toLocaleString()} ج.م
+                      </span>
+                    </div>
+                    <div className={styles.transactionFooter}>
+                      <span className={styles.transactionEmail}>
+                        {transaction.profiles.email}
+                      </span>
+                      <span className={styles.transactionTime}>
+                        {formatDate(transaction.created_at)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <History className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p>لا توجد عمليات سابقة</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 }
-
-const transactions = [
-  { user: 'أحمد محمد', amount: 500, type: 'add', time: 'قبل 5 دقائق' },
-  { user: 'محمد علي', amount: 300, type: 'add', time: 'قبل ساعة' },
-  { user: 'سارة أحمد', amount: 200, type: 'add', time: 'قبل 3 ساعات' },
-  { user: 'علي حسن', amount: 1000, type: 'add', time: 'أمس' },
-];

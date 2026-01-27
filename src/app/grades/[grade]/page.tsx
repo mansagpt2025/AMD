@@ -10,6 +10,7 @@ import {
   AlertCircle, CheckCircle2, PlayCircle, ArrowRight,
   ShoppingCart, X, CreditCard
 } from 'lucide-react'
+import PurchaseModal from '@/components/packages/PurchaseModal' // استيراد المودال الحقيقي
 import styles from './GradePage.module.css'
 
 interface Package {
@@ -101,77 +102,6 @@ const SimplePackageCard = ({
   )
 }
 
-const SimplePurchaseModal = ({
-  pkg,
-  onClose,
-  onConfirm
-}: {
-  pkg: Package,
-  onClose: () => void,
-  onConfirm: () => void
-}) => {
-  return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.modalContent}>
-        <div className={styles.modalHeader}>
-          <h3>تأكيد الشراء</h3>
-          <button onClick={onClose} className={styles.closeButton}>
-            <X size={20} />
-          </button>
-        </div>
-        
-        <div className={styles.modalBody}>
-          <div className={styles.modalPackageInfo}>
-            <h4>{pkg.name}</h4>
-            <p>{pkg.description}</p>
-            <div className={styles.modalDetails}>
-              <div className={styles.modalDetail}>
-                <CheckCircle2 size={16} />
-                <span>{pkg.lecture_count} محاضرة</span>
-              </div>
-              <div className={styles.modalDetail}>
-                <CheckCircle2 size={16} />
-                <span>صلاحية {pkg.duration_days} يوم</span>
-              </div>
-              <div className={styles.modalDetail}>
-                <CheckCircle2 size={16} />
-                <span>مناسب للصف {pkg.grade}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className={styles.modalPrice}>
-            <span>السعر: </span>
-            <span className={styles.modalPriceValue}>
-              {pkg.price.toLocaleString()} جنيه
-            </span>
-          </div>
-          
-          <div className={styles.paymentOptions}>
-            <button className={styles.walletPayment}>
-              <Wallet size={18} />
-              الدفع من المحفظة
-            </button>
-            <button className={styles.cardPayment}>
-              <CreditCard size={18} />
-              بطاقة ائتمان
-            </button>
-          </div>
-        </div>
-        
-        <div className={styles.modalFooter}>
-          <button className={styles.cancelButton} onClick={onClose}>
-            إلغاء
-          </button>
-          <button className={styles.confirmButton} onClick={onConfirm}>
-            تأكيد الشراء
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function GradePage() {
   const router = useRouter()
   const params = useParams()
@@ -203,6 +133,7 @@ export default function GradePage() {
     }
   }, [gradeSlug])
 
+  // دالة لتحميل البيانات
   const fetchData = async () => {
     setLoading(true)
     setError(null)
@@ -239,14 +170,18 @@ export default function GradePage() {
       if (currentUser) {
         setUser(currentUser)
         
-        // جلب رصيد المحفظة
-        const { data: walletData } = await supabase
+        // جلب رصيد المحفظة الحقيقي من قاعدة البيانات
+        const { data: walletData, error: walletError } = await supabase
           .from('wallets')
           .select('balance')
           .eq('user_id', currentUser.id)
           .single()
         
-        if (walletData) setWalletBalance(walletData.balance || 0)
+        if (walletError && walletError.code !== 'PGRST116') {
+          console.error('Error fetching wallet:', walletError)
+        }
+        
+        setWalletBalance(walletData?.balance || 0)
 
         // جلب باقات المستخدم المشتراة مع تفاصيل الباقة
         const { data: userPackagesData, error: userPackagesError } = await supabase
@@ -273,6 +208,7 @@ export default function GradePage() {
     }
   }
 
+  // التحقق مما إذا كانت الباقة مشتراة
   const isPackagePurchased = (packageId: string) => {
     return userPackages.some(up => up.package_id === packageId)
   }
@@ -291,12 +227,14 @@ export default function GradePage() {
   const termPackages = availablePackages.filter(p => p.type === 'term')
   const offerPackages = availablePackages.filter(p => p.type === 'offer')
 
+  // عند النقر على شراء الباقة
   const handlePurchaseClick = async (pkg: Package) => {
     if (!user) {
       router.push(`/login?returnUrl=/grades/${gradeSlug}`)
       return
     }
     
+    // إذا كانت الباقة مشتراة بالفعل، اذهب إليها
     if (isPackagePurchased(pkg.id)) {
       handleEnterPackage(pkg.id)
       return
@@ -306,54 +244,24 @@ export default function GradePage() {
     setShowPurchaseModal(true)
   }
 
+  // للدخول إلى الباقة المشتراة
   const handleEnterPackage = (pkgId: string) => {
     router.push(`/grades/${gradeSlug}/packages/${pkgId}`)
   }
 
-  const handlePurchaseSuccess = async () => {
-    if (!user?.id || !selectedPackage) {
-      setShowPurchaseModal(false)
-      return
-    }
+  // عند نجاح الشراء من المودال
+  const handlePurchaseSuccess = (purchasedPackageId: string) => {
+    // إعادة تحميل البيانات لتحديث حالة الباقات والرصيد
+    fetchData()
     
-    try {
-      const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + (selectedPackage.duration_days || 30))
-      
-      const { data: newUserPackage, error: insertError } = await supabase
-        .from('user_packages')
-        .insert({
-          user_id: user.id,
-          package_id: selectedPackage.id,
-          purchased_at: new Date().toISOString(),
-          expires_at: expiresAt.toISOString(),
-          is_active: true,
-          source: 'purchase'
-        })
-        .select(`
-          *,
-          packages:package_id (*)
-        `)
-        .single()
-
-      if (insertError) throw insertError
-
-      if (newUserPackage) {
-        setUserPackages(prev => [...prev, newUserPackage as UserPackage])
-      }
-      
-      setPackages(prev => prev.filter(p => p.id !== selectedPackage.id))
-      setShowPurchaseModal(false)
-      setSelectedPackage(null)
-      
-      setTimeout(() => {
-        router.push(`/grades/${gradeSlug}/packages/${selectedPackage.id}`)
-      }, 1000)
-      
-    } catch (err) {
-      console.error('Error purchasing package:', err)
-      alert('حدث خطأ أثناء الشراء، يرجى المحاولة مرة أخرى')
-    }
+    // إغلاق المودال
+    setShowPurchaseModal(false)
+    setSelectedPackage(null)
+    
+    // الانتقال إلى صفحة الباقة بعد تأخير بسيط
+    setTimeout(() => {
+      router.push(`/grades/${gradeSlug}/packages/${purchasedPackageId}`)
+    }, 1500)
   }
 
   const handleRetry = () => {
@@ -472,7 +380,12 @@ export default function GradePage() {
 
             <div className={styles.packagesGrid}>
               {purchasedPackages.map((pkg) => (
-                <SimplePackageCard key={pkg.id} pkg={pkg} isPurchased={true} onEnter={() => handleEnterPackage(pkg.id)} />
+                <SimplePackageCard 
+                  key={pkg.id} 
+                  pkg={pkg} 
+                  isPurchased={true} 
+                  onEnter={() => handleEnterPackage(pkg.id)} 
+                />
               ))}
             </div>
           </section>
@@ -493,7 +406,12 @@ export default function GradePage() {
 
             <div className={styles.packagesGrid}>
               {offerPackages.map((pkg) => (
-                <SimplePackageCard key={pkg.id} pkg={pkg} isPurchased={false} onPurchase={() => handlePurchaseClick(pkg)} />
+                <SimplePackageCard 
+                  key={pkg.id} 
+                  pkg={pkg} 
+                  isPurchased={false} 
+                  onPurchase={() => handlePurchaseClick(pkg)} 
+                />
               ))}
             </div>
           </section>
@@ -513,7 +431,12 @@ export default function GradePage() {
 
             <div className={styles.packagesGrid}>
               {[...monthlyPackages, ...termPackages].map((pkg) => (
-                <SimplePackageCard key={pkg.id} pkg={pkg} isPurchased={false} onPurchase={() => handlePurchaseClick(pkg)} />
+                <SimplePackageCard 
+                  key={pkg.id} 
+                  pkg={pkg} 
+                  isPurchased={false} 
+                  onPurchase={() => handlePurchaseClick(pkg)} 
+                />
               ))}
             </div>
           </section>
@@ -533,7 +456,12 @@ export default function GradePage() {
 
             <div className={styles.packagesGrid}>
               {weeklyPackages.map((pkg) => (
-                <SimplePackageCard key={pkg.id} pkg={pkg} isPurchased={false} onPurchase={() => handlePurchaseClick(pkg)} />
+                <SimplePackageCard 
+                  key={pkg.id} 
+                  pkg={pkg} 
+                  isPurchased={false} 
+                  onPurchase={() => handlePurchaseClick(pkg)} 
+                />
               ))}
             </div>
           </section>
@@ -565,12 +493,25 @@ export default function GradePage() {
         </div>
       </footer>
 
+      {/* مودال الشراء الحقيقي */}
       <AnimatePresence>
         {showPurchaseModal && selectedPackage && (
-          <SimplePurchaseModal
-            pkg={selectedPackage}
-            onClose={() => setShowPurchaseModal(false)}
-            onConfirm={handlePurchaseSuccess}
+          <PurchaseModal
+            package={selectedPackage}
+            user={user}
+            walletBalance={walletBalance}
+            gradeSlug={gradeSlug}
+            onClose={() => {
+              setShowPurchaseModal(false)
+              setSelectedPackage(null)
+            }}
+            onSuccess={handlePurchaseSuccess}
+            theme={{
+              primary: '#3b82f6',
+              success: '#10b981',
+              warning: '#f59e0b',
+              error: '#ef4444'
+            }}
           />
         )}
       </AnimatePresence>
