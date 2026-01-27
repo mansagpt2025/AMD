@@ -43,21 +43,23 @@ export const passwordService = {
   async logPasswordChange(userId: string, newPassword: string) {
     const adminId = (await supabase.auth.getUser()).data.user?.id;
 
-    // يمكنك إنشاء جدول admin_logs لتسجيل العمليات
-    await supabase
-      .from('admin_logs')
-      .insert([
-        {
-          admin_id: adminId,
-          user_id: userId,
-          action: 'change_password',
-          details: `تم تغيير كلمة المرور`,
-          created_at: new Date().toISOString(),
-        },
-      ])
-      .catch(() => {
-        // إذا كان الجدول غير موجود، تجاهل الخطأ
-      });
+    try {
+      // يمكنك إنشاء جدول admin_logs لتسجيل العمليات
+      await supabase
+        .from('admin_logs')
+        .insert([
+          {
+            admin_id: adminId,
+            user_id: userId,
+            action: 'change_password',
+            details: `تم تغيير كلمة المرور`,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+    } catch (error) {
+      // إذا كان الجدول غير موجود، تجاهل الخطأ
+      console.error('Error logging password change:', error);
+    }
   },
 
   // الحصول على سجل تغييرات كلمات المرور
