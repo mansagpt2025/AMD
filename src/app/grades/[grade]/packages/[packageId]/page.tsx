@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { createClientBrowser } from '@/lib/supabase/sf-client'
@@ -13,12 +13,6 @@ import {
 } from 'lucide-react'
 import { getGradeTheme } from '@/lib/utils/grade-themes'
 import styles from './PackagePage.module.css'
-
-export const viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-};
 
 interface LectureContent {
   id: string
@@ -84,15 +78,42 @@ interface UserPackage {
   source: string
 }
 
-export default function PackagePage() {
+// Loading Component
+function LoadingState() {
+  return (
+    <div className={styles.loadingContainer}>
+      <Loader2 className={styles.loadingSpinner} />
+      <p className={styles.loadingText}>جاري تحميل البيانات...</p>
+    </div>
+  )
+}
+
+// Error Component
+function ErrorState({ message, onBack }: { message: string; onBack: () => void }) {
+  return (
+    <div className={styles.errorContainer}>
+      <div className={styles.errorContent}>
+        <AlertCircle className={styles.errorIcon} />
+        <h2 className={styles.errorTitle}>حدث خطأ</h2>
+        <p className={styles.errorMessage}>{message}</p>
+        <button onClick={onBack} className={styles.backButton}>
+          العودة إلى الصفحة الرئيسية
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Main Component wrapped with proper checks
+function PackageContent() {
   const router = useRouter()
   const params = useParams()
-  const supabase = createClientBrowser()
+  const [mounted, setMounted] = useState(false)
   
-  const gradeSlug = params?.grade as 'first' | 'second' | 'third'
+  const gradeSlug = params?.grade as string
   const packageId = params?.packageId as string
   
-  const theme = getGradeTheme(gradeSlug)
+  const theme = getGradeTheme(gradeSlug as any)
 
   const [packageData, setPackageData] = useState<Package | null>(null)
   const [lectures, setLectures] = useState<Lecture[]>([])
@@ -100,12 +121,17 @@ export default function PackagePage() {
   const [userProgress, setUserProgress] = useState<UserProgress[]>([])
   const [userPackage, setUserPackage] = useState<UserPackage | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [completion, setCompletion] = useState(0)
   const [activeSection, setActiveSection] = useState<string | null>(null)
 
+  // Ensure client-side only execution
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const calculateCompletion = useCallback((progress: UserProgress[], allContents: LectureContent[]) => {
-    if (allContents.length === 0) {
+    if (!allContents || allContents.length === 0) {
       setCompletion(0)
       return
     }
@@ -113,21 +139,25 @@ export default function PackagePage() {
     setCompletion(Math.round((completed / allContents.length) * 100))
   }, [])
 
-  useEffect(() => {
-    checkAccessAndLoadData()
-  }, [packageId, gradeSlug])
-
-  const checkAccessAndLoadData = async () => {
+  const checkAccessAndLoadData = useCallback(async () => {
+    if (!packageId || !gradeSlug) return
+    
     try {
       setLoading(true)
+      setError(null)
       
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const supabase = createClientBrowser()
+      
+      // 1. Check authentication
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
         router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}`)
         return
       }
 
-      const { data: userPackageData } = await supabase
+      // 2. Check user package access
+      const { data: userPackageData, error: accessError } = await supabase
         .from('user_packages')
         .select('*')
         .eq('user_id', user.id)
@@ -143,6 +173,7 @@ export default function PackagePage() {
       
       setUserPackage(userPackageData)
 
+      // 3. Fetch package data
       const { data: pkgData, error: pkgError } = await supabase
         .from('packages')
         .select('*')
@@ -150,10 +181,11 @@ export default function PackagePage() {
         .single()
 
       if (pkgError || !pkgData) {
-        setError('الباقة غير موجودة')
+        setError('الباقة غير موجودة أو تم حذفها')
         return
       }
       
+      // Verify grade matches
       if (pkgData.grade !== gradeSlug) {
         router.push(`/grades/${pkgData.grade}/packages/${packageId}`)
         return
@@ -161,6 +193,7 @@ export default function PackagePage() {
       
       setPackageData(pkgData)
 
+      // 4. Fetch lectures
       const { data: lecturesData, error: lecturesError } = await supabase
         .from('lectures')
         .select('*')
@@ -171,7 +204,7 @@ export default function PackagePage() {
       if (lecturesError) throw lecturesError
       setLectures(lecturesData || [])
 
-      let fetchedContents: LectureContent[] = []
+      // 5. Fetch contents if lectures exist
       if (lecturesData && lecturesData.length > 0) {
         const lectureIds = lecturesData.map(l => l.id)
         const { data: contentsData, error: contentsError } = await supabase
@@ -182,54 +215,72 @@ export default function PackagePage() {
           .order('order_number', { ascending: true })
 
         if (contentsError) throw contentsError
-        fetchedContents = contentsData || []
-        setContents(fetchedContents)
+        setContents(contentsData || [])
+        
+        // 6. Fetch user progress
+        const { data: progressData, error: progressError } = await supabase
+          .from('user_progress')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('package_id', packageId)
+
+        if (progressError) throw progressError
+        setUserProgress(progressData || [])
+        calculateCompletion(progressData || [], contentsData || [])
       }
 
-      const { data: progressData, error: progressError } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('package_id', packageId)
-
-      if (progressError) throw progressError
-      setUserProgress(progressData || [])
-      calculateCompletion(progressData || [], fetchedContents)
-
     } catch (err: any) {
-      console.error('Error loading data:', err)
-      setError(err.message || 'حدث خطأ في تحميل البيانات')
+      console.error('Error loading package:', err)
+      setError(err?.message || 'حدث خطأ في تحميل البيانات')
     } finally {
       setLoading(false)
     }
-  }
+  }, [packageId, gradeSlug, router, calculateCompletion])
 
-  const isContentAccessible = (lectureIndex: number, contentIndex: number, content: LectureContent) => {
-    if (packageData?.type === 'weekly') return true
-    if (packageData?.type === 'monthly' || packageData?.type === 'term') {
+  // Load data on mount
+  useEffect(() => {
+    if (mounted && packageId && gradeSlug) {
+      checkAccessAndLoadData()
+    }
+  }, [mounted, packageId, gradeSlug, checkAccessAndLoadData])
+
+  // Helper functions
+  const isContentAccessible = useCallback((lectureIndex: number, contentIndex: number, content: LectureContent) => {
+    if (!packageData) return false
+    if (packageData.type === 'weekly') return true
+    
+    if (packageData.type === 'monthly' || packageData.type === 'term') {
       if (lectureIndex === 0 && contentIndex === 0) return true
-      const previousContents = getPreviousContents(lectureIndex, contentIndex)
+      
+      // Get previous contents
+      const previousContents: LectureContent[] = []
+      for (let i = 0; i < lectureIndex; i++) {
+        const lecture = lectures[i]
+        if (lecture) {
+          const lectureContents = contents.filter(c => c.lecture_id === lecture.id)
+          previousContents.push(...lectureContents)
+        }
+      }
+      
+      const currentLecture = lectures[lectureIndex]
+      if (currentLecture) {
+        const currentContents = contents.filter(c => c.lecture_id === currentLecture.id)
+        previousContents.push(...currentContents.slice(0, contentIndex))
+      }
+      
+      // Check if all previous are completed
       for (const prevContent of previousContents) {
         const progress = userProgress.find(p => p.lecture_content_id === prevContent.id)
-        if (!progress || (progress.status !== 'completed' && progress.status !== 'passed')) return false
-        if (prevContent.type === 'exam' && progress.status !== 'passed') return false
+        if (!progress || (progress.status !== 'completed' && progress.status !== 'passed')) {
+          return false
+        }
+        if (prevContent.type === 'exam' && progress.status !== 'passed') {
+          return false
+        }
       }
     }
     return true
-  }
-
-  const getPreviousContents = (lectureIndex: number, contentIndex: number) => {
-    const previous: LectureContent[] = []
-    for (let i = 0; i < lectureIndex; i++) {
-      const lecture = lectures[i]
-      const lectureContents = contents.filter(c => c.lecture_id === lecture.id)
-      previous.push(...lectureContents)
-    }
-    const currentLecture = lectures[lectureIndex]
-    const currentContents = contents.filter(c => c.lecture_id === currentLecture.id)
-    previous.push(...currentContents.slice(0, contentIndex))
-    return previous
-  }
+  }, [packageData, lectures, contents, userProgress])
 
   const getContentIcon = (type: string) => {
     switch (type) {
@@ -255,31 +306,24 @@ export default function PackagePage() {
   }
 
   const toggleSection = (sectionId: string) => {
-    setActiveSection(activeSection === sectionId ? null : sectionId)
+    setActiveSection(prev => prev === sectionId ? null : sectionId)
+  }
+
+  // Don't render until mounted (client-side)
+  if (!mounted) {
+    return <LoadingState />
   }
 
   if (loading) {
-    return (
-      <div className={styles.loadingContainer}>
-        <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
-        <p className={styles.loadingText}>جاري تحميل بيانات الباقة...</p>
-      </div>
-    )
+    return <LoadingState />
   }
 
-  if (error || !packageData) {
-    return (
-      <div className={styles.errorContainer}>
-        <div className={styles.errorContent}>
-          <AlertCircle className={styles.errorIcon} />
-          <h2 className={styles.errorTitle}>حدث خطأ</h2>
-          <p className={styles.errorMessage}>{error || 'الباقة غير موجودة'}</p>
-          <button onClick={() => router.push(`/grades/${gradeSlug}`)} className={styles.backButton} style={{ background: theme.primary }}>
-            العودة إلى الباقات
-          </button>
-        </div>
-      </div>
-    )
+  if (error) {
+    return <ErrorState message={error} onBack={() => router.push(`/grades/${gradeSlug || ''}`)} />
+  }
+
+  if (!packageData) {
+    return <ErrorState message="لم يتم العثور على الباقة" onBack={() => router.push('/')} />
   }
 
   return (
@@ -335,27 +379,34 @@ export default function PackagePage() {
                 </div>
               </div>
 
-              <div className={styles.progressContainer}>
-                <div className={styles.progressHeader}>
-                  <div className={styles.progressLabel}>
-                    <BarChart3 className={styles.progressIcon} />
-                    <span>نسبة الإتمام</span>
+              {contents.length > 0 && (
+                <div className={styles.progressContainer}>
+                  <div className={styles.progressHeader}>
+                    <div className={styles.progressLabel}>
+                      <BarChart3 className={styles.progressIcon} />
+                      <span>نسبة الإتمام</span>
+                    </div>
+                    <span className={styles.progressPercentage}>{completion}%</span>
                   </div>
-                  <span className={styles.progressPercentage}>{completion}%</span>
+                  <div className={styles.progressBar}>
+                    <motion.div 
+                      initial={{ width: 0 }} 
+                      animate={{ width: `${completion}%` }} 
+                      className={styles.progressFill} 
+                      style={{ background: theme.accent }} 
+                    />
+                  </div>
+                  <div className={styles.progressStats}>
+                    <span className={styles.progressStat}>
+                      مكتمل: {userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
+                    </span>
+                    <span className={styles.progressStat}>
+                      المتبقي: {contents.length - userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
+                    </span>
+                    <span className={styles.progressStat}>الإجمالي: {contents.length}</span>
+                  </div>
                 </div>
-                <div className={styles.progressBar}>
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${completion}%` }} className={styles.progressFill} style={{ background: theme.accent }} />
-                </div>
-                <div className={styles.progressStats}>
-                  <span className={styles.progressStat}>
-                    مكتمل: {userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
-                  </span>
-                  <span className={styles.progressStat}>
-                    المتبقي: {contents.length - userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
-                  </span>
-                  <span className={styles.progressStat}>الإجمالي: {contents.length}</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -384,7 +435,12 @@ export default function PackagePage() {
                 const isExpanded = activeSection === lecture.id
                 
                 return (
-                  <motion.div key={lecture.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={styles.lectureCard}>
+                  <motion.div 
+                    key={lecture.id} 
+                    initial={{ opacity: 0, y: 20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    className={styles.lectureCard}
+                  >
                     <div className={styles.lectureHeader} onClick={() => toggleSection(lecture.id)}>
                       <div className={styles.lectureInfo}>
                         <div className={styles.lectureNumber}>المحاضرة {lectureIndex + 1}</div>
@@ -399,14 +455,24 @@ export default function PackagePage() {
                       </div>
                     </div>
 
-                    <motion.div initial={false} animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }} transition={{ duration: 0.3 }} className={styles.contentsContainer}>
+                    <motion.div 
+                      initial={false} 
+                      animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }} 
+                      transition={{ duration: 0.3 }} 
+                      className={styles.contentsContainer}
+                      style={{ overflow: 'hidden' }}
+                    >
                       <div className={styles.contentsList}>
                         {lectureContents.map((content, contentIndex) => {
                           const isAccessible = isContentAccessible(lectureIndex, contentIndex, content)
                           const status = getContentStatus(content.id)
                           
                           return (
-                            <div key={content.id} className={`${styles.contentItem} ${isAccessible ? styles.accessible : styles.locked}`} onClick={() => isAccessible && handleContentClick(content, lectureIndex, contentIndex)}>
+                            <div 
+                              key={content.id} 
+                              className={`${styles.contentItem} ${isAccessible ? styles.accessible : styles.locked}`} 
+                              onClick={() => isAccessible && handleContentClick(content, lectureIndex, contentIndex)}
+                            >
                               <div className={styles.contentInfo}>
                                 <div className={styles.contentIcon}>{getContentIcon(content.type)}</div>
                                 <div className={styles.contentDetails}>
@@ -418,11 +484,11 @@ export default function PackagePage() {
                                     </span>
                                     {content.duration_minutes > 0 && (
                                       <span className={styles.contentDuration}>
-                                        <Clock className={styles.metaIcon} /> {content.duration_minutes} دقيقة
+                                        <Clock className={styles.metaIcon} size={14} /> {content.duration_minutes} دقيقة
                                       </span>
                                     )}
                                     {content.type === 'exam' && (
-                                      <span className={styles.examInfo}><Target className={styles.metaIcon} /> النجاح: {content.pass_score}%</span>
+                                      <span className={styles.examInfo}><Target className={styles.metaIcon} size={14} /> النجاح: {content.pass_score}%</span>
                                     )}
                                   </div>
                                 </div>
@@ -431,20 +497,33 @@ export default function PackagePage() {
                               <div className={styles.contentActions}>
                                 {status === 'completed' || status === 'passed' ? (
                                   <div className={`${styles.statusBadge} ${styles.completed}`}>
-                                    <CheckCircle className={styles.statusIcon} />
+                                    <CheckCircle size={16} />
                                     <span>{status === 'passed' ? 'ناجح' : 'مكتمل'}</span>
                                   </div>
                                 ) : status === 'failed' ? (
-                                  <div className={`${styles.statusBadge} ${styles.failed}`}><XCircle className={styles.statusIcon} /><span>فاشل</span></div>
+                                  <div className={`${styles.statusBadge} ${styles.failed}`}><XCircle size={16} /><span>فاشل</span></div>
                                 ) : status === 'in_progress' ? (
-                                  <div className={`${styles.statusBadge} ${styles.inProgress}`}><Clock className={styles.statusIcon} /><span>قيد التقدم</span></div>
+                                  <div className={`${styles.statusBadge} ${styles.inProgress}`}><Clock size={16} /><span>قيد التقدم</span></div>
                                 ) : null}
 
-                                <button className={`${styles.actionButton} ${isAccessible ? styles.activeButton : styles.disabledButton}`} style={isAccessible ? { background: theme.primary } : {}} disabled={!isAccessible}>
-                                  {isAccessible ? (<>{status === 'not_started' ? 'بدء' : 'استكمال'}<ArrowRight className={styles.buttonIcon} /></>) : (<><Lock className={styles.buttonIcon} />مقفل</>)}
+                                <button 
+                                  className={`${styles.actionButton} ${isAccessible ? styles.activeButton : styles.disabledButton}`} 
+                                  style={isAccessible ? { background: theme.primary } : {}} 
+                                  disabled={!isAccessible}
+                                >
+                                  {isAccessible ? (
+                                    <>{status === 'not_started' ? 'بدء' : 'استكمال'}<ArrowRight size={16} /></>
+                                  ) : (
+                                    <><Lock size={16} />مقفل</>
+                                  )}
                                 </button>
                               </div>
-                              {!isAccessible && <div className={styles.lockMessage}><AlertCircle className={styles.alertIcon} /><span>يجب إتمام المحتوى السابق أولاً</span></div>}
+                              {!isAccessible && (
+                                <div className={styles.lockMessage}>
+                                  <AlertCircle size={14} />
+                                  <span>يجب إتمام المحتوى السابق أولاً</span>
+                                </div>
+                              )}
                             </div>
                           )
                         })}
@@ -466,29 +545,42 @@ export default function PackagePage() {
             <ul className={styles.notesList}>
               {packageData.type === 'monthly' || packageData.type === 'term' ? (
                 <>
-                  <li className={styles.noteItem}><Shield className={styles.noteIcon} />يجب إتمام كل محتوى قبل الانتقال للذي يليه</li>
-                  <li className={styles.noteItem}><Target className={styles.noteIcon} />لابد من اجتياز الامتحان قبل الانتقال للمحاضرة التالية</li>
-                  <li className={styles.noteItem}><Users className={styles.noteIcon} />يمكنك إعادة الامتحان حتى 3 مرات</li>
+                  <li className={styles.noteItem}><Shield size={16} />يجب إتمام كل محتوى قبل الانتقال للذي يليه</li>
+                  <li className={styles.noteItem}><Target size={16} />لابد من اجتياز الامتحان قبل الانتقال للمحاضرة التالية</li>
+                  <li className={styles.noteItem}><Users size={16} />يمكنك إعادة الامتحان حتى 3 مرات</li>
                 </>
               ) : (
                 <>
-                  <li className={styles.noteItem}><Unlock className={styles.noteIcon} />جميع المحاضرات متاحة مباشرة</li>
-                  <li className={styles.noteItem}><PlayCircle className={styles.noteIcon} />يمكنك البدء بأي محاضرة تريد</li>
+                  <li className={styles.noteItem}><Unlock size={16} />جميع المحاضرات متاحة مباشرة</li>
+                  <li className={styles.noteItem}><PlayCircle size={16} />يمكنك البدء بأي محاضرة تريد</li>
                 </>
               )}
               {userPackage?.expires_at && (
-                <li className={styles.noteItem}><Calendar className={styles.noteIcon} />مدة الاشتراك تنتهي في: {new Date(userPackage.expires_at).toLocaleDateString('ar-EG')}</li>
+                <li className={styles.noteItem}><Calendar size={16} />مدة الاشتراك تنتهي في: {new Date(userPackage.expires_at).toLocaleDateString('ar-EG')}</li>
               )}
             </ul>
           </div>
         </section>
 
         <div className={styles.backSection}>
-          <button onClick={() => router.push(`/grades/${gradeSlug}`)} className={styles.backActionButton} style={{ borderColor: theme.primary, color: theme.primary }}>
-            <ArrowRight className={styles.backButtonIcon} />العودة إلى الباقات
+          <button 
+            onClick={() => router.push(`/grades/${gradeSlug}`)} 
+            className={styles.backActionButton} 
+            style={{ borderColor: theme.primary, color: theme.primary }}
+          >
+            <ArrowRight size={18} />العودة إلى الباقات
           </button>
         </div>
       </main>
     </div>
+  )
+}
+
+// Export wrapped component
+export default function PackagePage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <PackageContent />
+    </Suspense>
   )
 }
