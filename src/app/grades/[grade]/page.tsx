@@ -9,7 +9,7 @@ import {
   Users, Zap, TrendingUp, Award, Crown, Package,
   AlertCircle, CheckCircle2, PlayCircle, ArrowRight,
   ShoppingCart, X, CreditCard, Ticket, RefreshCw, Sparkles,
-  ChevronRight, Lightning, Target, Medal
+  ChevronRight, Zap as ZapIcon, Target, Medal
 } from 'lucide-react'
 import styles from './GradePage.module.css'
 import PurchaseModal from '@/components/packages/PurchaseModal'
@@ -277,7 +277,7 @@ const PackageCard = ({
             transition={{ delay: 0.35 }}
           >
             <div className={styles.featureItem}>
-              <Lightning size={14} style={{ color: theme.primary }} />
+              <ZapIcon size={14} style={{ color: theme.primary }} />
               <span>محتوى حي</span>
             </div>
             <div className={styles.featureItem}>
@@ -661,11 +661,11 @@ export default function GradePage() {
         </motion.div>
       </header>
 
-      {/* Stats Container */}
+      {/* Stats Container - FIXED */}
       <div className={styles.statsContainer}>
         <div className={styles.statsGrid}>
-          {{
-            icon: Users, label: 'طالب متفوق', value: stats.totalStudents, suffix: '+', color: theme.primary },
+          {[
+            { icon: Users, label: 'طالب متفوق', value: stats.totalStudents, suffix: '+', color: theme.primary },
             { icon: TrendingUp, label: 'نسبة النجاح', value: stats.successRate, suffix: '%', color: theme.success },
             { icon: Zap, label: 'دورة نشطة', value: stats.activeCourses, suffix: '+', color: theme.warning },
             { icon: Award, label: 'خبير تعليمي', value: stats.expertTeachers, suffix: '+', color: theme.accent },
