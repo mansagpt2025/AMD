@@ -1,170 +1,169 @@
+'use server';
+
 import { supabase } from '../lib/supabaseClient';
+import { revalidatePath } from 'next/cache';
 
 export const codesService = {
-  // إنشاء كود جديد
   async createCode(packageId: string, grade: string) {
-    const code = this.generateCode();
-    
-    const { data, error } = await supabase
-      .from('codes')
-      .insert([
-        {
+    try {
+      // توليد كود عشوائي
+      const generateCode = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let code = '';
+        for (let i = 0; i < 10; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+      };
+
+      const code = generateCode();
+      
+      const { data, error } = await supabase
+        .from('codes')
+        .insert({
           code,
           package_id: packageId,
           grade,
           is_used: false,
-        },
-      ])
-      .select()
-      .single();
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
 
-    if (error) throw new Error(error.message);
-    return data;
+      if (error) throw error;
+      
+      revalidatePath('/admin/codes');
+      return data;
+    } catch (error) {
+      console.error('Error creating code:', error);
+      throw new Error('خطأ في إنشاء الكود');
+    }
   },
 
-  // الحصول على جميع الأكواد
-  async getAllCodes(limit = 50, offset = 0) {
-    const { data, error, count } = await supabase
-      .from('codes')
-      .select(`
-        id,
-        code,
-        package_id,
-        grade,
-        is_used,
-        used_by,
-        used_at,
-        created_at,
-        packages(name, type),
-        profiles:used_by(full_name, email)
-      `, { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+  async getAllCodes(limit = 10, offset = 0) {
+    try {
+      const { data, error, count } = await supabase
+        .from('codes')
+        .select(`
+          *,
+          packages (name, type),
+          profiles (full_name, email)
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
 
-    if (error) throw new Error(error.message);
-    return { data, total: count };
+      if (error) throw error;
+      
+      return {
+        data: data || [],
+        total: count || 0
+      };
+    } catch (error) {
+      console.error('Error fetching codes:', error);
+      return { data: [], total: 0 };
+    }
   },
 
-  // البحث عن أكواد
   async searchCodes(query: string) {
-    const { data, error } = await supabase
-      .from('codes')
-      .select(`
-        id,
-        code,
-        package_id,
-        grade,
-        is_used,
-        used_by,
-        used_at,
-        created_at,
-        packages(name, type),
-        profiles:used_by(full_name, email)
-      `)
-      .ilike('code', `%${query}%`)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('codes')
+        .select(`
+          *,
+          packages (name, type),
+          profiles (full_name, email)
+        `)
+        .or(`code.ilike.%${query}%,profiles.full_name.ilike.%${query}%,profiles.email.ilike.%${query}%`)
+        .order('created_at', { ascending: false });
 
-    if (error) throw new Error(error.message);
-    return data;
-  },
-
-  // الحصول على أكواد غير مستخدمة
-  async getUnusedCodes(packageId?: string) {
-    let query = supabase
-      .from('codes')
-      .select(`
-        id,
-        code,
-        package_id,
-        grade,
-        created_at,
-        packages(name, type)
-      `)
-      .eq('is_used', false);
-
-    if (packageId) {
-      query = query.eq('package_id', packageId);
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error searching codes:', error);
+      return [];
     }
-
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return data;
   },
 
-  // الحصول على أكواد مستخدمة
   async getUsedCodes() {
-    const { data, error } = await supabase
-      .from('codes')
-      .select(`
-        id,
-        code,
-        package_id,
-        grade,
-        is_used,
-        used_by,
-        used_at,
-        created_at,
-        packages(name, type),
-        profiles:used_by(full_name, email)
-      `)
-      .eq('is_used', true)
-      .order('used_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('codes')
+        .select(`
+          *,
+          packages (name, type),
+          profiles (full_name, email)
+        `)
+        .not('used_at', 'is', null)
+        .order('created_at', { ascending: false });
 
-    if (error) throw new Error(error.message);
-    return data;
-  },
-
-  // حذف كود
-  async deleteCode(codeId: string) {
-    const { error } = await supabase
-      .from('codes')
-      .delete()
-      .eq('id', codeId);
-
-    if (error) throw new Error(error.message);
-  },
-
-  // إحصائيات الأكواد
-  async getCodeStatistics() {
-    const { data: totalData } = await supabase
-      .from('codes')
-      .select('id', { count: 'exact' });
-
-    const { data: usedData } = await supabase
-      .from('codes')
-      .select('id', { count: 'exact' })
-      .eq('is_used', true);
-
-    const { data: unusedData } = await supabase
-      .from('codes')
-      .select('id', { count: 'exact' })
-      .eq('is_used', false);
-
-    return {
-      total: totalData?.length || 0,
-      used: usedData?.length || 0,
-      unused: unusedData?.length || 0,
-    };
-  },
-
-  // توليد كود عشوائي
-  generateCode(): string {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 8; i++) {
-      code += characters.charAt(Math.floor(Math.random() * characters.length));
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching used codes:', error);
+      return [];
     }
-    return code;
   },
 
-  // حذف جميع الأكواد المنتهية
-  async deleteExpiredCodes() {
-    const { error } = await supabase
-      .from('codes')
-      .delete()
-      .lt('expires_at', new Date().toISOString())
-      .eq('is_used', false);
+  async getUnusedCodes() {
+    try {
+      const { data, error } = await supabase
+        .from('codes')
+        .select(`
+          *,
+          packages (name, type),
+          profiles (full_name, email)
+        `)
+        .is('used_at', null)
+        .order('created_at', { ascending: false });
 
-    if (error) throw new Error(error.message);
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching unused codes:', error);
+      return [];
+    }
   },
+
+  async getCodeStatistics() {
+    try {
+      const [
+        { count: total },
+        { count: used },
+        { count: unused }
+      ] = await Promise.all([
+        supabase.from('codes').select('*', { count: 'exact', head: true }),
+        supabase.from('codes').select('*', { count: 'exact', head: true }).not('used_at', 'is', null),
+        supabase.from('codes').select('*', { count: 'exact', head: true }).is('used_at', null)
+      ]);
+      
+      return {
+        total: total || 0,
+        used: used || 0,
+        unused: unused || 0
+      };
+    } catch (error) {
+      console.error('Error fetching code statistics:', error);
+      return { total: 0, used: 0, unused: 0 };
+    }
+  },
+
+  async deleteCode(codeId: string) {
+    try {
+      const { error } = await supabase
+        .from('codes')
+        .delete()
+        .eq('id', codeId);
+
+      if (error) throw error;
+      
+      revalidatePath('/admin/codes');
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting code:', error);
+      throw new Error('خطأ في حذف الكود');
+    }
+  }
 };

@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { codesService } from '../../services/codesService';
 import { supabase } from '../../lib/supabaseClient';
@@ -12,7 +14,7 @@ interface Package {
 }
 
 interface CodeFormProps {
-  onCodeCreated: () => void;
+  onCodeCreated?: () => void; // جعلها اختيارية
   onError?: (errorMessage: string) => void;
 }
 
@@ -24,6 +26,10 @@ export const CodeForm: React.FC<CodeFormProps> = ({ onCodeCreated, onError }) =>
   const [message, setMessage] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchPackages();
+  }, []);
 
   const fetchPackages = useCallback(async () => {
     try {
@@ -42,10 +48,6 @@ export const CodeForm: React.FC<CodeFormProps> = ({ onCodeCreated, onError }) =>
       console.error('Error fetching packages:', error);
     }
   }, [onError]);
-
-  useEffect(() => {
-    fetchPackages();
-  }, [fetchPackages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +77,7 @@ export const CodeForm: React.FC<CodeFormProps> = ({ onCodeCreated, onError }) =>
         setMessage('');
       }, 5000);
 
-      onCodeCreated();
+      onCodeCreated?.();
     } catch (error) {
       const errorMsg = 'خطأ في إنشاء الكود: ' + (error instanceof Error ? error.message : 'خطأ غير معروف');
       setMessage(errorMsg);
@@ -115,11 +117,6 @@ export const CodeForm: React.FC<CodeFormProps> = ({ onCodeCreated, onError }) =>
     }
   };
 
-  const getPackageName = (pkgId: string) => {
-    const pkg = packages.find(p => p.id === pkgId);
-    return pkg ? `${pkg.name} - ${pkg.grade}` : '';
-  };
-
   return (
     <div className={styles.formContainer}>
       <div className={styles.formCard}>
@@ -150,11 +147,6 @@ export const CodeForm: React.FC<CodeFormProps> = ({ onCodeCreated, onError }) =>
                 </option>
               ))}
             </select>
-            {selectedPackageId && (
-              <div className={styles.packageInfo}>
-                {getPackageName(selectedPackageId)}
-              </div>
-            )}
           </div>
 
           <div className={styles.formGroup}>

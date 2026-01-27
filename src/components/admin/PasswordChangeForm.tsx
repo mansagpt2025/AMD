@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { passwordService } from '../../services/passwordService';
 import styles from './PasswordChangeForm.module.css';
@@ -16,14 +18,8 @@ interface User {
 
 interface Props {
   user: User | null;
-  onPasswordChanged: () => void;
+  onPasswordChanged?: () => void; // جعلها اختيارية
   onError?: (errorMessage: string) => void;
-}
-
-interface PasswordValidation {
-  isValid: boolean;
-  errors: string[];
-  strength: 'very-weak' | 'weak' | 'medium' | 'strong' | 'very-strong';
 }
 
 export const PasswordChangeForm: React.FC<Props> = ({ 
@@ -38,13 +34,9 @@ export const PasswordChangeForm: React.FC<Props> = ({
   const [messageType, setMessageType] = useState<'success' | 'error' | 'warning'>('success');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [passwordValidation, setPasswordValidation] = useState<PasswordValidation>({
-    isValid: false,
-    errors: [],
-    strength: 'very-weak'
-  });
+  const [passwordValidation, setPasswordValidation] = useState<string[]>([]);
 
-  const validatePassword = useCallback((password: string): PasswordValidation => {
+  const validatePassword = useCallback((password: string) => {
     const errors: string[] = [];
     
     if (password.length < 8) {
@@ -67,28 +59,16 @@ export const PasswordChangeForm: React.FC<Props> = ({
       errors.push('يجب أن تحتوي على رمز خاص على الأقل');
     }
     
-    let strength: PasswordValidation['strength'] = 'very-weak';
-    if (password.length >= 12 && errors.length === 0) {
-      strength = 'very-strong';
-    } else if (password.length >= 10 && errors.length <= 1) {
-      strength = 'strong';
-    } else if (password.length >= 8 && errors.length <= 2) {
-      strength = 'medium';
-    } else if (password.length >= 6) {
-      strength = 'weak';
-    }
-    
     return {
       isValid: errors.length === 0,
-      errors,
-      strength
+      errors
     };
   }, []);
 
   const handlePasswordChange = useCallback((value: string) => {
     setNewPassword(value);
     const validation = validatePassword(value);
-    setPasswordValidation(validation);
+    setPasswordValidation(validation.errors);
   }, [validatePassword]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,7 +92,8 @@ export const PasswordChangeForm: React.FC<Props> = ({
       return;
     }
 
-    if (!passwordValidation.isValid) {
+    const validation = validatePassword(newPassword);
+    if (!validation.isValid) {
       setMessage('كلمة المرور لا تفي بالشروط المطلوبة');
       setMessageType('error');
       return;
@@ -132,19 +113,15 @@ export const PasswordChangeForm: React.FC<Props> = ({
       
       setNewPassword('');
       setConfirmPassword('');
-      setPasswordValidation({
-        isValid: false,
-        errors: [],
-        strength: 'very-weak'
-      });
+      setPasswordValidation([]);
       
-      onPasswordChanged();
+      onPasswordChanged?.();
       
       setTimeout(() => {
         setMessage('');
       }, 5000);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'خطأ في تغيير كلمة المرور';
+    } catch (error: any) {
+      const errorMsg = error?.message || 'خطأ في تغيير كلمة المرور';
       setMessage(errorMsg);
       setMessageType('error');
       onError?.(errorMsg);
@@ -153,29 +130,17 @@ export const PasswordChangeForm: React.FC<Props> = ({
     }
   };
 
-  const strengthConfig = useMemo(() => {
-    const config = {
-      'very-weak': { color: '#ef4444', label: 'ضعيفة جداً', width: '20%' },
-      'weak': { color: '#f97316', label: 'ضعيفة', width: '40%' },
-      'medium': { color: '#eab308', label: 'متوسطة', width: '60%' },
-      'strong': { color: '#84cc16', label: 'قوية', width: '80%' },
-      'very-strong': { color: '#22c55e', label: 'قوية جداً', width: '100%' }
-    };
-    return config[passwordValidation.strength];
-  }, [passwordValidation.strength]);
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '-';
-    try {
-      return new Date(dateString).toLocaleDateString('ar-EG', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch {
-      return '-';
-    }
+  const getStrength = (password: string): number => {
+    const validation = validatePassword(password);
+    const passedChecks = 4 - validation.errors.length;
+    return (passedChecks / 4) * 100;
   };
+
+  const strength = getStrength(newPassword);
+  const strengthLabel =
+    strength === 0 ? 'ضعيفة جداً' : strength <= 25 ? 'ضعيفة' : strength <= 75 ? 'متوسطة' : 'قوية جداً';
+  const strengthColor =
+    strength === 0 ? '#ef4444' : strength <= 25 ? '#f97316' : strength <= 75 ? '#eab308' : '#22c55e';
 
   if (!user) {
     return (
@@ -232,19 +197,6 @@ export const PasswordChangeForm: React.FC<Props> = ({
             </div>
           </div>
         </div>
-        
-        <div className={styles.userDetails}>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>تاريخ التسجيل:</span>
-            <span className={styles.detailValue}>{formatDate(user.created_at)}</span>
-          </div>
-          {user.last_login && (
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>آخر تسجيل دخول:</span>
-              <span className={styles.detailValue}>{formatDate(user.last_login)}</span>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Password Form */}
@@ -296,24 +248,24 @@ export const PasswordChangeForm: React.FC<Props> = ({
                   <span className={styles.strengthLabel}>قوة كلمة المرور:</span>
                   <span 
                     className={styles.strengthValue}
-                    style={{ color: strengthConfig.color }}
+                    style={{ color: strengthColor }}
                   >
-                    {strengthConfig.label}
+                    {strengthLabel}
                   </span>
                 </div>
                 <div className={styles.strengthBar}>
                   <div
                     className={styles.strengthFill}
                     style={{
-                      width: strengthConfig.width,
-                      backgroundColor: strengthConfig.color,
+                      width: `${strength}%`,
+                      backgroundColor: strengthColor,
                     }}
                   ></div>
                 </div>
 
-                {passwordValidation.errors.length > 0 && (
+                {passwordValidation.length > 0 && (
                   <ul className={styles.validationList}>
-                    {passwordValidation.errors.map((error, index) => (
+                    {passwordValidation.map((error, index) => (
                       <li key={index} className={styles.validationError}>
                         <span className={styles.errorIcon}>✗</span>
                         {error}
@@ -322,7 +274,7 @@ export const PasswordChangeForm: React.FC<Props> = ({
                   </ul>
                 )}
 
-                {passwordValidation.isValid && (
+                {passwordValidation.length === 0 && newPassword && (
                   <div className={styles.validationSuccess}>
                     <span className={styles.successIcon}>✓</span>
                     كلمة المرور قوية وآمنة
@@ -375,21 +327,10 @@ export const PasswordChangeForm: React.FC<Props> = ({
             )}
           </div>
 
-          <div className={styles.passwordRequirements}>
-            <h4 className={styles.requirementsTitle}>شروط كلمة المرور:</h4>
-            <ul className={styles.requirementsList}>
-              <li className={styles.requirementItem}>• 8 أحرف على الأقل</li>
-              <li className={styles.requirementItem}>• حرف كبير على الأقل</li>
-              <li className={styles.requirementItem}>• حرف صغير على الأقل</li>
-              <li className={styles.requirementItem}>• رقم على الأقل</li>
-              <li className={styles.requirementItem}>• رمز خاص على الأقل</li>
-            </ul>
-          </div>
-
           <button
             type="submit"
             className={styles.submitBtn}
-            disabled={loading || !newPassword || !confirmPassword || !passwordValidation.isValid || newPassword !== confirmPassword}
+            disabled={loading || !newPassword || !confirmPassword || passwordValidation.length > 0 || newPassword !== confirmPassword}
           >
             {loading ? (
               <>

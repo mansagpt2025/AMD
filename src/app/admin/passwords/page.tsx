@@ -1,7 +1,9 @@
+'use client';
+
 import React, { useState } from 'react';
 import { UserSearchForm } from '@/components/admin/UserSearchForm';
 import { PasswordChangeForm } from '@/components/admin/PasswordChangeForm';
-import styles from './page.module.css';
+import styles from './PasswordsPage.module.css';
 
 interface User {
   id: string;
@@ -14,23 +16,27 @@ interface User {
   created_at?: string;
 }
 
-function PasswordPage() {
+export default function PasswordPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const handlePasswordChanged = () => {
-    setRefreshTrigger((prev) => prev + 1);
     setError(null);
   };
 
-  const handleResetSearch = () => {
-    setSelectedUser(null);
+  const handleUserFound = (user: User) => {
+    setSelectedUser(user);
+    setError(null);
   };
 
   const handleUserSearchError = (errorMessage: string) => {
     setError(errorMessage);
     setTimeout(() => setError(null), 3000);
+  };
+
+  const handleResetSearch = () => {
+    setSelectedUser(null);
+    setError(null);
   };
 
   return (
@@ -50,7 +56,7 @@ function PasswordPage() {
       <div className={styles.content}>
         <div className={styles.searchSection}>
           <UserSearchForm 
-            onUserFound={setSelectedUser} 
+            onUserFound={handleUserFound} 
             onError={handleUserSearchError}
           />
         </div>
@@ -66,7 +72,7 @@ function PasswordPage() {
                   ← البحث عن مستخدم آخر
                 </button>
                 <div className={styles.userInfoBadge}>
-                  <span>المستخدم:</span>
+                  <span>المستخدم: </span>
                   <strong>{selectedUser.full_name}</strong>
                 </div>
               </div>
@@ -82,5 +88,3 @@ function PasswordPage() {
     </div>
   );
 }
-
-export default PasswordPage;

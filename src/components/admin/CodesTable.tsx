@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { codesService } from '../../services/codesService';
 import styles from './CodesTable.module.css';
@@ -33,13 +35,11 @@ interface Stats {
 
 interface CodesTableProps {
   refreshTrigger?: number;
-  isLoading?: boolean;
   onError?: (errorMessage: string) => void;
 }
 
 export const CodesTable: React.FC<CodesTableProps> = ({ 
   refreshTrigger, 
-  isLoading: externalLoading,
   onError 
 }) => {
   const [codes, setCodes] = useState<Code[]>([]);
@@ -55,8 +55,6 @@ export const CodesTable: React.FC<CodesTableProps> = ({
   const itemsPerPage = 10;
 
   const fetchCodes = useCallback(async () => {
-    if (externalLoading) return;
-    
     setLoading(true);
     try {
       let fetchedCodes: any[] = [];
@@ -113,7 +111,7 @@ export const CodesTable: React.FC<CodesTableProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, currentPage, itemsPerPage, externalLoading, onError]);
+  }, [searchQuery, currentPage, itemsPerPage, onError]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -125,11 +123,9 @@ export const CodesTable: React.FC<CodesTableProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!externalLoading) {
-      fetchCodes();
-      fetchStats();
-    }
-  }, [currentPage, filterStatus, refreshTrigger, externalLoading, fetchCodes, fetchStats]);
+    fetchCodes();
+    fetchStats();
+  }, [fetchCodes, fetchStats, refreshTrigger]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -219,6 +215,11 @@ export const CodesTable: React.FC<CodesTableProps> = ({
     }
   };
 
+  // التصحيح: تصحيح سطر 426
+  const isCodeUsed = (code: Code) => {
+    return code.is_used || !!code.used_at;
+  };
+
   return (
     <div className={styles.container}>
       {/* Statistics Cards */}
@@ -271,6 +272,7 @@ export const CodesTable: React.FC<CodesTableProps> = ({
               onClick={() => setSearchQuery('')}
               className={styles.clearSearchBtn}
               title="مسح البحث"
+              disabled={loading}
             >
               ✕
             </button>
@@ -386,7 +388,7 @@ export const CodesTable: React.FC<CodesTableProps> = ({
                 {filteredCodes.map((code) => (
                   <tr 
                     key={code.id} 
-                    className={`${styles.tableRow} ${code.is_used || code.used_at ? styles.usedRow : styles.unusedRow}`}
+                    className={`${styles.tableRow} ${isCodeUsed(code) ? styles.usedRow : styles.unusedRow}`}
                     onClick={() => setSelectedCode(code)}
                   >
                     <td className={styles.codeCell}>
@@ -400,8 +402,8 @@ export const CodesTable: React.FC<CodesTableProps> = ({
                     </td>
                     <td>{getGradeLabel(code.grade)}</td>
                     <td>
-                      <span className={`${styles.statusBadge} ${code.is_used || code.used_at ? styles.used : styles.unused}`}>
-                        {code.is_used || code.used_at ? 'مستخدم' : 'متاح'}
+                      <span className={`${styles.statusBadge} ${isCodeUsed(code) ? styles.used : styles.unused}`}>
+                        {isCodeUsed(code) ? 'مستخدم' : 'متاح'}
                         {code.used_at && <span className={styles.statusTime}> {formatDate(code.used_at)}</span>}
                       </span>
                     </td>
@@ -423,7 +425,8 @@ export const CodesTable: React.FC<CodesTableProps> = ({
                         }}
                         className={styles.deleteBtn}
                         title="حذف الكود"
-disabled={!!(code.is_used || code.used_at)}                      >
+                        disabled={isCodeUsed(code)} // التصحيح هنا
+                      >
                         🗑️
                       </button>
                       <button
@@ -527,8 +530,8 @@ disabled={!!(code.is_used || code.used_at)}                      >
               </div>
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>الحالة:</span>
-                <span className={`${styles.detailValue} ${selectedCode.is_used || selectedCode.used_at ? styles.used : styles.unused}`}>
-                  {selectedCode.is_used || selectedCode.used_at ? 'مستخدم' : 'متاح'}
+                <span className={`${styles.detailValue} ${isCodeUsed(selectedCode) ? styles.used : styles.unused}`}>
+                  {isCodeUsed(selectedCode) ? 'مستخدم' : 'متاح'}
                 </span>
               </div>
               {selectedCode.used_at && selectedCode.profiles?.[0] && (

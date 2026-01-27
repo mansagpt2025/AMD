@@ -1,15 +1,17 @@
+'use client';
+
 import React, { useState } from 'react';
 import { CodeForm } from '@/components/admin/CodeForm';
 import { CodesTable } from '@/components/admin/CodesTable';
-import styles from './page.module.css';
+import styles from './CodesPage.module.css';
 
-function CodesPage() {
+export default function CodesPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleCodeCreated = () => {
-    setRefreshTrigger((prev) => prev + 1);
+    setRefreshTrigger(prev => prev + 1);
+    setError(null);
   };
 
   const handleError = (errorMessage: string) => {
@@ -37,13 +39,10 @@ function CodesPage() {
           onError={handleError}
         />
         <CodesTable 
-          refreshTrigger={refreshTrigger} 
-          isLoading={isLoading}
+          refreshTrigger={refreshTrigger}
           onError={handleError}
         />
       </div>
     </div>
   );
 }
-
-export default CodesPage;

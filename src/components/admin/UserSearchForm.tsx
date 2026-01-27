@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { passwordService } from '../../services/passwordService';
 import styles from './UserSearchForm.module.css';
@@ -14,31 +16,16 @@ interface User {
 }
 
 interface Props {
-  onUserFound: (user: User) => void;
+  onUserFound?: (user: User) => void; // جعلها اختيارية
   onError?: (errorMessage: string) => void;
 }
 
 export const UserSearchForm: React.FC<Props> = ({ onUserFound, onError }) => {
-  const [searchType, setSearchType] = useState<'email' | 'phone' | 'name' | 'id'>('email');
+  const [searchType, setSearchType] = useState<'email' | 'phone'>('email');
   const [searchValue, setSearchValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | 'warning'>('success');
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const [showRecent, setShowRecent] = useState(false);
-
-  useEffect(() => {
-    const savedSearches = localStorage.getItem('recentUserSearches');
-    if (savedSearches) {
-      setRecentSearches(JSON.parse(savedSearches));
-    }
-  }, []);
-
-  const saveToRecentSearches = useCallback((value: string) => {
-    const updated = [value, ...recentSearches.filter(s => s !== value)].slice(0, 5);
-    setRecentSearches(updated);
-    localStorage.setItem('recentUserSearches', JSON.stringify(updated));
-  }, [recentSearches]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,30 +51,23 @@ export const UserSearchForm: React.FC<Props> = ({ onUserFound, onError }) => {
 
     setLoading(true);
     setMessage('');
-    setShowRecent(false);
 
     try {
       let user: User;
       
-      switch (searchType) {
-        case 'email':
-          user = await passwordService.findUserByEmail(trimmedValue);
-          break;
-        case 'phone':
-          user = await passwordService.findUserByPhone(trimmedValue);
-          break;
-        default:
-          throw new Error('طريقة البحث غير معروفة');
+      if (searchType === 'email') {
+        user = await passwordService.findUserByEmail(trimmedValue);
+      } else {
+        user = await passwordService.findUserByPhone(trimmedValue);
       }
 
       const successMessage = `✓ تم العثور على المستخدم: ${user.full_name}`;
       setMessage(successMessage);
       setMessageType('success');
       onError?.(successMessage);
-      onUserFound(user);
-      saveToRecentSearches(trimmedValue);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ في البحث';
+      onUserFound?.(user);
+    } catch (error: any) {
+      const errorMessage = error?.message || 'حدث خطأ في البحث';
       setMessage(errorMessage);
       setMessageType('error');
       onError?.(errorMessage);
@@ -97,17 +77,10 @@ export const UserSearchForm: React.FC<Props> = ({ onUserFound, onError }) => {
     }
   };
 
-  const handleRecentSearch = (value: string) => {
-    setSearchValue(value);
-    setShowRecent(false);
-  };
-
   const getPlaceholder = () => {
     switch (searchType) {
       case 'email': return 'example@email.com';
       case 'phone': return '01234567890';
-      case 'name': return 'الاسم الكامل للمستخدم';
-      case 'id': return 'معرف المستخدم';
       default: return '';
     }
   };
@@ -116,15 +89,8 @@ export const UserSearchForm: React.FC<Props> = ({ onUserFound, onError }) => {
     switch (searchType) {
       case 'email': return 'البريد الإلكتروني';
       case 'phone': return 'رقم الهاتف';
-      case 'name': return 'الاسم';
-      case 'id': return 'المعرف';
       default: return '';
     }
-  };
-
-  const clearRecentSearches = () => {
-    setRecentSearches([]);
-    localStorage.removeItem('recentUserSearches');
   };
 
   return (
@@ -168,34 +134,6 @@ export const UserSearchForm: React.FC<Props> = ({ onUserFound, onError }) => {
                 />
                 <span className={styles.radioText}>رقم الهاتف</span>
               </label>
-              <label className={styles.radioLabel}>
-                <input
-                  type="radio"
-                  value="name"
-                  checked={searchType === 'name'}
-                  onChange={(e) => {
-                    setSearchType(e.target.value as 'name');
-                    setSearchValue('');
-                    setMessage('');
-                  }}
-                  disabled={loading}
-                />
-                <span className={styles.radioText}>الاسم</span>
-              </label>
-              <label className={styles.radioLabel}>
-                <input
-                  type="radio"
-                  value="id"
-                  checked={searchType === 'id'}
-                  onChange={(e) => {
-                    setSearchType(e.target.value as 'id');
-                    setSearchValue('');
-                    setMessage('');
-                  }}
-                  disabled={loading}
-                />
-                <span className={styles.radioText}>المعرف</span>
-              </label>
             </div>
           </div>
 
@@ -213,7 +151,6 @@ export const UserSearchForm: React.FC<Props> = ({ onUserFound, onError }) => {
                   setSearchValue(e.target.value);
                   setMessage('');
                 }}
-                onFocus={() => setShowRecent(true)}
                 placeholder={getPlaceholder()}
                 className={styles.input}
                 disabled={loading}
@@ -225,6 +162,7 @@ export const UserSearchForm: React.FC<Props> = ({ onUserFound, onError }) => {
                   onClick={() => setSearchValue('')}
                   className={styles.clearBtn}
                   title="مسح"
+                  disabled={loading}
                 >
                   ✕
                 </button>
@@ -242,35 +180,6 @@ export const UserSearchForm: React.FC<Props> = ({ onUserFound, onError }) => {
                 )}
               </button>
             </div>
-
-            {recentSearches.length > 0 && showRecent && (
-              <div className={styles.recentSearches}>
-                <div className={styles.recentHeader}>
-                  <span className={styles.recentTitle}>عمليات البحث السابقة:</span>
-                  <button
-                    type="button"
-                    onClick={clearRecentSearches}
-                    className={styles.clearRecentBtn}
-                    title="مسح جميع عمليات البحث"
-                  >
-                    مسح الكل
-                  </button>
-                </div>
-                <div className={styles.recentList}>
-                  {recentSearches.map((search, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => handleRecentSearch(search)}
-                      className={styles.recentItem}
-                    >
-                      <span className={styles.recentIcon}>🕒</span>
-                      <span className={styles.recentText}>{search}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           <div className={styles.formActions}>
@@ -297,7 +206,6 @@ export const UserSearchForm: React.FC<Props> = ({ onUserFound, onError }) => {
               onClick={() => {
                 setSearchValue('');
                 setMessage('');
-                setShowRecent(false);
               }}
               className={styles.resetBtn}
               disabled={loading}
@@ -332,8 +240,7 @@ export const UserSearchForm: React.FC<Props> = ({ onUserFound, onError }) => {
           <ul className={styles.tipsList}>
             <li className={styles.tipItem}>• تأكد من صحة البريد الإلكتروني</li>
             <li className={styles.tipItem}>• أدخل رقم الهاتف بدون مسافات</li>
-            <li className={styles.tipItem}>• يمكنك البحث بالاسم الكامل أو الجزئي</li>
-            <li className={styles.tipItem}>• المعرف يكون عادةً مكون من أحرف وأرقام</li>
+            <li className={styles.tipItem}>• يمكنك استخدام البريد أو رقم الهاتف فقط</li>
           </ul>
         </div>
       </div>
