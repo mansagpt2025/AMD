@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClientBrowser } from '@/lib/supabase/sf2-client'
+import { createClientBrowser } from '@/lib/supabase/sf-client'
 import { 
   Wallet, BookOpen, Clock, Calendar, Loader2, GraduationCap,
   Users, Zap, TrendingUp, Award, Crown, Package,
@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 import styles from './GradePage.module.css'
 
-// الأنواع المحدثة حسب قاعدة البيانات
 interface Package {
   id: string
   name: string
@@ -39,7 +38,6 @@ interface UserPackage {
   packages: Package
 }
 
-// مكون بسيط لعرض الباقات
 const SimplePackageCard = ({ 
   pkg, 
   isPurchased,
@@ -103,7 +101,6 @@ const SimplePackageCard = ({
   )
 }
 
-// مكون بسيط لل modal
 const SimplePurchaseModal = ({
   pkg,
   onClose,
@@ -182,7 +179,6 @@ export default function GradePage() {
   
   const gradeSlug = params?.grade as 'first' | 'second' | 'third'
   
-  // State
   const [grade, setGrade] = useState<any>(null)
   const [packages, setPackages] = useState<Package[]>([])
   const [userPackages, setUserPackages] = useState<UserPackage[]>([])
@@ -191,11 +187,9 @@ export default function GradePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  // Modal State
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
 
-  // إحصائيات مؤقتة
   const [stats] = useState({
     totalStudents: 1250,
     successRate: 94,
@@ -203,11 +197,9 @@ export default function GradePage() {
     expertTeachers: 25
   })
 
-  // تحميل البيانات
   useEffect(() => {
     if (gradeSlug) {
       fetchData()
-      checkUser()
     }
   }, [gradeSlug])
 
@@ -216,140 +208,75 @@ export default function GradePage() {
     setError(null)
 
     try {
-      // بيانات الصف
-      setGrade({ 
+      // جلب بيانات الصف
+      const { data: gradeData } = await supabase
+        .from('grades')
+        .select('*')
+        .eq('slug', gradeSlug)
+        .single()
+
+      setGrade(gradeData || { 
         name: gradeSlug === 'first' ? 'الصف الأول الثانوي' : 
               gradeSlug === 'second' ? 'الصف الثاني الثانوي' : 
               'الصف الثالث الثانوي',
         slug: gradeSlug
       })
 
-      // محاولة جلب الباقات من Supabase
-      try {
-        const { data: packagesData, error: packagesError } = await supabase
-          .from('packages')
-          .select('*')
-          .eq('grade', gradeSlug)
-          .eq('is_active', true)
-          .order('price', { ascending: true })
+      // جلب الباقات المتاحة
+      const { data: packagesData, error: packagesError } = await supabase
+        .from('packages')
+        .select('*')
+        .eq('grade', gradeSlug)
+        .eq('is_active', true)
+        .order('price', { ascending: true })
 
-        if (packagesError) {
-          console.error('Error fetching packages:', packagesError)
-          createDummyPackages()
-        } else {
-          setPackages(packagesData || [])
-        }
-      } catch (supabaseError) {
-        console.error('Supabase error:', supabaseError)
-        createDummyPackages()
-      }
+      if (packagesError) throw packagesError
+      setPackages(packagesData || [])
 
-    } catch (err: any) {
-      console.error('Error fetching data:', err)
-      setError(err.message || 'حدث خطأ في تحميل البيانات')
-      createDummyPackages()
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const createDummyPackages = () => {
-    const dummyPackages: Package[] = [
-      {
-        id: '1',
-        name: 'الباقة الأسبوعية',
-        description: 'وصف الباقة الأسبوعية المميزة',
-        price: 100,
-        image_url: '',
-        type: 'weekly',
-        lecture_count: 10,
-        grade: gradeSlug,
-        duration_days: 7,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      },
-      {
-        id: '2',
-        name: 'الباقة الشهرية',
-        description: 'وصف الباقة الشهرية المتكاملة',
-        price: 300,
-        image_url: '',
-        type: 'monthly',
-        lecture_count: 40,
-        grade: gradeSlug,
-        duration_days: 30,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      },
-      {
-        id: '3',
-        name: 'عرض VIP',
-        description: 'عرض خاص بخصم 50%',
-        price: 500,
-        image_url: '',
-        type: 'offer',
-        lecture_count: 60,
-        grade: gradeSlug,
-        duration_days: 90,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    ]
-    setPackages(dummyPackages)
-  }
-
-  const checkUser = async () => {
-    try {
+      // التحقق من المستخدم
       const { data: { user: currentUser } } = await supabase.auth.getUser()
       
       if (currentUser) {
         setUser(currentUser)
         
-        // بيانات وهمية للمحفظة
-        setWalletBalance(1500)
+        // جلب رصيد المحفظة
+        const { data: walletData } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', currentUser.id)
+          .single()
         
-        // بيانات وهمية للباقات المشتراة
-        const dummyUserPackages: UserPackage[] = [
-          {
-            id: 'user-1',
-            user_id: currentUser.id,
-            package_id: '1',
-            purchased_at: new Date().toISOString(),
-            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            is_active: true,
-            source: 'purchase',
-            packages: {
-              id: '1',
-              name: 'الباقة الشهرية',
-              description: 'وصف الباقة الشهرية المتكاملة',
-              price: 300,
-              image_url: '',
-              type: 'monthly',
-              lecture_count: 40,
-              grade: gradeSlug,
-              duration_days: 30,
-              is_active: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          }
-        ]
-        setUserPackages(dummyUserPackages)
+        if (walletData) setWalletBalance(walletData.balance || 0)
+
+        // جلب باقات المستخدم المشتراة مع تفاصيل الباقة
+        const { data: userPackagesData, error: userPackagesError } = await supabase
+          .from('user_packages')
+          .select(`
+            *,
+            packages:package_id (*)
+          `)
+          .eq('user_id', currentUser.id)
+          .eq('is_active', true)
+          .gt('expires_at', new Date().toISOString())
+
+        if (userPackagesError) throw userPackagesError
+        
+        const validUserPackages = (userPackagesData || []).filter((up: any) => up.packages !== null)
+        setUserPackages(validUserPackages as UserPackage[])
       }
-    } catch (err) {
-      console.error('Error checking user:', err)
+
+    } catch (err: any) {
+      console.error('Error fetching data:', err)
+      setError(err.message || 'حدث خطأ في تحميل البيانات')
+    } finally {
+      setLoading(false)
     }
   }
 
-  // الدوال المساعدة
   const isPackagePurchased = (packageId: string) => {
     return userPackages.some(up => up.package_id === packageId)
   }
 
-  // تصنيف الباقات
   const purchasedPackages = userPackages
     .filter(up => up.is_active && up.packages)
     .map(up => up.packages)
@@ -364,7 +291,6 @@ export default function GradePage() {
   const termPackages = availablePackages.filter(p => p.type === 'term')
   const offerPackages = availablePackages.filter(p => p.type === 'offer')
 
-  // معالج الشراء
   const handlePurchaseClick = async (pkg: Package) => {
     if (!user) {
       router.push(`/login?returnUrl=/grades/${gradeSlug}`)
@@ -384,43 +310,54 @@ export default function GradePage() {
     router.push(`/grades/${gradeSlug}/packages/${pkgId}`)
   }
 
-  // بعد الشراء الناجح
   const handlePurchaseSuccess = async () => {
     if (!user?.id || !selectedPackage) {
       setShowPurchaseModal(false)
       return
     }
     
-    // إضافة الباقة مباشرة إلى userPackages لظهورها فوراً
-    const tempUserPackage: UserPackage = {
-      id: 'temp-' + Date.now(),
-      user_id: user.id,
-      package_id: selectedPackage.id,
-      purchased_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + (selectedPackage.duration_days || 30) * 24 * 60 * 60 * 1000).toISOString(),
-      is_active: true,
-      source: 'purchase',
-      packages: selectedPackage
+    try {
+      const expiresAt = new Date()
+      expiresAt.setDate(expiresAt.getDate() + (selectedPackage.duration_days || 30))
+      
+      const { data: newUserPackage, error: insertError } = await supabase
+        .from('user_packages')
+        .insert({
+          user_id: user.id,
+          package_id: selectedPackage.id,
+          purchased_at: new Date().toISOString(),
+          expires_at: expiresAt.toISOString(),
+          is_active: true,
+          source: 'purchase'
+        })
+        .select(`
+          *,
+          packages:package_id (*)
+        `)
+        .single()
+
+      if (insertError) throw insertError
+
+      if (newUserPackage) {
+        setUserPackages(prev => [...prev, newUserPackage as UserPackage])
+      }
+      
+      setPackages(prev => prev.filter(p => p.id !== selectedPackage.id))
+      setShowPurchaseModal(false)
+      setSelectedPackage(null)
+      
+      setTimeout(() => {
+        router.push(`/grades/${gradeSlug}/packages/${selectedPackage.id}`)
+      }, 1000)
+      
+    } catch (err) {
+      console.error('Error purchasing package:', err)
+      alert('حدث خطأ أثناء الشراء، يرجى المحاولة مرة أخرى')
     }
-    
-    setUserPackages(prev => [...prev, tempUserPackage])
-    
-    // إزالة الباقة من القائمة المتاحة
-    setPackages(prev => prev.filter(p => p.id !== selectedPackage.id))
-    
-    setShowPurchaseModal(false)
-    setSelectedPackage(null)
-    
-    // الانتقال إلى الباقة بعد ثانية
-    setTimeout(() => {
-      router.push(`/grades/${gradeSlug}/packages/${tempUserPackage.package_id}`)
-    }, 1000)
   }
 
-  // إعادة تحميل البيانات
   const handleRetry = () => {
     fetchData()
-    checkUser()
   }
 
   if (loading) {
@@ -439,10 +376,7 @@ export default function GradePage() {
           <AlertCircle className={styles.errorIcon} />
           <h3 className={styles.errorTitle}>حدث خطأ</h3>
           <p className={styles.errorMessage}>{error}</p>
-          <button 
-            onClick={handleRetry}
-            className={styles.retryButton}
-          >
+          <button onClick={handleRetry} className={styles.retryButton}>
             <Loader2 className={styles.retryIcon} />
             إعادة المحاولة
           </button>
@@ -453,25 +387,16 @@ export default function GradePage() {
 
   return (
     <div className={styles.pageContainer}>
-      {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerContent}>
           <div className={styles.platformBranding}>
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={styles.platformInfo}
-            >
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className={styles.platformInfo}>
               <h1 className={styles.platformTitle}>الأبــارع محمود الـديــب</h1>
               <p className={styles.platformSubtitle}>منارة العلم والتميز</p>
             </motion.div>
 
             {user && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className={styles.walletContainer}
-              >
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={styles.walletContainer}>
                 <div className={styles.walletInfo}>
                   <Wallet className={styles.walletIcon} />
                   <div>
@@ -482,10 +407,7 @@ export default function GradePage() {
                   </div>
                 </div>
                 {walletBalance < 100 && (
-                  <button 
-                    className={styles.addBalanceButton}
-                    onClick={() => router.push('/wallet')}
-                  >
+                  <button className={styles.addBalanceButton} onClick={() => router.push('/wallet')}>
                     إضافة رصيد
                   </button>
                 )}
@@ -493,11 +415,7 @@ export default function GradePage() {
             )}
           </div>
 
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={styles.gradeTitle}
-          >
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className={styles.gradeTitle}>
             <div className={styles.gradeCard}>
               <div className={styles.gradeIconContainer}>
                 <GraduationCap className={styles.gradeIcon} />
@@ -515,7 +433,6 @@ export default function GradePage() {
         </div>
       </header>
 
-      {/* Stats */}
       <div className={styles.statsContainer}>
         <div className={styles.statsGrid}>
           {[
@@ -524,21 +441,13 @@ export default function GradePage() {
             { icon: Zap, label: 'دورة نشطة', value: stats.activeCourses, suffix: '+' },
             { icon: Award, label: 'خبير تعليمي', value: stats.expertTeachers, suffix: '+' },
           ].map((stat, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className={styles.statCard}
-            >
+            <motion.div key={index} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} className={styles.statCard}>
               <div className={styles.statContent}>
                 <div className={styles.statIconContainer}>
                   <stat.icon className={styles.statIcon} />
                 </div>
                 <div>
-                  <p className={styles.statValue}>
-                    {stat.value}{stat.suffix}
-                  </p>
+                  <p className={styles.statValue}>{stat.value}{stat.suffix}</p>
                   <p className={styles.statLabel}>{stat.label}</p>
                 </div>
               </div>
@@ -547,16 +456,10 @@ export default function GradePage() {
         </div>
       </div>
 
-      {/* Main Content */}
       <main className={styles.mainContent}>
-        {/* Section 1: اشتراكاتك */}
         {purchasedPackages.length > 0 && (
           <section className={styles.packagesSection}>
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className={styles.sectionHeader}
-            >
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={styles.sectionHeader}>
               <div className={styles.sectionIconContainer}>
                 <Package className={styles.sectionIcon} />
               </div>
@@ -564,32 +467,20 @@ export default function GradePage() {
                 <h2 className={styles.sectionTitle}>اشتراكاتك</h2>
                 <p className={styles.sectionSubtitle}>الباقات التي قمت بشرائها</p>
               </div>
-              <div className={styles.sectionCount}>
-                {purchasedPackages.length} باقة
-              </div>
+              <div className={styles.sectionCount}>{purchasedPackages.length} باقة</div>
             </motion.div>
 
             <div className={styles.packagesGrid}>
               {purchasedPackages.map((pkg) => (
-                <SimplePackageCard
-                  key={pkg.id}
-                  pkg={pkg}
-                  isPurchased={true}
-                  onEnter={() => handleEnterPackage(pkg.id)}
-                />
+                <SimplePackageCard key={pkg.id} pkg={pkg} isPurchased={true} onEnter={() => handleEnterPackage(pkg.id)} />
               ))}
             </div>
           </section>
         )}
 
-        {/* Section 2: العروض */}
         {offerPackages.length > 0 && (
           <section className={styles.packagesSection}>
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className={styles.sectionHeader}
-            >
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={styles.sectionHeader}>
               <div className={styles.sectionIconContainer}>
                 <Crown className={styles.sectionIcon} />
               </div>
@@ -597,32 +488,20 @@ export default function GradePage() {
                 <h2 className={styles.sectionTitle}>عروض VIP حصرية</h2>
                 <p className={styles.sectionSubtitle}>فرص ذهبية بخصومات استثنائية</p>
               </div>
-              <div className={styles.sectionCount}>
-                محدودة
-              </div>
+              <div className={styles.sectionCount}>محدودة</div>
             </motion.div>
 
             <div className={styles.packagesGrid}>
               {offerPackages.map((pkg) => (
-                <SimplePackageCard
-                  key={pkg.id}
-                  pkg={pkg}
-                  isPurchased={false}
-                  onPurchase={() => handlePurchaseClick(pkg)}
-                />
+                <SimplePackageCard key={pkg.id} pkg={pkg} isPurchased={false} onPurchase={() => handlePurchaseClick(pkg)} />
               ))}
             </div>
           </section>
         )}
 
-        {/* Section 3: الباقات الشهرية والترم */}
         {(monthlyPackages.length > 0 || termPackages.length > 0) && (
           <section className={styles.packagesSection}>
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className={styles.sectionHeader}
-            >
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={styles.sectionHeader}>
               <div className={styles.sectionIconContainer}>
                 <Calendar className={styles.sectionIcon} />
               </div>
@@ -634,25 +513,15 @@ export default function GradePage() {
 
             <div className={styles.packagesGrid}>
               {[...monthlyPackages, ...termPackages].map((pkg) => (
-                <SimplePackageCard
-                  key={pkg.id}
-                  pkg={pkg}
-                  isPurchased={false}
-                  onPurchase={() => handlePurchaseClick(pkg)}
-                />
+                <SimplePackageCard key={pkg.id} pkg={pkg} isPurchased={false} onPurchase={() => handlePurchaseClick(pkg)} />
               ))}
             </div>
           </section>
         )}
 
-        {/* Section 4: الباقات الأسبوعية */}
         {weeklyPackages.length > 0 && (
           <section className={styles.packagesSection}>
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className={styles.sectionHeader}
-            >
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={styles.sectionHeader}>
               <div className={styles.sectionIconContainer}>
                 <Clock className={styles.sectionIcon} />
               </div>
@@ -664,33 +533,21 @@ export default function GradePage() {
 
             <div className={styles.packagesGrid}>
               {weeklyPackages.map((pkg) => (
-                <SimplePackageCard
-                  key={pkg.id}
-                  pkg={pkg}
-                  isPurchased={false}
-                  onPurchase={() => handlePurchaseClick(pkg)}
-                />
+                <SimplePackageCard key={pkg.id} pkg={pkg} isPurchased={false} onPurchase={() => handlePurchaseClick(pkg)} />
               ))}
             </div>
           </section>
         )}
 
-        {/* حالة عدم وجود باقات */}
         {packages.length === 0 && purchasedPackages.length === 0 && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={styles.noPackages}
-          >
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={styles.noPackages}>
             <BookOpen className={styles.noPackagesIcon} />
-            <h3 className={styles.noPackagesTitle}>جاري التحضير</h3>
-            <p className={styles.noPackagesText}>يتم إعداد محتوى مميز للصف حالياً</p>
-            <p className={styles.noPackagesSubtext}>سيتم إطلاق الباقات قريباً</p>
+            <h3 className={styles.noPackagesTitle}>لا توجد باقات متاحة</h3>
+            <p className={styles.noPackagesText}>سيتم إضافة باقات جديدة قريباً</p>
           </motion.div>
         )}
       </main>
 
-      {/* Footer */}
       <footer className={styles.footer}>
         <div className={styles.footerContent}>
           <div className={styles.footerBrand}>
@@ -708,7 +565,6 @@ export default function GradePage() {
         </div>
       </footer>
 
-      {/* Purchase Modal */}
       <AnimatePresence>
         {showPurchaseModal && selectedPackage && (
           <SimplePurchaseModal
