@@ -139,21 +139,40 @@ export async function searchUser(identifier: string) {
   const supabase = await createClientServer()
 
   try {
-    const { data: profiles, error } = await supabase
+    // البحث في profiles بواسطة الهاتف أو البريد الإلكتروني
+    const { data: profiles, error: profileError } = await supabase
       .from('profiles')
-      .select(`
-        *,
-        wallets!inner (
-          balance,
-          updated_at
-        )
-      `)
+      .select('*')
       .or(`phone.eq.${identifier},email.eq.${identifier}`)
       .single()
 
-    if (error) throw error
+    if (profileError) {
+      console.error('Profile search error:', profileError)
+      return null
+    }
 
-    return profiles
+    if (!profiles) return null
+
+    // الحصول على بيانات المحفظة
+    const { data: wallets, error: walletError } = await supabase
+      .from('wallets')
+      .select('balance, updated_at')
+      .eq('user_id', profiles.id)
+      .single()
+
+    if (walletError) {
+      console.error('Wallet fetch error:', walletError)
+      // إذا لم توجد محفظة، نرجع بيانات الملف الشخصي فقط
+      return {
+        ...profiles,
+        wallets: [{ balance: 0, updated_at: new Date().toISOString() }]
+      }
+    }
+
+    return {
+      ...profiles,
+      wallets: wallets ? [wallets] : [{ balance: 0, updated_at: new Date().toISOString() }]
+    }
   } catch (error) {
     console.error('Error searching user:', error)
     return null
@@ -331,18 +350,36 @@ export async function getRecentTransactions(limit = 10) {
     const { data, error } = await supabase
       .from('wallet_transactions')
       .select(`
-        *,
-        profiles!inner (
-          full_name,
-          email
-        )
+        id,
+        amount,
+        type,
+        description,
+        created_at,
+        user_id
       `)
       .order('created_at', { ascending: false })
       .limit(limit)
 
     if (error) throw error
 
-    return data || []
+    // جلب بيانات الملفات الشخصية للمستخدمين
+    if (!data || data.length === 0) return []
+
+    const userIds = [...new Set(data.map(t => t.user_id))]
+    
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', userIds)
+
+    if (profileError) throw profileError
+
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+
+    return data.map(transaction => ({
+      ...transaction,
+      profiles: profileMap.get(transaction.user_id) || { full_name: 'Unknown', email: 'N/A' }
+    }))
   } catch (error) {
     console.error('Error fetching transactions:', error)
     return []
