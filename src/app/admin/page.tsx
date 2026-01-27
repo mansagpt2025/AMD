@@ -46,26 +46,22 @@ export default async function AdminDashboard() {
 
 const quickActions = [
   {
-    title: 'إنشاء كود جديد',
-    description: 'إنشاء أكواد جديدة للباقات',
+    title: 'الأكواد',
     icon: <CreditCard className="w-8 h-8 text-blue-600" />,
     href: '/admin/codes'
   },
   {
     title: 'إضافة محتوى',
-    description: 'إضافة محاضرات جديدة للصفوف',
     icon: <Package className="w-8 h-8 text-green-600" />,
     href: '/admin/first-secondary'
   },
   {
-    title: 'مراجعة الطلاب',
-    description: 'عرض وتعديل بيانات الطلاب',
+    title: 'سجلات الطلاب',
     icon: <Users className="w-8 h-8 text-purple-600" />,
     href: '/admin/students'
   },
   {
-    title: 'إضافة أموال',
-    description: 'إضافة أموال إلى محفظة الطالب',
+    title: 'ادارة محافظ الطلاب',
     icon: <Wallet className="w-8 h-8 text-orange-600" />,
     href: '/admin/wallet'
   },
@@ -81,4 +77,9 @@ const quickActions = [
     icon: <CheckCircle className="w-8 h-8 text-teal-600" />,
     href: '#'
   }
+  ,{
+    title: 'ادارة كلماتمرور الطلاب',
+    icon: <CreditCard className="w-8 h-8 text-blue-600" />,
+    href: '/admin/passwords'
+  },
 ];

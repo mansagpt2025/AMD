@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { CodeForm } from '../../components/admin/CodeForm';
-import { CodesTable } from '../../components/admin/CodesTable';
+import { CodeForm } from '@/components/admin/CodeForm';
+import { CodesTable } from '@/components/admin/CodesTable';
 import styles from './CodesPage.module.css';
 
 function CodesPage() {
