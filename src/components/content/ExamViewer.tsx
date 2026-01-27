@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { createClientBrowser } from '@/lib/supabase/'
+import { createClientBrowser } from '@/lib/supabase/sf2-client'
 import { 
   Target, Clock, CheckCircle, XCircle, 
   ArrowRight, ArrowLeft, Loader2, AlertCircle,
