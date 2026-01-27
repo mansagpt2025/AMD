@@ -263,17 +263,32 @@ export async function addWalletFunds(userId: string, amount: number, description
 
     console.log('Updating existing wallet:', { walletId, currentBalance, newBalance })
 
-    // Step 2: تحديث الرصيد
+    // Step 2: تحديث الرصيد - نقتل من console logs أولاً
+    console.log('About to update wallet with:', {
+      id: walletId,
+      newBalance: newBalance,
+      timestamp: new Date().toISOString()
+    })
+
+    const updatePayload = {
+      balance: newBalance,
+      updated_at: new Date().toISOString()
+    }
+
+    console.log('Update payload:', updatePayload)
+
     const { data: updateDataArray, error: updateError } = await supabase
       .from('wallets')
-      .update({
-        balance: newBalance,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', walletId)
-      .select('balance')
+      .select('id, balance, updated_at')
 
-    console.log('Update response:', { updateDataArray, updateError })
+    console.log('Update response:', { 
+      data: updateDataArray, 
+      error: updateError,
+      hasError: !!updateError,
+      dataType: Array.isArray(updateDataArray) ? 'array' : typeof updateDataArray
+    })
 
     if (updateError) {
       console.error('Error updating wallet balance:', updateError)
@@ -285,6 +300,7 @@ export async function addWalletFunds(userId: string, amount: number, description
     
     if (updateDataArray) {
       const updateData = Array.isArray(updateDataArray) ? updateDataArray[0] : updateDataArray
+      console.log('Parsed update data:', updateData)
       if (updateData?.balance !== undefined) {
         savedBalance = updateData.balance
       }
@@ -293,6 +309,19 @@ export async function addWalletFunds(userId: string, amount: number, description
     }
 
     console.log('Wallet updated successfully:', { savedBalance, newBalance })
+
+    // التحقق من أن البيانات تم حفظها بالفعل بفحص مباشر
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('wallets')
+      .select('id, balance, updated_at')
+      .eq('id', walletId)
+      .single()
+
+    console.log('Verification query result:', { 
+      verifyData, 
+      verifyError,
+      balanceInDB: verifyData?.balance 
+    })
 
     // Step 3: تسجيل العملية
     const { error: transactionError } = await supabase
