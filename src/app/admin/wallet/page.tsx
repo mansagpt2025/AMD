@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Wallet, AlertCircle, CheckCircle, User, CreditCard, History } from 'lucide-react';
 import styles from './page.module.css';
-import { searchUser, addWalletFunds, getRecentTransactions } from '@/lib/database/admin';
+import { searchUserAction, addWalletFundsAction, getRecentTransactionsAction } from './actions';
 import { createClient } from '@/lib/supabase';
 
 interface UserProfile {
@@ -46,8 +46,12 @@ export default function WalletPage() {
 
   const loadRecentTransactions = async () => {
     try {
-      const transactions = await getRecentTransactions(5);
-      setRecentTransactions(transactions as any);
+      const result = await getRecentTransactionsAction(5);
+      if (result.success) {
+        setRecentTransactions(result.data as any);
+      } else {
+        console.error('Error loading transactions:', result.error);
+      }
     } catch (error) {
       console.error('Error loading transactions:', error);
     }
@@ -63,9 +67,9 @@ export default function WalletPage() {
     setMessage(null);
 
     try {
-      const user = await searchUser(identifier);
-      if (user) {
-        setUserData(user);
+      const result = await searchUserAction(identifier);
+      if (result.success && result.data) {
+        setUserData(result.data);
         setMessage({ type: 'success', text: 'تم العثور على المستخدم بنجاح' });
       } else {
         setMessage({ type: 'error', text: 'لم يتم العثور على المستخدم' });
@@ -87,15 +91,15 @@ export default function WalletPage() {
 
     setLoading(true);
     try {
-      const result = await addWalletFunds(userData.id, parseFloat(amount), description);
+      const result = await addWalletFundsAction(userData.id, parseFloat(amount), description);
       
       if (result.success) {
-        setMessage({ type: 'success', text: result.message });
+        setMessage({ type: 'success', text: 'تم إضافة الأموال بنجاح' });
         
         // تحديث بيانات المستخدم
-        const updatedUser = await searchUser(userData.email);
-        if (updatedUser) {
-          setUserData(updatedUser);
+        const searchResult = await searchUserAction(userData.email);
+        if (searchResult.success && searchResult.data) {
+          setUserData(searchResult.data);
         }
         
         // تحديث قائمة العمليات
@@ -105,7 +109,7 @@ export default function WalletPage() {
         setAmount('');
         setDescription('');
       } else {
-        setMessage({ type: 'error', text: result.message });
+        setMessage({ type: 'error', text: result.error || 'حدث خطأ أثناء إضافة الأموال' });
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'حدث خطأ غير متوقع' });
