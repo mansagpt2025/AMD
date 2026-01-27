@@ -326,33 +326,98 @@ export default function GradePage() {
     expertTeachers: 25
   }), [])
 
+  // دالة لإنشاء محفظة إذا لم تكن موجودة
+  const ensureWalletExists = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('wallets')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Error checking wallet:', error)
+        return null
+      }
+
+      if (!data) {
+        // إنشاء محفظة جديدة
+        const { error: insertError } = await supabase
+          .from('wallets')
+          .insert([{ user_id: userId, balance: 0 }])
+
+        if (insertError) {
+          console.error('Error creating wallet:', insertError)
+          return null
+        }
+        
+        console.log('Created new wallet for user:', userId)
+        return true
+      }
+      
+      return data.id
+    } catch (err) {
+      console.error('Error ensuring wallet exists:', err)
+      return null
+    }
+  }, [supabase])
+
+  const fetchWalletBalance = useCallback(async (userId: string) => {
+    try {
+      const { data: walletData, error } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Error fetching wallet balance:', error)
+        setError('حدث خطأ في جلب رصيد المحفظة')
+        return 0
+      }
+
+      const balance = walletData?.balance || 0
+      setWalletBalance(balance)
+      return balance
+    } catch (err) {
+      console.error('Error in fetchWalletBalance:', err)
+      setError('حدث خطأ غير متوقع في جلب رصيد المحفظة')
+      return 0
+    }
+  }, [supabase])
+
+  // إضافة listener لتحديث المحفظة عند حدوث تغييرات
+  useEffect(() => {
+    if (!user?.id) return
+
+    const channel = supabase
+      .channel('wallet-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'wallets',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          console.log('Wallet updated, refreshing balance...')
+          fetchWalletBalance(user.id)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id, supabase, fetchWalletBalance])
+
   useEffect(() => {
     if (gradeSlug) {
       fetchData()
     }
   }, [gradeSlug])
 
-const fetchWalletBalance = useCallback(async (userId: string) => {
-  try {
-    const { data: walletData, error } = await supabase
-      .from('wallets')
-      .select('balance')
-      .eq('user_id', userId)
-      .maybeSingle()  // استخدم maybeSingle بدلاً من single
-
-    if (error) {
-      console.error('Error fetching wallet balance:', error)
-      return 0
-    }
-
-    const balance = walletData?.balance || 0
-    setWalletBalance(balance)
-    return balance
-  } catch (err) {
-    console.error('Error in fetchWalletBalance:', err)
-    return 0
-  }
-}, [supabase])
   const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -389,6 +454,9 @@ const fetchWalletBalance = useCallback(async (userId: string) => {
       if (currentUser) {
         setUser(currentUser)
         
+        // تأكد من وجود محفظة أولاً
+        await ensureWalletExists(currentUser.id)
+        
         // جلب رصيد المحفظة من قاعدة البيانات
         await fetchWalletBalance(currentUser.id)
 
@@ -415,7 +483,7 @@ const fetchWalletBalance = useCallback(async (userId: string) => {
     } finally {
       setLoading(false)
     }
-  }, [gradeSlug, supabase, fetchWalletBalance])
+  }, [gradeSlug, supabase, fetchWalletBalance, ensureWalletExists])
 
   const refreshWalletBalance = useCallback(async () => {
     if (!user?.id) return
@@ -594,7 +662,7 @@ const fetchWalletBalance = useCallback(async (userId: string) => {
                   transition={{ duration: 0.3 }}
                 >
                   <span style={{ color: theme.primary, fontWeight: 'bold' }}>
-                    {walletBalance.toLocaleString()}
+                    {typeof walletBalance === 'number' ? walletBalance.toLocaleString() : '0'}
                   </span>
                   <span style={{ color: theme.text }}>جنيه</span>
                 </motion.p>
@@ -660,7 +728,7 @@ const fetchWalletBalance = useCallback(async (userId: string) => {
         </motion.div>
       </header>
 
-      {/* Stats Container - FIXED */}
+      {/* Stats Container */}
       <div className={styles.statsContainer}>
         <div className={styles.statsGrid}>
           {[
