@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserSearchForm } from '@/components/admin/UserSearchForm';
 import { PasswordChangeForm } from '@/components/admin/PasswordChangeForm';
-import styles from './PasswordsPage.module.css';
+import styles from './page.module.css';
 
 interface User {
   id: string;
