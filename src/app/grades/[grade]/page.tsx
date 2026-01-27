@@ -332,28 +332,27 @@ export default function GradePage() {
     }
   }, [gradeSlug])
 
-  const fetchWalletBalance = useCallback(async (userId: string) => {
-    try {
-      const { data: walletData, error } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', userId)
-        .single()
+const fetchWalletBalance = useCallback(async (userId: string) => {
+  try {
+    const { data: walletData, error } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', userId)
+      .maybeSingle()  // استخدم maybeSingle بدلاً من single
 
-      if (error) {
-        console.error('Error fetching wallet balance:', error)
-        return 0
-      }
-
-      const balance = walletData?.balance || 0
-      setWalletBalance(balance)
-      return balance
-    } catch (err) {
-      console.error('Error in fetchWalletBalance:', err)
+    if (error) {
+      console.error('Error fetching wallet balance:', error)
       return 0
     }
-  }, [supabase])
 
+    const balance = walletData?.balance || 0
+    setWalletBalance(balance)
+    return balance
+  } catch (err) {
+    console.error('Error in fetchWalletBalance:', err)
+    return 0
+  }
+}, [supabase])
   const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
