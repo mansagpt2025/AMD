@@ -4,6 +4,7 @@ export const gradeThemes = {
     primary: '#3B82F6',
     primaryDark: '#2563EB',
     accent: '#F59E0B',
+      error: '#ef4444',          // ✅ أضف دي
     secondary: '#10B981',
     success: '#10B981',
     text: '#1E293B',
@@ -31,6 +32,7 @@ export const gradeThemes = {
     primaryDark: '#7C3AED',
     accent: '#F59E0B',
     secondary: '#3B82F6',
+    
     success: '#10B981',
     text: '#1E293B',
     background: '#FAF5FF',

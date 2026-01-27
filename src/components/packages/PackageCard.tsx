@@ -114,6 +114,7 @@ export default function PackageCard({
                   fill
                   className={styles.packageImage}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  priority={index < 3}
                 />
                 <div className={styles.imageOverlay} />
               </div>
@@ -155,7 +156,7 @@ export default function PackageCard({
               {pkg.name}
             </h3>
             <p className={styles.packageDescription}>
-              {pkg.description}
+              {pkg.description || `باقة ${getTypeLabel()} متكاملة للصف ${pkg.grade === 'first' ? 'الأول' : pkg.grade === 'second' ? 'الثاني' : 'الثالث'}`}
             </p>
           </div>
 
@@ -167,7 +168,7 @@ export default function PackageCard({
               </div>
               <div className={styles.statContent}>
                 <div className={styles.statValue} style={{ color: theme.text }}>
-                  {pkg.lecture_count}
+                  {pkg.lecture_count || 0}
                 </div>
                 <div className={styles.statLabel}>محاضرة</div>
               </div>
@@ -179,7 +180,7 @@ export default function PackageCard({
               </div>
               <div className={styles.statContent}>
                 <div className={styles.statValue} style={{ color: theme.text }}>
-                  {pkg.duration_days}
+                  {pkg.duration_days || 30}
                 </div>
                 <div className={styles.statLabel}>يوم</div>
               </div>
@@ -204,10 +205,10 @@ export default function PackageCard({
               <div className={styles.priceLabel}>السعر</div>
               <div className={styles.priceWrapper}>
                 <span className={styles.priceAmount} style={{ color: theme.text }}>
-                  {pkg.price.toLocaleString()}
+                  {(pkg.price || 0).toLocaleString()}
                 </span>
                 <span className={styles.priceCurrency}>جنيه</span>
-                {isHighlighted && (
+                {isHighlighted && pkg.price && (
                   <span className={styles.originalPrice}>
                     {Math.round(pkg.price * 1.3).toLocaleString()}
                   </span>
@@ -217,6 +218,7 @@ export default function PackageCard({
 
             <button
               onClick={isPurchased ? onEnter : onPurchase}
+              disabled={!pkg.is_active}
               className={`${styles.actionButton} ${
                 isPurchased 
                   ? styles.enterButton
@@ -229,7 +231,7 @@ export default function PackageCard({
               } : { background: theme.primary }}
             >
               <span className={styles.buttonText}>
-                {isPurchased ? 'دخول للباقة' : 'اشترك الآن'}
+                {isPurchased ? 'دخول للباقة' : !pkg.is_active ? 'غير متاحة' : 'اشترك الآن'}
               </span>
               {isPurchased ? (
                 <ArrowRight className={styles.buttonIcon} />

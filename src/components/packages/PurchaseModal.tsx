@@ -102,13 +102,59 @@ export default function PurchaseModal({
     }
   }
 
-  // الشراء بالمحفظة - نسخة بديلة بدون RPC
+  // دالة RPC مبسطة للشراء
+  const purchasePackageRPC = async () => {
+    try {
+      // استخدام دالة RPC إذا كانت موجودة
+      const { data, error } = await supabase.rpc('simple_purchase_package', {
+        p_user_id: user.id,
+        p_package_id: pkg.id,
+        p_price: pkg.price
+      })
+
+      if (error) {
+        console.error('RPC Error:', error)
+        return { success: false, message: error.message }
+      }
+
+      return data
+    } catch (error: any) {
+      console.error('RPC Exception:', error)
+      return { success: false, message: error.message }
+    }
+  }
+
+  // الشراء بالمحفظة - محسنة
   const handleWalletPurchase = async () => {
     // التحقق من الرصيد
     if (walletBalance < pkg.price) {
       throw new Error(`رصيد المحفظة غير كافٍ. الرصيد المطلوب: ${pkg.price} جنيه`)
     }
 
+    try {
+      // المحاولة باستخدام RPC أولاً
+      const result = await purchasePackageRPC()
+      
+      if (!result.success) {
+        // إذا فشل RPC، استخدام الطريقة البديلة
+        console.log('Falling back to manual purchase...')
+        await handleManualWalletPurchase()
+      } else {
+        console.log('Purchase via RPC successful:', result.message)
+      }
+
+      // نجاح الشراء
+      setShowConfetti(true)
+      setTimeout(() => {
+        onSuccess(pkg.id)
+      }, 2000)
+    } catch (err: any) {
+      throw new Error(err.message || 'فشل عملية الشراء')
+    }
+  }
+
+  // الطريقة البديلة للشراء
+  const handleManualWalletPurchase = async () => {
     try {
       // 1. خصم المبلغ من المحفظة
       const { error: walletError } = await supabase
@@ -119,11 +165,11 @@ export default function PurchaseModal({
         })
         .eq('user_id', user.id)
 
-      if (walletError) throw new Error('فشل تحديث المحفظة')
+      if (walletError) throw new Error('فشل تحديث المحفظة: ' + walletError.message)
 
       // 2. إضافة الباقة للمستخدم
       const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + pkg.duration_days)
+      expiresAt.setDate(expiresAt.getDate() + (pkg.duration_days || 30))
 
       const { error: packageError } = await supabase
         .from('user_packages')
@@ -146,20 +192,14 @@ export default function PurchaseModal({
           })
           .eq('user_id', user.id)
         
-        throw new Error('فشل إضافة الباقة')
+        throw new Error('فشل إضافة الباقة: ' + packageError.message)
       }
-
-      // نجاح الشراء
-      setShowConfetti(true)
-      setTimeout(() => {
-        onSuccess(pkg.id)
-      }, 2000)
     } catch (err: any) {
       throw new Error(err.message || 'فشل عملية الشراء')
     }
   }
 
-  // الشراء بالكود - نسخة بديلة بدون RPC
+  // الشراء بالكود
   const handleCodePurchase = async () => {
     if (!code.trim()) {
       throw new Error('يرجى إدخال الكود أولاً')
@@ -180,11 +220,11 @@ export default function PurchaseModal({
         })
         .eq('id', validatedCode.id)
 
-      if (codeError) throw new Error('فشل تحديث حالة الكود')
+      if (codeError) throw new Error('فشل تحديث حالة الكود: ' + codeError.message)
 
       // 2. إضافة الباقة للمستخدم
       const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + pkg.duration_days)
+      expiresAt.setDate(expiresAt.getDate() + (pkg.duration_days || 30))
 
       const { error: packageError } = await supabase
         .from('user_packages')
@@ -208,7 +248,7 @@ export default function PurchaseModal({
           })
           .eq('id', validatedCode.id)
         
-        throw new Error('فشل إضافة الباقة')
+        throw new Error('فشل إضافة الباقة: ' + packageError.message)
       }
 
       // نجاح الشراء
@@ -263,7 +303,7 @@ export default function PurchaseModal({
           <div className={styles.priceSection}>
             <div className={styles.priceDisplay}>
               <span className={styles.priceCurrency}>جنيه</span>
-              <span className={styles.priceAmount}>{pkg.price.toLocaleString()}</span>
+              <span className={styles.priceAmount}>{(pkg.price || 0).toLocaleString()}</span>
             </div>
             <div className={styles.discountBadge}>
               <Sparkles className={styles.discountIcon} />
@@ -277,14 +317,14 @@ export default function PurchaseModal({
               <div className={styles.featureItem}>
                 <BookOpen className={styles.featureIcon} style={{ color: theme.primary }} />
                 <div>
-                  <div className={styles.featureValue}>{pkg.lecture_count}</div>
+                  <div className={styles.featureValue}>{pkg.lecture_count || 0}</div>
                   <div className={styles.featureLabel}>محاضرة</div>
                 </div>
               </div>
               <div className={styles.featureItem}>
                 <Clock className={styles.featureIcon} style={{ color: theme.primary }} />
                 <div>
-                  <div className={styles.featureValue}>{pkg.duration_days}</div>
+                  <div className={styles.featureValue}>{pkg.duration_days || 30}</div>
                   <div className={styles.featureLabel}>يوم</div>
                 </div>
               </div>

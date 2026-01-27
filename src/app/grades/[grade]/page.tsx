@@ -50,6 +50,21 @@ interface UserPackage {
   packages: Package
 }
 
+// نوع للثيم مع إضافة خاصية error
+interface Theme {
+  primary: string
+  primaryDark: string
+  accent: string
+  secondary: string
+  success: string
+  text: string
+  background: string
+  backgroundLight: string
+  header: string
+  border: string
+  error?: string
+}
+
 export default function GradePage() {
   const router = useRouter()
   const params = useParams()
@@ -59,7 +74,10 @@ export default function GradePage() {
   
   // الحصول على الثيم الخاص بالصف
   const gradeTheme = getGradeTheme(gradeSlug)
-  const [theme, setTheme] = useState(gradeTheme)
+  const [theme, setTheme] = useState<Theme>({
+    ...gradeTheme,
+    error:'#ef4444' // قيمة افتراضية
+  })
 
   // State
   const [grade, setGrade] = useState<any>(null)
@@ -89,12 +107,12 @@ export default function GradePage() {
       fetchData()
       checkUser()
       
-      // تحديث تلقائي كل 5 ثوانٍ
+      // تحديث تلقائي كل 10 ثوانٍ
       const interval = setInterval(() => {
         if (!loading && !refreshing) {
           refreshUserData()
         }
-      }, 5000)
+      }, 10000)
 
       return () => clearInterval(interval)
     }
@@ -106,31 +124,42 @@ export default function GradePage() {
 
     try {
       // جلب بيانات الصف من جدول grades
-      const { data: gradeData } = await supabase
+      const { data: gradeData, error: gradeError } = await supabase
         .from('grades')
         .select('*')
         .eq('slug', gradeSlug)
         .single()
 
-      setGrade(gradeData || { 
-        name: gradeSlug === 'first' ? 'الصف الأول الثانوي' : 
-              gradeSlug === 'second' ? 'الصف الثاني الثانوي' : 
-              'الصف الثالث الثانوي' 
-      })
+      if (gradeError) {
+        console.warn('Grade not found, using default:', gradeError.message)
+        setGrade({ 
+          name: gradeSlug === 'first' ? 'الصف الأول الثانوي' : 
+                gradeSlug === 'second' ? 'الصف الثاني الثانوي' : 
+                'الصف الثالث الثانوي',
+          slug: gradeSlug
+        })
+      } else {
+        setGrade(gradeData)
+      }
 
       // جلب الباقات من جدول packages
-      const { data: packagesData } = await supabase
+      const { data: packagesData, error: packagesError } = await supabase
         .from('packages')
         .select('*')
         .eq('grade', gradeSlug)
         .eq('is_active', true)
         .order('price', { ascending: true })
 
+      if (packagesError) {
+        console.error('Error fetching packages:', packagesError)
+        throw new Error('فشل تحميل الباقات. حاول تحديث الصفحة.')
+      }
+
       setPackages(packagesData || [])
 
     } catch (err: any) {
       console.error('Error fetching data:', err)
-      setError(err.message)
+      setError(err.message || 'حدث خطأ في تحميل البيانات')
     } finally {
       setLoading(false)
     }
@@ -152,26 +181,77 @@ export default function GradePage() {
 
         if (walletData) setWalletBalance(walletData.balance)
 
-        // جلب باقات المستخدم من جدول user_packages
-        const { data: userPackagesData } = await supabase
-          .from('user_packages')
-          .select(`
-            *,
-            packages (*)
-          `)
-          .eq('user_id', currentUser.id)
-          .eq('is_active', true)
+        // محاولة جلب الباقات بطريقة JOIN
+        try {
+          const { data: userPackagesData, error: packagesError } = await supabase
+            .from('user_packages')
+            .select(`
+              *,
+              packages (*)
+            `)
+            .eq('user_id', currentUser.id)
+            .eq('is_active', true)
 
-        if (userPackagesData) {
-          // تصفية الباقات الخاصة بهذا الصف فقط
-          const filtered = userPackagesData.filter((up: any) => 
-            up.packages?.grade === gradeSlug
-          )
-          setUserPackages(filtered)
+          if (packagesError) {
+            console.warn('JOIN query failed, using alternative:', packagesError.message)
+            await fetchUserPackagesAlternative(currentUser.id)
+          } else if (userPackagesData) {
+            // تصفية الباقات الخاصة بهذا الصف فقط
+            const filtered = userPackagesData.filter((up: any) => 
+              up.packages?.grade === gradeSlug
+            )
+            setUserPackages(filtered)
+          }
+        } catch (joinError) {
+          console.warn('Join error, using alternative:', joinError)
+          await fetchUserPackagesAlternative(currentUser.id)
         }
       }
     } catch (err) {
       console.error('Error checking user:', err)
+    }
+  }
+
+  // دالة بديلة لجلب باقات المستخدم
+  const fetchUserPackagesAlternative = async (userId: string) => {
+    try {
+      // أولاً: جلب جميع user_packages الخاصة بالمستخدم
+      const { data: userPackagesData, error: upError } = await supabase
+        .from('user_packages')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+
+      if (upError) throw upError
+
+      if (userPackagesData && userPackagesData.length > 0) {
+        // جمع معرفات الباقات
+        const packageIds = userPackagesData.map((up: any) => up.package_id)
+        
+        // جلب تفاصيل الباقات من جدول packages
+        const { data: packagesData, error: pkgError } = await supabase
+          .from('packages')
+          .select('*')
+          .in('id', packageIds)
+          .eq('grade', gradeSlug)
+
+        if (pkgError) throw pkgError
+
+        // دمج البيانات يدوياً
+        const mergedData = userPackagesData
+          .map((up: any) => ({
+            ...up,
+            packages: packagesData?.find((p: any) => p.id === up.package_id) || null
+          }))
+          .filter((up: any) => up.packages !== null)
+
+        setUserPackages(mergedData)
+      } else {
+        setUserPackages([])
+      }
+    } catch (err) {
+      console.error('Alternative fetch error:', err)
+      setUserPackages([])
     }
   }
 
@@ -184,23 +264,6 @@ export default function GradePage() {
       const { data: { user: currentUser } } = await supabase.auth.getUser()
       
       if (currentUser) {
-        // تحديث باقات المستخدم
-        const { data: userPackagesData } = await supabase
-          .from('user_packages')
-          .select(`
-            *,
-            packages (*)
-          `)
-          .eq('user_id', currentUser.id)
-          .eq('is_active', true)
-
-        if (userPackagesData) {
-          const filtered = userPackagesData.filter((up: any) => 
-            up.packages?.grade === gradeSlug
-          )
-          setUserPackages(filtered)
-        }
-
         // تحديث رصيد المحفظة
         const { data: walletData } = await supabase
           .from('wallets')
@@ -209,6 +272,9 @@ export default function GradePage() {
           .single()
 
         if (walletData) setWalletBalance(walletData.balance)
+
+        // تحديث باقات المستخدم
+        await fetchUserPackagesAlternative(currentUser.id)
       }
     } catch (err) {
       console.error('Error refreshing user data:', err)
@@ -245,7 +311,7 @@ export default function GradePage() {
     }
     
     if (isPackagePurchased(pkg.id)) {
-      router.push(`/grades/${gradeSlug}/packages/${pkg.id}`)
+      handleEnterPackage(pkg.id)
       return
     }
     
@@ -254,6 +320,21 @@ export default function GradePage() {
   }
 
   const handleEnterPackage = (pkgId: string) => {
+    // التحقق من وجود الباقة أولاً
+    const userPackage = userPackages.find(up => up.package_id === pkgId)
+    if (!userPackage) {
+      alert('ليس لديك صلاحية للدخول إلى هذه الباقة')
+      return
+    }
+    
+    // التحقق من صلاحية الباقة
+    const expiresAt = new Date(userPackage.expires_at)
+    if (expiresAt < new Date()) {
+      alert('انتهت صلاحية هذه الباقة')
+      return
+    }
+    
+    // الانتقال إلى الباقة
     router.push(`/grades/${gradeSlug}/packages/${pkgId}`)
   }
 
@@ -268,7 +349,7 @@ export default function GradePage() {
           user_id: user.id,
           package_id: selectedPackage.id,
           purchased_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
+          expires_at: new Date(Date.now() + (selectedPackage.duration_days || 30) * 24 * 60 * 60 * 1000).toISOString(),
           is_active: true,
           source: 'purchase',
           packages: selectedPackage
@@ -280,19 +361,9 @@ export default function GradePage() {
         setPackages(prev => prev.filter(p => p.id !== selectedPackage.id))
       }
 
-      // إعادة تحميل البيانات من الخادم للتأكد
-      await checkUser()
+      // إعادة تحميل البيانات للتأكد
+      await refreshUserData()
       
-      // إعادة تحميل الباقات
-      const { data: packagesData } = await supabase
-        .from('packages')
-        .select('*')
-        .eq('grade', gradeSlug)
-        .eq('is_active', true)
-        .order('price', { ascending: true })
-
-      setPackages(packagesData || [])
-
       // الانتقال إلى الباقة بعد ثانية
       setTimeout(() => {
         router.push(`/grades/${gradeSlug}/packages/${purchasedPackageId}`)
@@ -305,11 +376,37 @@ export default function GradePage() {
     }
   }
 
+  // إعادة تحميل البيانات
+  const handleRetry = () => {
+    fetchData()
+    checkUser()
+  }
+
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
         <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
         <p className={styles.loadingText}>جاري تحميل بيانات الصف...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className={styles.errorContainer}>
+        <div className={styles.errorCard}>
+          <AlertCircle className={styles.errorIcon} style={{ color: theme.error || '#ef4444' }} />
+          <h3 className={styles.errorTitle}>حدث خطأ</h3>
+          <p className={styles.errorMessage}>{error}</p>
+          <button 
+            onClick={handleRetry}
+            className={styles.retryButton}
+            style={{ background: theme.primary }}
+          >
+            <Loader2 className={styles.retryIcon} />
+            إعادة المحاولة
+          </button>
+        </div>
       </div>
     )
   }
@@ -330,6 +427,7 @@ export default function GradePage() {
       {refreshing && (
         <div className={styles.refreshIndicator}>
           <Loader2 className={styles.refreshSpinner} size={16} />
+          <span>جاري تحديث البيانات...</span>
         </div>
       )}
 
@@ -362,6 +460,15 @@ export default function GradePage() {
                     </p>
                   </div>
                 </div>
+                {walletBalance < 100 && (
+                  <button 
+                    className={styles.addBalanceButton}
+                    onClick={() => router.push('/wallet')}
+                    style={{ background: theme.accent }}
+                  >
+                    إضافة رصيد
+                  </button>
+                )}
               </motion.div>
             )}
           </div>
@@ -633,3 +740,10 @@ export default function GradePage() {
     </div>
   )
 }
+
+// أيقونة AlertCircle لم يتم استيرادها في الأعلى، فلنضفها
+const AlertCircle = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
