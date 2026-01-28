@@ -1,255 +1,289 @@
-'use server'
+'use server';
 
-import { createServerActionClient } from '@/lib/supabase/2server'
-import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
 
-// ================== TYPES ==================
-
-export interface PackageData {
-  name: string
-  description: string | null
-  price: number
-  image_url: string | null
-  grade: 'first' | 'second' | 'third'
-  type: 'weekly' | 'monthly' | 'term' | 'offer'
-}
-
-export interface LectureData {
-  package_id: string
-  title: string
-  description: string | null
-  image_url: string | null
-  order_number: number
-}
-
-export interface ContentData {
-  lecture_id: string
-  type: 'video' | 'pdf' | 'exam' | 'text'
-  title: string
-  description: string | null
-  content_url: string | null
-  max_attempts: number
-  order_number: number
-}
-
-// ================== GET ==================
+// ==================== Packages ====================
 
 export async function getPackages() {
-  const supabase = await createServerActionClient()
+  const supabase = await createClient();
+  
   const { data, error } = await supabase
     .from('packages')
     .select('*')
-    .order('created_at', { ascending: false })
+    .eq('grade', 'first')
+    .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('getPackages error:', error)
-    throw error
-  }
-
-  return data ?? []
+  if (error) throw error;
+  return data || [];
 }
 
-export async function getLectures(packageId?: string) {
-  const supabase = await createServerActionClient()
-
-  let query = supabase
-    .from('lectures')
-    .select('*, packages(*)')
-    .order('order_number')
-
-  if (packageId) query = query.eq('package_id', packageId)
-
-  const { data, error } = await query
-
-  if (error) {
-    console.error('getLectures error:', error)
-    throw error
-  }
-
-  return data ?? []
-}
-
-export async function getContents(lectureId?: string) {
-  const supabase = await createServerActionClient()
-
-  let query = supabase
-    .from('lecture_contents')
-    .select('*, lectures(title)')
-    .order('order_number')
-
-  if (lectureId) query = query.eq('lecture_id', lectureId)
-
-  const { data, error } = await query
-
-  if (error) {
-    console.error('getContents error:', error)
-    throw error
-  }
-
-  return data ?? []
-}
-
-// ================== CREATE ==================
-
-export async function createPackage(data: PackageData) {
-  const supabase = await createServerActionClient()
+export async function createPackage(formData: FormData) {
+  const supabase = await createClient();
+  
+  const name = formData.get('name') as string;
+  const description = formData.get('description') as string;
+  const price = parseInt(formData.get('price') as string);
+  const type = formData.get('type') as string;
+  const duration_days = parseInt(formData.get('duration_days') as string) || 30;
+  const image_url = formData.get('image_url') as string;
 
   const { error } = await supabase.from('packages').insert({
-    name: data.name,
-    description: data.description,
-    price: data.price,
-    image_url: data.image_url,
-    grade: data.grade,
-    type: data.type,
-  })
+    name,
+    description,
+    price,
+    grade: 'first',
+    type,
+    duration_days,
+    image_url: image_url || null,
+    is_active: true
+  });
 
-  if (error) {
-    console.error('createPackage error:', error)
-    throw error
-  }
-
-  revalidatePath('/admin/first-secondary')
+  if (error) throw error;
+  revalidatePath('/admin/first-secondary');
 }
 
-export async function createLecture(data: LectureData) {
-  const supabase = await createServerActionClient()
-
-  const { error } = await supabase.from('lectures').insert({
-    package_id: data.package_id,
-    title: data.title,
-    description: data.description,
-    image_url: data.image_url,
-    order_number: data.order_number,
-  })
-
-  if (error) {
-    console.error('createLecture error:', error)
-    throw error
-  }
-
-  revalidatePath('/admin/first-secondary')
-}
-
-export async function createContent(data: ContentData) {
-  const supabase = await createServerActionClient()
-
-  const { error } = await supabase.from('lecture_contents').insert({
-    lecture_id: data.lecture_id,
-    type: data.type,
-    title: data.title,
-    description: data.description,
-    content_url: data.content_url,
-    max_attempts: data.max_attempts,
-    order_number: data.order_number,
-  })
-
-  if (error) {
-    console.error('createContent error:', error)
-    throw error
-  }
-
-  revalidatePath('/admin/first-secondary')
-}
-
-// ================== UPDATE ==================
-
-export async function updatePackage(
-  id: string,
-  data: Partial<PackageData>
-) {
-  const supabase = await createServerActionClient()
+export async function updatePackage(id: string, formData: FormData) {
+  const supabase = await createClient();
+  
+  const name = formData.get('name') as string;
+  const description = formData.get('description') as string;
+  const price = parseInt(formData.get('price') as string);
+  const type = formData.get('type') as string;
+  const duration_days = parseInt(formData.get('duration_days') as string) || 30;
+  const image_url = formData.get('image_url') as string;
+  const is_active = formData.get('is_active') === 'true';
 
   const { error } = await supabase
     .from('packages')
     .update({
-      ...(data.name !== undefined && { name: data.name }),
-      ...(data.description !== undefined && { description: data.description }),
-      ...(data.price !== undefined && { price: data.price }),
-      ...(data.image_url !== undefined && { image_url: data.image_url }),
-      ...(data.grade !== undefined && { grade: data.grade }),
-      ...(data.type !== undefined && { type: data.type }),
+      name,
+      description,
+      price,
+      type,
+      duration_days,
+      image_url: image_url || null,
+      is_active,
+      updated_at: new Date().toISOString()
     })
-    .eq('id', id)
+    .eq('id', id);
 
-  if (error) {
-    console.error('updatePackage error:', error)
-    throw error
-  }
-
-  revalidatePath('/admin/first-secondary')
+  if (error) throw error;
+  revalidatePath('/admin/first-secondary');
 }
 
-export async function updateLecture(
-  id: string,
-  data: {
-    title: string
-    description: string | null
-    image_url: string | null
-    order_number: number
-    package_id: string
+export async function deletePackage(id: string) {
+  const supabase = await createClient();
+  
+  const { error } = await supabase.from('packages').delete().eq('id', id);
+  if (error) throw error;
+  revalidatePath('/admin/first-secondary');
+}
+
+// ==================== Lectures ====================
+
+export async function getLectures() {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from('lectures')
+    .select(`
+      *,
+      package:packages(id, name)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  
+  // Get all lecture-package relationships
+  const { data: allLectures } = await supabase
+    .from('lectures')
+    .select('*, packages!inner(id, name)');
+    
+  return data || [];
+}
+
+export async function getLecturesByPackage(packageId: string) {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from('lectures')
+    .select('*')
+    .eq('package_id', packageId)
+    .order('order_number', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createLecture(formData: FormData) {
+  const supabase = await createClient();
+  
+  const title = formData.get('title') as string;
+  const description = formData.get('description') as string;
+  const image_url = formData.get('image_url') as string;
+  const package_ids = JSON.parse(formData.get('package_ids') as string) as string[];
+  const order_number = parseInt(formData.get('order_number') as string) || 0;
+
+  // Create lecture for each selected package
+  for (const package_id of package_ids) {
+    const { error } = await supabase.from('lectures').insert({
+      title,
+      description,
+      image_url: image_url || null,
+      package_id,
+      order_number,
+      is_active: true
+    });
+    
+    if (error) throw error;
   }
-) {
-  const supabase = await createServerActionClient()
+
+  revalidatePath('/admin/first-secondary');
+}
+
+export async function updateLecture(id: string, formData: FormData) {
+  const supabase = await createClient();
+  
+  const title = formData.get('title') as string;
+  const description = formData.get('description') as string;
+  const image_url = formData.get('image_url') as string;
+  const order_number = parseInt(formData.get('order_number') as string) || 0;
+  const is_active = formData.get('is_active') === 'true';
 
   const { error } = await supabase
     .from('lectures')
-    .update(data)
-    .eq('id', id)
+    .update({
+      title,
+      description,
+      image_url: image_url || null,
+      order_number,
+      is_active
+    })
+    .eq('id', id);
 
-  if (error) {
-    console.error('updateLecture error:', error)
-    throw error
-  }
-
-  revalidatePath('/admin/first-secondary')
-}
-
-export async function updateContent(
-  id: string,
-  data: {
-    lecture_id: string
-    type: string
-    title: string
-    description: string | null
-    content_url: string | null
-    max_attempts: number
-    order_number: number
-  }
-) {
-  const supabase = await createServerActionClient()
-
-  const { error } = await supabase
-    .from('lecture_contents')
-    .update(data)
-    .eq('id', id)
-
-  if (error) {
-    console.error('updateContent error:', error)
-    throw error
-  }
-
-  revalidatePath('/admin/first-secondary')
-}
-
-// ================== DELETE ==================
-
-export async function deletePackage(id: string) {
-  const supabase = await createServerActionClient()
-  const { error } = await supabase.from('packages').delete().eq('id', id)
-  if (error) throw error
-  revalidatePath('/admin/first-secondary')
+  if (error) throw error;
+  revalidatePath('/admin/first-secondary');
 }
 
 export async function deleteLecture(id: string) {
-  const supabase = await createServerActionClient()
-  const { error } = await supabase.from('lectures').delete().eq('id', id)
-  if (error) throw error
-  revalidatePath('/admin/first-secondary')
+  const supabase = await createClient();
+  
+  const { error } = await supabase.from('lectures').delete().eq('id', id);
+  if (error) throw error;
+  revalidatePath('/admin/first-secondary');
+}
+
+// ==================== Lecture Contents ====================
+
+export async function getContents() {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from('lecture_contents')
+    .select(`
+      *,
+      lecture:lectures(id, title, package_id)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getContentsByLecture(lectureId: string) {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from('lecture_contents')
+    .select('*')
+    .eq('lecture_id', lectureId)
+    .order('order_number', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createContent(formData: FormData) {
+  const supabase = await createClient();
+  
+  const type = formData.get('type') as 'video' | 'pdf' | 'exam' | 'text';
+  const title = formData.get('title') as string;
+  const description = formData.get('description') as string;
+  const content_url = formData.get('content_url') as string;
+  const lecture_ids = JSON.parse(formData.get('lecture_ids') as string) as string[];
+  const duration_minutes = parseInt(formData.get('duration_minutes') as string) || 0;
+  const order_number = parseInt(formData.get('order_number') as string) || 0;
+  const max_attempts = parseInt(formData.get('max_attempts') as string) || 1;
+  const pass_score = parseInt(formData.get('pass_score') as string) || 70;
+
+  // If type is exam, store exam questions in description or separate handling
+  const examQuestions = formData.get('exam_questions') as string;
+  const finalDescription = type === 'exam' && examQuestions 
+    ? `${description}\n\n[EXAM_QUESTIONS]:${examQuestions}` 
+    : description;
+
+  for (const lecture_id of lecture_ids) {
+    const { error } = await supabase.from('lecture_contents').insert({
+      lecture_id,
+      type,
+      title,
+      description: finalDescription,
+      content_url: content_url || null,
+      duration_minutes,
+      order_number,
+      max_attempts: type === 'video' || type === 'exam' ? max_attempts : null,
+      pass_score: type === 'exam' ? pass_score : null,
+      is_active: true
+    });
+    
+    if (error) throw error;
+  }
+
+  revalidatePath('/admin/first-secondary');
+}
+
+export async function updateContent(id: string, formData: FormData) {
+  const supabase = await createClient();
+  
+  const type = formData.get('type') as 'video' | 'pdf' | 'exam' | 'text';
+  const title = formData.get('title') as string;
+  const description = formData.get('description') as string;
+  const content_url = formData.get('content_url') as string;
+  const duration_minutes = parseInt(formData.get('duration_minutes') as string) || 0;
+  const order_number = parseInt(formData.get('order_number') as string) || 0;
+  const max_attempts = parseInt(formData.get('max_attempts') as string) || 1;
+  const pass_score = parseInt(formData.get('pass_score') as string) || 70;
+  const is_active = formData.get('is_active') === 'true';
+
+  const examQuestions = formData.get('exam_questions') as string;
+  const finalDescription = type === 'exam' && examQuestions 
+    ? `${description}\n\n[EXAM_QUESTIONS]:${examQuestions}` 
+    : description;
+
+  const { error } = await supabase
+    .from('lecture_contents')
+    .update({
+      type,
+      title,
+      description: finalDescription,
+      content_url: content_url || null,
+      duration_minutes,
+      order_number,
+      max_attempts: type === 'video' || type === 'exam' ? max_attempts : null,
+      pass_score: type === 'exam' ? pass_score : null,
+      is_active
+    })
+    .eq('id', id);
+
+  if (error) throw error;
+  revalidatePath('/admin/first-secondary');
 }
 
 export async function deleteContent(id: string) {
-  const supabase = await createServerActionClient()
-  const { error } = await supabase.from('lecture_contents').delete().eq('id', id)
-  if (error) throw error
-  revalidatePath('/admin/first-secondary')
+  const supabase = await createClient();
+  
+  const { error } = await supabase.from('lecture_contents').delete().eq('id', id);
+  if (error) throw error;
+  revalidatePath('/admin/first-secondary');
 }
