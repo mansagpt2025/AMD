@@ -1,25 +1,6 @@
 /* ==================== CSS PROFESSIONAL STYLES ==================== */
 /* ==================== ENHANCED STYLES FOR PROFESSIONAL DESIGN ==================== */
 
-/* ==================== GLOBAL ENHANCEMENTS ==================== */
-html {
-  scroll-behavior: smooth;
-  font-size: 16px;
-}
-
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  line-height: 1.6;
-  color: var(--text);
-  overflow-x: hidden;
-}
-
-/* ==================== TYPOGRAPHY ENHANCEMENTS ==================== */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 700;
-  line-height: 1.2;
-}
-
 /* ==================== CARD HOVER EFFECTS ENHANCEMENT ==================== */
 .packageCard {
   position: relative;

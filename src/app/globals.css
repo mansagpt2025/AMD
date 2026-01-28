@@ -6,12 +6,6 @@
   font-display: swap;
 }
 
-body {
-  font-family: 'GE SS Two';
-  direction: rtl;
-  text-align: right;
-}
-
 :root {
   /* نظام الألوان الجديد - أزرق فاتح وأنيق */
   --primary-50: #eff6ff;
