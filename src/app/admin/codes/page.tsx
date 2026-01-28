@@ -151,11 +151,11 @@ export default function CodesPage() {
     };
     
     initialize();
-  }, []);
+  }, []); // مصفوفة dependencies فارغة - تعمل مرة واحدة عند التحميل
 
   useEffect(() => {
     loadCodes(currentPage);
-  }, [currentPage]);
+  }, [currentPage]); // تعمل عند تغيير currentPage
 
   // تحديث الباقات المصفاة عند تغيير الصف
   useEffect(() => {
@@ -165,16 +165,16 @@ export default function CodesPage() {
       // إعادة تعيين الباقة المختارة
       setFormData(prev => ({ ...prev, package_id: '' }));
     }
-  }, [formData.grade, allPackages]);
+  }, [formData.grade, allPackages]); // تعمل عند تغيير formData.grade أو allPackages
 
   useEffect(() => {
-    // Cleanup timeout on unmount
+    // Cleanup timeout على unmount
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, []);
+  }, []); // مصفوفة dependencies فارغة - تعمل مرة واحدة عند التحميل والتنظيف عند unmount
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
