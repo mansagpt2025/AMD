@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getPackages, getGrades, createCode, getCodes, deleteCode } from './actions';
 import './styles.css';
 
@@ -62,8 +62,10 @@ export default function CodesPage() {
     expires_at: '',
   });
 
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
   // دالة لتحميل جميع الباقات
-  const loadAllPackages = useCallback(async () => {
+  const loadAllPackages = async () => {
     try {
       const result = await getPackages();
       if (result.error) throw new Error(result.error);
@@ -71,10 +73,10 @@ export default function CodesPage() {
     } catch (err: any) {
       console.error('Error loading packages:', err);
     }
-  }, []); // <-- هنا أضفت مصفوفة dependencies فارغة
+  };
 
   // دالة لتحميل الأكواد مع التصفية
-  const loadCodes = useCallback(async (page: number) => {
+  const loadCodes = async (page: number) => {
     setLoading(true);
     try {
       const result = await getCodes(page, 10);
@@ -106,41 +108,20 @@ export default function CodesPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, statusFilter]); // <-- هنا أضفت dependencies
+  };
 
   // دالة debounce مخصصة
-  const useDebouncedCallback = useMemo(() => {
-    return <T extends (...args: any[]) => any>(
-      callback: T,
-      delay: number
-    ) => {
-      const timeoutRef = useRef<NodeJS.Timeout>();
-      const callbackRef = useRef(callback);
-
-      useEffect(() => {
-        callbackRef.current = callback;
-      }, [callback]);
-
-      return useMemo(
-        () =>
-          (...args: Parameters<T>) => {
-            if (timeoutRef.current) {
-              clearTimeout(timeoutRef.current);
-            }
-
-            timeoutRef.current = setTimeout(() => {
-              callbackRef.current(...args);
-            }, delay);
-          },
-        [delay]
-      );
-    };
-  }, []);
-
-  const handleSearchChange = useDebouncedCallback((term: string) => {
-    setSearchTerm(term);
-    setCurrentPage(1);
-  }, 500);
+  const debouncedSearch = (term: string) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    timeoutRef.current = setTimeout(() => {
+      setSearchTerm(term);
+      setCurrentPage(1);
+      loadCodes(1);
+    }, 500);
+  };
 
   useEffect(() => {
     const initialize = async () => {
@@ -170,11 +151,11 @@ export default function CodesPage() {
     };
     
     initialize();
-  }, []); // <-- هنا أضفت dependencies
+  }, []);
 
   useEffect(() => {
     loadCodes(currentPage);
-  }, [currentPage, loadCodes]);
+  }, [currentPage]);
 
   // تحديث الباقات المصفاة عند تغيير الصف
   useEffect(() => {
@@ -185,6 +166,15 @@ export default function CodesPage() {
       setFormData(prev => ({ ...prev, package_id: '' }));
     }
   }, [formData.grade, allPackages]);
+
+  useEffect(() => {
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -334,7 +324,7 @@ export default function CodesPage() {
                 id="search"
                 className="form-control"
                 placeholder="ابحث عن كود، باقة، أو مستخدم..."
-                onChange={(e) => handleSearchChange(e.target.value)}
+                onChange={(e) => debouncedSearch(e.target.value)}
               />
             </div>
             
