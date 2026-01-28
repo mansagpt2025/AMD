@@ -312,3 +312,99 @@
   color: #718096;
   font-size: 0.875rem;
 }
+
+/* إضافة أنماط للفلترة */
+.filters-section {
+  background: #f8fafc;
+  border-radius: 15px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 2px solid #e2e8f0;
+}
+
+.filters-section h4 {
+  color: #4a5568;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.no-results {
+  text-align: center;
+  padding: 3rem;
+  grid-column: 1 / -1;
+  color: #718096;
+  font-size: 1.125rem;
+}
+
+.no-results p {
+  margin: 0;
+}
+
+/* تحسين استجابة الشبكة */
+@media (max-width: 768px) {
+  .codes-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .filters-section .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* تحسين مظهر البطاقات */
+.code-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.code-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.code-card.used::after {
+  background: #fc8181;
+}
+
+/* تحسين عرض التفاصيل */
+.detail-value {
+  direction: ltr;
+  text-align: left;
+}
+
+/* تحسين شريط التحميل */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+  color: #4a5568;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

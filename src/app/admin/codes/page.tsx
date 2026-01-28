@@ -1,15 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getPackages, getGrades, createCode, getCodes, deleteCode } from './actions';
 import './styles.css';
 
 interface Package {
   id: string;
   name: string;
+  description?: string;
   grade: string;
   type: string;
   price: number;
+  duration_days: number;
+  lecture_count: number;
 }
 
 interface Grade {
@@ -40,7 +43,8 @@ interface Code {
 }
 
 export default function CodesPage() {
-  const [packages, setPackages] = useState<Package[]>([]);
+  const [allPackages, setAllPackages] = useState<Package[]>([]);
+  const [filteredPackages, setFilteredPackages] = useState<Package[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [codes, setCodes] = useState<Code[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +53,8 @@ export default function CodesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'used' | 'unused'>('all');
 
   const [formData, setFormData] = useState({
     package_id: '',
@@ -56,33 +62,129 @@ export default function CodesPage() {
     expires_at: '',
   });
 
-  useEffect(() => {
-    loadData();
-  }, [currentPage]);
+  // دالة لتحميل جميع الباقات
+  const loadAllPackages = useCallback(async () => {
+    try {
+      const result = await getPackages();
+      if (result.error) throw new Error(result.error);
+      setAllPackages(result.data || []);
+    } catch (err: any) {
+      console.error('Error loading packages:', err);
+    }
+  }, []); // <-- هنا أضفت مصفوفة dependencies فارغة
 
-  async function loadData() {
+  // دالة لتحميل الأكواد مع التصفية
+  const loadCodes = useCallback(async (page: number) => {
     setLoading(true);
     try {
-      const [packagesData, gradesData, codesData] = await Promise.all([
-        getPackages(),
-        getGrades(),
-        getCodes(currentPage, 10),
-      ]);
-
-      if (packagesData.error) throw new Error(packagesData.error);
-      if (gradesData.error) throw new Error(gradesData.error);
-      if (codesData.error) throw new Error(codesData.error);
-
-      setPackages(packagesData.data || []);
-      setGrades(gradesData.data || []);
-      setCodes(codesData.data || []);
-      setTotalPages(codesData.totalPages || 1);
+      const result = await getCodes(page, 10);
+      if (result.error) throw new Error(result.error);
+      
+      let filteredCodes = result.data || [];
+      
+      // تطبيق فلتر البحث
+      if (searchTerm) {
+        filteredCodes = filteredCodes.filter((code: Code) =>
+          code.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          code.packages?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (code.profiles?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (code.profiles?.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      
+      // تطبيق فلتر الحالة
+      if (statusFilter !== 'all') {
+        filteredCodes = filteredCodes.filter((code: Code) => 
+          statusFilter === 'used' ? code.is_used : !code.is_used
+        );
+      }
+      
+      setCodes(filteredCodes);
+      setTotalPages(result.totalPages || 1);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }
+  }, [searchTerm, statusFilter]); // <-- هنا أضفت dependencies
+
+  // دالة debounce مخصصة
+  const useDebouncedCallback = useMemo(() => {
+    return <T extends (...args: any[]) => any>(
+      callback: T,
+      delay: number
+    ) => {
+      const timeoutRef = useRef<NodeJS.Timeout>();
+      const callbackRef = useRef(callback);
+
+      useEffect(() => {
+        callbackRef.current = callback;
+      }, [callback]);
+
+      return useMemo(
+        () =>
+          (...args: Parameters<T>) => {
+            if (timeoutRef.current) {
+              clearTimeout(timeoutRef.current);
+            }
+
+            timeoutRef.current = setTimeout(() => {
+              callbackRef.current(...args);
+            }, delay);
+          },
+        [delay]
+      );
+    };
+  }, []);
+
+  const handleSearchChange = useDebouncedCallback((term: string) => {
+    setSearchTerm(term);
+    setCurrentPage(1);
+  }, 500);
+
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        const [gradesData] = await Promise.all([
+          getGrades(),
+          loadAllPackages()
+        ]);
+
+        if (gradesData.error) throw new Error(gradesData.error);
+        setGrades(gradesData.data || []);
+        
+        // تحديد الصف الأول كافتراضي إذا كان موجوداً
+        if (gradesData.data && gradesData.data.length > 0) {
+          const firstGrade = gradesData.data[0].slug;
+          setFormData(prev => ({ ...prev, grade: firstGrade }));
+          
+          // تصفية الباقات حسب الصف الأول
+          const filtered = allPackages.filter(pkg => pkg.grade === firstGrade);
+          setFilteredPackages(filtered);
+        }
+        
+        await loadCodes(currentPage);
+      } catch (err: any) {
+        setError(err.message);
+      }
+    };
+    
+    initialize();
+  }, []); // <-- هنا أضفت dependencies
+
+  useEffect(() => {
+    loadCodes(currentPage);
+  }, [currentPage, loadCodes]);
+
+  // تحديث الباقات المصفاة عند تغيير الصف
+  useEffect(() => {
+    if (formData.grade) {
+      const filtered = allPackages.filter(pkg => pkg.grade === formData.grade);
+      setFilteredPackages(filtered);
+      // إعادة تعيين الباقة المختارة
+      setFormData(prev => ({ ...prev, package_id: '' }));
+    }
+  }, [formData.grade, allPackages]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -96,8 +198,8 @@ export default function CodesPage() {
         setError(result.error);
       } else {
         setSuccess('تم إنشاء الكود بنجاح!');
-        setFormData({ package_id: '', grade: '', expires_at: '' });
-        loadData();
+        setFormData({ package_id: '', grade: formData.grade, expires_at: '' });
+        loadCodes(currentPage);
       }
     } catch (err: any) {
       setError(err.message);
@@ -114,11 +216,19 @@ export default function CodesPage() {
       setError(result.error);
     } else {
       setSuccess('تم حذف الكود بنجاح');
-      loadData();
+      loadCodes(currentPage);
     }
   }
 
-  if (loading) {
+  function handleGradeChange(selectedGrade: string) {
+    setFormData({
+      package_id: '',
+      grade: selectedGrade,
+      expires_at: formData.expires_at
+    });
+  }
+
+  if (loading && codes.length === 0) {
     return (
       <div className="loading">
         <div className="loading-spinner"></div>
@@ -146,30 +256,12 @@ export default function CodesPage() {
           <h3>إنشاء كود جديد</h3>
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="package">الباقة</label>
-              <select
-                id="package"
-                className="form-control"
-                value={formData.package_id}
-                onChange={(e) => setFormData({ ...formData, package_id: e.target.value })}
-                required
-              >
-                <option value="">اختر الباقة</option>
-                {packages.map((pkg) => (
-                  <option key={pkg.id} value={pkg.id}>
-                    {pkg.name} - {pkg.type} (${pkg.price})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
               <label htmlFor="grade">الصف</label>
               <select
                 id="grade"
                 className="form-control"
                 value={formData.grade}
-                onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
+                onChange={(e) => handleGradeChange(e.target.value)}
                 required
               >
                 <option value="">اختر الصف</option>
@@ -182,6 +274,36 @@ export default function CodesPage() {
             </div>
 
             <div className="form-group">
+              <label htmlFor="package">الباقة</label>
+              <select
+                id="package"
+                className="form-control"
+                value={formData.package_id}
+                onChange={(e) => setFormData({ ...formData, package_id: e.target.value })}
+                required
+                disabled={!formData.grade || filteredPackages.length === 0}
+              >
+                <option value="">
+                  {!formData.grade 
+                    ? 'اختر الصف أولاً' 
+                    : filteredPackages.length === 0 
+                      ? 'لا توجد باقات لهذا الصف' 
+                      : 'اختر الباقة'}
+                </option>
+                {filteredPackages.map((pkg) => (
+                  <option key={pkg.id} value={pkg.id}>
+                    {pkg.name} - {pkg.type} (${pkg.price}) - {pkg.lecture_count} محاضرة
+                  </option>
+                ))}
+              </select>
+              {formData.grade && filteredPackages.length === 0 && (
+                <small style={{ color: '#e53e3e', marginTop: '0.5rem', display: 'block' }}>
+                  لا توجد باقات متاحة لهذا الصف
+                </small>
+              )}
+            </div>
+
+            <div className="form-group">
               <label htmlFor="expires_at">تاريخ الانتهاء (اختياري)</label>
               <input
                 type="date"
@@ -189,78 +311,125 @@ export default function CodesPage() {
                 className="form-control"
                 value={formData.expires_at}
                 onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
+                min={new Date().toISOString().split('T')[0]}
               />
             </div>
           </div>
 
-          <button type="submit" className="submit-btn" disabled={submitting}>
+          <button 
+            type="submit" 
+            className="submit-btn" 
+            disabled={submitting || !formData.package_id || !formData.grade}
+          >
             {submitting ? 'جاري الإنشاء...' : 'إنشاء الكود'}
           </button>
         </form>
 
-        <div className="codes-grid">
-          {codes.map((code) => (
-            <div key={code.id} className={`code-card ${code.is_used ? 'used' : ''}`}>
-              <div className="code-header">
-                <span className="code-value">{code.code}</span>
-                <span className={`code-status ${code.is_used ? 'status-used' : 'status-unused'}`}>
-                  {code.is_used ? 'مستخدم' : 'غير مستخدم'}
-                </span>
-              </div>
+        <div className="filters-section">
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="search">بحث</label>
+              <input
+                type="text"
+                id="search"
+                className="form-control"
+                placeholder="ابحث عن كود، باقة، أو مستخدم..."
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="status">الحالة</label>
+              <select
+                id="status"
+                className="form-control"
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value as any);
+                  setCurrentPage(1);
+                }}
+              >
+                <option value="all">جميع الحالات</option>
+                <option value="unused">غير مستخدم</option>
+                <option value="used">مستخدم</option>
+              </select>
+            </div>
+          </div>
+        </div>
 
-              <div className="code-details">
-                <div className="detail-item">
-                  <span className="detail-label">الباقة:</span>
-                  <span className="detail-value">{code.packages?.name || 'غير محدد'}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">الصف:</span>
-                  <span className="detail-value">{code.grade}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">تاريخ الإنشاء:</span>
-                  <span className="detail-value">
-                    {new Date(code.created_at).toLocaleDateString('ar-SA')}
+        <div className="codes-grid">
+          {codes.length === 0 ? (
+            <div className="no-results">
+              <p>لا توجد أكواد لعرضها</p>
+            </div>
+          ) : (
+            codes.map((code) => (
+              <div key={code.id} className={`code-card ${code.is_used ? 'used' : ''}`}>
+                <div className="code-header">
+                  <span className="code-value">{code.code}</span>
+                  <span className={`code-status ${code.is_used ? 'status-used' : 'status-unused'}`}>
+                    {code.is_used ? 'مستخدم' : 'غير مستخدم'}
                   </span>
                 </div>
-                {code.expires_at && (
+
+                <div className="code-details">
                   <div className="detail-item">
-                    <span className="detail-label">ينتهي في:</span>
+                    <span className="detail-label">الباقة:</span>
+                    <span className="detail-value">{code.packages?.name || 'غير محدد'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">الصف:</span>
+                    <span className="detail-value">{code.grade}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">النوع:</span>
+                    <span className="detail-value">{code.packages?.type || 'غير محدد'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">تاريخ الإنشاء:</span>
                     <span className="detail-value">
-                      {new Date(code.expires_at).toLocaleDateString('ar-SA')}
+                      {new Date(code.created_at).toLocaleDateString('ar-SA')}
                     </span>
                   </div>
-                )}
-                {code.is_used && code.profiles && (
-                  <>
+                  {code.expires_at && (
                     <div className="detail-item">
-                      <span className="detail-label">المستخدم:</span>
-                      <span className="detail-value">{code.profiles.full_name}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-label">البريد:</span>
-                      <span className="detail-value">{code.profiles.email}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-label">تاريخ الاستخدام:</span>
+                      <span className="detail-label">ينتهي في:</span>
                       <span className="detail-value">
-                        {code.used_at ? new Date(code.used_at).toLocaleDateString('ar-SA') : '-'}
+                        {new Date(code.expires_at).toLocaleDateString('ar-SA')}
                       </span>
                     </div>
-                  </>
+                  )}
+                  {code.is_used && code.profiles && (
+                    <>
+                      <div className="detail-item">
+                        <span className="detail-label">المستخدم:</span>
+                        <span className="detail-value">{code.profiles.full_name}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">البريد:</span>
+                        <span className="detail-value">{code.profiles.email}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">تاريخ الاستخدام:</span>
+                        <span className="detail-value">
+                          {code.used_at ? new Date(code.used_at).toLocaleDateString('ar-SA') : '-'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {!code.is_used && (
+                  <button
+                    onClick={() => handleDelete(code.id)}
+                    className="delete-btn"
+                  >
+                    حذف الكود
+                  </button>
                 )}
               </div>
-
-              {!code.is_used && (
-                <button
-                  onClick={() => handleDelete(code.id)}
-                  className="delete-btn"
-                >
-                  حذف الكود
-                </button>
-              )}
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         {totalPages > 1 && (
