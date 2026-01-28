@@ -73,9 +73,18 @@ const quickActions: QuickAction[] = [
     href: '/admin/codes'
   },
   {
-    title: 'إضافة محتوى',
+    title: ' محتوى الصف الأول الثانوي ',
     icon: <Package className="w-8 h-8 text-green-600" />,
     href: '/admin/first-secondary'
+  },
+  {
+    title: 'محتوى الصف الثاني الثانوي',
+    icon: <Package className="w-8 h-8 text-green-600" />,
+    href: '/admin/second-secondary'
+  },  {
+    title: 'محتوى الصف الثالث الثانوي',
+    icon: <Package className="w-8 h-8 text-green-600" />,
+    href: '/admin/third-secondary'
   },
   {
     title: 'سجلات الطلاب',
@@ -91,7 +100,7 @@ const quickActions: QuickAction[] = [
     title: 'الإشعارات',
     description: 'إرسال إشعارات للطلاب',
     icon: <CheckCircle className="w-8 h-8 text-teal-600" />,
-    href: '#'
+    href: '/admin/notifications'
   },
   {
     title: 'ادارة كلمات مرور الطلاب',
