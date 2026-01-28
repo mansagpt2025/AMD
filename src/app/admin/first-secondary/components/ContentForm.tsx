@@ -1,28 +1,34 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { createContent, ContentData } from '../actions'
-import styles from './ContentForm.module.css'
+import { useState } from 'react';
+import { createContent, ContentData } from '../actions';
+import type { Database } from '@/types/supabase';
+import styles from './ContentForm.module.css';
+
+type LectureRow = Database['public']['Tables']['lectures']['Row'];
 
 interface ContentFormProps {
-  lectures: any[]
-  selectedLectureId?: string
-  onSuccess: () => void
+  lectures: LectureRow[];
+  selectedLectureId?: string;
+  onSuccess: () => void;
 }
 
-// نخلي الفورم يستخدم string فقط
 interface ContentFormState {
-  lecture_id: string
-  type: 'video' | 'pdf' | 'exam' | 'text'
-  title: string
-  description: string
-  content_url: string
-  max_attempts: number
-  order_number: number
+  lecture_id: string;
+  type: 'video' | 'pdf' | 'exam' | 'text';
+  title: string;
+  description: string;
+  content_url: string;
+  max_attempts: number;
+  order_number: number;
 }
 
-export function ContentForm({ lectures, selectedLectureId, onSuccess }: ContentFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+export function ContentForm({
+  lectures,
+  selectedLectureId,
+  onSuccess,
+}: ContentFormProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<ContentFormState>({
     lecture_id: selectedLectureId || '',
@@ -32,25 +38,27 @@ export function ContentForm({ lectures, selectedLectureId, onSuccess }: ContentF
     content_url: '',
     max_attempts: 1,
     order_number: 0,
-  })
+  });
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]:
         name === 'max_attempts' || name === 'order_number'
           ? Number(value)
           : value,
-    }))
-  }
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
     try {
       const payload: ContentData = {
@@ -61,9 +69,9 @@ export function ContentForm({ lectures, selectedLectureId, onSuccess }: ContentF
         content_url: formData.content_url || null,
         max_attempts: formData.max_attempts,
         order_number: formData.order_number,
-      }
+      };
 
-      await createContent(payload)
+      await createContent(payload);
 
       setFormData({
         lecture_id: selectedLectureId || '',
@@ -73,17 +81,17 @@ export function ContentForm({ lectures, selectedLectureId, onSuccess }: ContentF
         content_url: '',
         max_attempts: 1,
         order_number: 0,
-      })
+      });
 
-      onSuccess()
-      alert('تم إنشاء المحتوى بنجاح!')
+      onSuccess();
+      alert('تم إنشاء المحتوى بنجاح!');
     } catch (error) {
-      console.error('Error creating content:', error)
-      alert('حدث خطأ أثناء إنشاء المحتوى')
+      console.error('Error creating content:', error);
+      alert('حدث خطأ أثناء إنشاء المحتوى');
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
@@ -98,7 +106,7 @@ export function ContentForm({ lectures, selectedLectureId, onSuccess }: ContentF
             required
           >
             <option value="">اختر المحاضرة</option>
-            {lectures.map(lecture => (
+            {lectures.map((lecture) => (
               <option key={lecture.id} value={lecture.id}>
                 {lecture.title}
               </option>
@@ -131,13 +139,14 @@ export function ContentForm({ lectures, selectedLectureId, onSuccess }: ContentF
             value={formData.title}
             onChange={handleChange}
             required
-            placeholder="أدخل عنوان المحتوى"
           />
         </div>
 
         {formData.type === 'video' && (
           <div className={styles.formGroup}>
-            <label htmlFor="max_attempts">عدد مرات المشاهدة المسموحة</label>
+            <label htmlFor="max_attempts">
+              عدد مرات المشاهدة المسموحة
+            </label>
             <input
               type="number"
               id="max_attempts"
@@ -145,7 +154,6 @@ export function ContentForm({ lectures, selectedLectureId, onSuccess }: ContentF
               value={formData.max_attempts}
               onChange={handleChange}
               min="1"
-              placeholder="أدخل عدد المرات"
             />
           </div>
         )}
@@ -159,7 +167,6 @@ export function ContentForm({ lectures, selectedLectureId, onSuccess }: ContentF
             value={formData.order_number}
             onChange={handleChange}
             min="0"
-            placeholder="أدخل الترتيب"
           />
         </div>
 
@@ -172,7 +179,6 @@ export function ContentForm({ lectures, selectedLectureId, onSuccess }: ContentF
             value={formData.content_url}
             onChange={handleChange}
             required
-            placeholder="https://example.com/content"
           />
         </div>
       </div>
@@ -185,7 +191,6 @@ export function ContentForm({ lectures, selectedLectureId, onSuccess }: ContentF
           value={formData.description}
           onChange={handleChange}
           rows={4}
-          placeholder="أدخل وصف المحتوى..."
         />
       </div>
 
@@ -195,16 +200,9 @@ export function ContentForm({ lectures, selectedLectureId, onSuccess }: ContentF
           disabled={isSubmitting}
           className={styles.submitButton}
         >
-          {isSubmitting ? (
-            <>
-              <span className={styles.spinner}></span>
-              جاري الإنشاء...
-            </>
-          ) : (
-            'إنشاء المحتوى'
-          )}
+          {isSubmitting ? 'جاري الإنشاء...' : 'إنشاء المحتوى'}
         </button>
       </div>
     </form>
-  )
+  );
 }

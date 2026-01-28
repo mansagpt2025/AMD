@@ -1,69 +1,81 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { createLecture } from '../actions'
-import styles from './LectureForm.module.css'
+import { useState } from 'react';
+import { createLecture } from '../actions';
+import type { Database } from '@/types/supabase';
+import styles from './LectureForm.module.css';
+
+type PackageRow = Database['public']['Tables']['packages']['Row'];
 
 interface LectureFormProps {
-  packages: any[]
-  selectedPackageId?: string
-  onSuccess: () => void
+  packages: PackageRow[];
+  selectedPackageId?: string;
+  onSuccess: () => void;
 }
 
-type LectureFormState = {
-  package_id: string
-  title: string
-  description: string
-  image_url: string
-  order_number: number
+interface LectureFormState {
+  package_id: string;
+  title: string;
+  description: string;
+  image_url: string;
+  order_number: number;
 }
 
-export function LectureForm({ packages, selectedPackageId, onSuccess }: LectureFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+export function LectureForm({
+  packages,
+  selectedPackageId,
+  onSuccess,
+}: LectureFormProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState<LectureFormState>({
     package_id: selectedPackageId || '',
     title: '',
     description: '',
     image_url: '',
-    order_number: 0
-  })
+    order_number: 0,
+  });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [name]: name === 'order_number' ? Number(value) : value
-    }))
-  }
+      [name]: name === 'order_number' ? Number(value) : value,
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
     try {
       await createLecture({
         ...formData,
         description: formData.description || null,
-        image_url: formData.image_url || null
-      })
+        image_url: formData.image_url || null,
+      });
 
       setFormData({
         package_id: selectedPackageId || '',
         title: '',
         description: '',
         image_url: '',
-        order_number: 0
-      })
+        order_number: 0,
+      });
 
-      onSuccess()
-      alert('تم إنشاء المحاضرة بنجاح!')
+      onSuccess();
+      alert('تم إنشاء المحاضرة بنجاح!');
     } catch (error) {
-      console.error('Error creating lecture:', error)
-      alert('حدث خطأ أثناء إنشاء المحاضرة')
+      console.error('Error creating lecture:', error);
+      alert('حدث خطأ أثناء إنشاء المحاضرة');
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
@@ -78,7 +90,7 @@ export function LectureForm({ packages, selectedPackageId, onSuccess }: LectureF
             required
           >
             <option value="">اختر الباقة</option>
-            {packages.map(pkg => (
+            {packages.map((pkg) => (
               <option key={pkg.id} value={pkg.id}>
                 {pkg.name}
               </option>
@@ -95,7 +107,6 @@ export function LectureForm({ packages, selectedPackageId, onSuccess }: LectureF
             value={formData.title}
             onChange={handleChange}
             required
-            placeholder="أدخل عنوان المحاضرة"
           />
         </div>
 
@@ -108,7 +119,6 @@ export function LectureForm({ packages, selectedPackageId, onSuccess }: LectureF
             value={formData.order_number}
             onChange={handleChange}
             min="0"
-            placeholder="أدخل الترتيب"
           />
         </div>
 
@@ -120,7 +130,6 @@ export function LectureForm({ packages, selectedPackageId, onSuccess }: LectureF
             name="image_url"
             value={formData.image_url}
             onChange={handleChange}
-            placeholder="https://example.com/image.jpg"
           />
         </div>
       </div>
@@ -133,7 +142,6 @@ export function LectureForm({ packages, selectedPackageId, onSuccess }: LectureF
           value={formData.description}
           onChange={handleChange}
           rows={4}
-          placeholder="أدخل وصف المحاضرة..."
         />
       </div>
 
@@ -147,5 +155,5 @@ export function LectureForm({ packages, selectedPackageId, onSuccess }: LectureF
         </button>
       </div>
     </form>
-  )
+  );
 }

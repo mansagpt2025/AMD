@@ -8,12 +8,12 @@ interface PackageFormProps {
   onSuccess: () => void
 }
 
-// State خاص بالفورم (string فقط)
 interface PackageFormState {
   name: string
   description: string
   price: number
   image_url: string
+  type: 'weekly' | 'monthly' | 'term' | 'offer'
 }
 
 export function PackageForm({ onSuccess }: PackageFormProps) {
@@ -24,9 +24,12 @@ export function PackageForm({ onSuccess }: PackageFormProps) {
     description: '',
     price: 0,
     image_url: '',
+    type: 'monthly',
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target
 
     setFormData(prev => ({
@@ -45,6 +48,8 @@ export function PackageForm({ onSuccess }: PackageFormProps) {
         description: formData.description || null,
         price: formData.price,
         image_url: formData.image_url || null,
+        grade: 'first',
+        type: formData.type,
       }
 
       await createPackage(payload)
@@ -54,6 +59,7 @@ export function PackageForm({ onSuccess }: PackageFormProps) {
         description: '',
         price: 0,
         image_url: '',
+        type: 'monthly',
       })
 
       onSuccess()
@@ -78,12 +84,11 @@ export function PackageForm({ onSuccess }: PackageFormProps) {
             value={formData.name}
             onChange={handleChange}
             required
-            placeholder="أدخل اسم الباقة"
           />
         </div>
 
         <div className={styles.formGroup}>
-          <label htmlFor="price">السعر (جنيه) *</label>
+          <label htmlFor="price">السعر *</label>
           <input
             type="number"
             id="price"
@@ -92,8 +97,23 @@ export function PackageForm({ onSuccess }: PackageFormProps) {
             onChange={handleChange}
             required
             min="0"
-            placeholder="أدخل السعر"
           />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="type">نوع الباقة *</label>
+          <select
+            id="type"
+            name="type"
+            value={formData.type}
+            onChange={handleChange}
+            required
+          >
+            <option value="weekly">أسبوعي</option>
+            <option value="monthly">شهري</option>
+            <option value="term">ترم</option>
+            <option value="offer">عرض</option>
+          </select>
         </div>
 
         <div className={styles.formGroup}>
@@ -104,7 +124,6 @@ export function PackageForm({ onSuccess }: PackageFormProps) {
             name="image_url"
             value={formData.image_url}
             onChange={handleChange}
-            placeholder="https://example.com/image.jpg"
           />
         </div>
       </div>
@@ -117,26 +136,12 @@ export function PackageForm({ onSuccess }: PackageFormProps) {
           value={formData.description}
           onChange={handleChange}
           rows={4}
-          placeholder="أدخل وصف الباقة..."
         />
       </div>
 
-      <div className={styles.formActions}>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className={styles.submitButton}
-        >
-          {isSubmitting ? (
-            <>
-              <span className={styles.spinner}></span>
-              جاري الإنشاء...
-            </>
-          ) : (
-            'إنشاء الباقة'
-          )}
-        </button>
-      </div>
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'جاري الإنشاء...' : 'إنشاء الباقة'}
+      </button>
     </form>
   )
 }

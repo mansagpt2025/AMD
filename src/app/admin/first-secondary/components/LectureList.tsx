@@ -6,9 +6,12 @@ import { deleteLecture, updateLecture } from '../actions';
 import type { Database } from '@/types/supabase';
 import styles from './LectureList.module.css';
 
-type Lecture = Database['public']['Tables']['lectures']['Row'] & {
-  packages?: { name: string } | null
-}
+type LectureRow = Database['public']['Tables']['lectures']['Row'];
+type PackageRow = Database['public']['Tables']['packages']['Row'];
+
+type Lecture = LectureRow & {
+  packages?: PackageRow | null;
+};
 
 interface LectureListProps {
   lectures: Lecture[];
@@ -27,7 +30,7 @@ export function LectureList({ lectures, onSelect, onUpdate }: LectureListProps) 
       description: lecture.description,
       image_url: lecture.image_url,
       order_number: lecture.order_number,
-      package_id: lecture.package_id
+      package_id: lecture.package_id,
     });
   };
 
@@ -38,7 +41,7 @@ export function LectureList({ lectures, onSelect, onUpdate }: LectureListProps) 
         description: editForm.description || null,
         image_url: editForm.image_url || null,
         order_number: editForm.order_number || 0,
-        package_id: editForm.package_id || ''
+        package_id: editForm.package_id || '',
       });
       setEditingId(null);
       onUpdate();
@@ -74,46 +77,67 @@ export function LectureList({ lectures, onSelect, onUpdate }: LectureListProps) 
 
   return (
     <div className={styles.grid}>
-      {lectures.map(lecture => (
+      {lectures.map((lecture) => (
         <div key={lecture.id} className={styles.card}>
           {editingId === lecture.id ? (
             <div className={styles.editForm}>
               <input
                 type="text"
                 value={editForm.title || ''}
-                onChange={e => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, title: e.target.value }))
+                }
                 placeholder="عنوان المحاضرة"
                 className={styles.editInput}
               />
+
               <input
                 type="number"
                 value={editForm.order_number || 0}
-                onChange={e => setEditForm(prev => ({ ...prev, order_number: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    order_number: Number(e.target.value),
+                  }))
+                }
                 placeholder="الترتيب"
                 className={styles.editInput}
               />
+
               <textarea
                 value={editForm.description || ''}
-                onChange={e => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
                 placeholder="الوصف"
                 className={styles.editTextarea}
                 rows={3}
               />
+
               <input
                 type="text"
                 value={editForm.image_url || ''}
-                onChange={e => setEditForm(prev => ({ ...prev, image_url: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    image_url: e.target.value,
+                  }))
+                }
                 placeholder="رابط الصورة"
                 className={styles.editInput}
               />
+
               <div className={styles.editActions}>
-                <button 
+                <button
                   onClick={() => handleSave(lecture.id)}
                   className={styles.saveButton}
                 >
                   حفظ
                 </button>
-                <button 
+                <button
                   onClick={() => setEditingId(null)}
                   className={styles.cancelButton}
                 >
@@ -132,63 +156,58 @@ export function LectureList({ lectures, onSelect, onUpdate }: LectureListProps) 
                       width={200}
                       height={120}
                       className={styles.image}
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
                     />
-                    <div className={styles.imageFallback}>
-                      <span>📚</span>
-                    </div>
                   </div>
                 ) : (
-                  <div className={styles.imageFallback}>
-                    <span>📚</span>
-                  </div>
+                  <div className={styles.imageFallback}>📚</div>
                 )}
               </div>
-              
+
               <div className={styles.cardBody}>
                 <h3 className={styles.lectureTitle}>{lecture.title}</h3>
                 <p className={styles.lectureDescription}>
                   {lecture.description || 'لا يوجد وصف'}
                 </p>
+
                 <div className={styles.lectureMeta}>
                   <span className={styles.packageName}>
-                    الباقة: {lecture.packages?.name || 'غير معروف'}
+                    الباقة: {lecture.packages?.name ?? 'غير معروف'}
                   </span>
                   <span className={styles.orderNumber}>
                     الترتيب: {lecture.order_number}
                   </span>
                 </div>
+
                 <div className={styles.meta}>
                   <span className={styles.date}>
                     {new Date(lecture.created_at).toLocaleDateString('ar-EG')}
                   </span>
-                  <span className={`${styles.status} ${lecture.is_active ? styles.active : styles.inactive}`}>
+                  <span
+                    className={`${styles.status} ${
+                      lecture.is_active ? styles.active : styles.inactive
+                    }`}
+                  >
                     {lecture.is_active ? 'نشط' : 'غير نشط'}
                   </span>
                 </div>
               </div>
-              
+
               <div className={styles.cardActions}>
-                <button 
+                <button
                   onClick={() => onSelect(lecture)}
                   className={styles.viewButton}
-                  title="عرض محتوى المحاضرة"
                 >
                   👁️ المحتوى
                 </button>
-                <button 
+                <button
                   onClick={() => handleEdit(lecture)}
                   className={styles.editButton}
-                  title="تعديل المحاضرة"
                 >
                   ✏️ تعديل
                 </button>
-                <button 
+                <button
                   onClick={() => handleDelete(lecture.id)}
                   className={styles.deleteButton}
-                  title="حذف المحاضرة"
                 >
                   🗑️ حذف
                 </button>
