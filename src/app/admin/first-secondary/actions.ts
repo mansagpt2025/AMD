@@ -3,21 +3,7 @@
 import { createServerActionClient } from '@/lib/supabase/2server'
 import { revalidatePath } from 'next/cache'
 
-export async function createPackage(data: PackageData) {
-  const supabase = await createServerActionClient()
-
-  const { error } = await supabase.from('packages').insert({
-    name: data.name,
-    description: data.description,
-    price: data.price,
-    image_url: data.image_url,
-  })
-
-  if (error) throw error
-
-  revalidatePath('/admin/first-secondary')
-}
-
+// ================== TYPES ==================
 
 export interface PackageData {
   name: string
@@ -85,40 +71,101 @@ export async function getContents(lectureId?: string) {
 
 // ================== CREATE ==================
 
+export async function createPackage(data: PackageData) {
+  const supabase = await createServerActionClient()
+  const { error } = await supabase.from('packages').insert(data)
+  if (error) throw error
+  revalidatePath('/admin/first-secondary')
+}
+
 export async function createLecture(data: LectureData) {
   const supabase = await createServerActionClient()
-
-  const { error } = await supabase.from('lectures').insert([
-    {
-      package_id: data.package_id,
-      title: data.title,
-      description: data.description,
-      image_url: data.image_url,
-      order_number: data.order_number,
-    },
-  ])
-
+  const { error } = await supabase.from('lectures').insert(data)
   if (error) throw error
-
   revalidatePath('/admin/first-secondary')
 }
 
 export async function createContent(data: ContentData) {
   const supabase = await createServerActionClient()
+  const { error } = await supabase.from('lecture_contents').insert(data)
+  if (error) throw error
+  revalidatePath('/admin/first-secondary')
+}
 
-  const { error } = await supabase.from('lecture_contents').insert([
-    {
-      lecture_id: data.lecture_id,
-      type: data.type,
-      title: data.title,
-      description: data.description,
-      content_url: data.content_url,
-      max_attempts: data.max_attempts,
-      order_number: data.order_number,
-    },
-  ])
+// ================== UPDATE ==================
+
+export async function updatePackage(id: string, data: PackageData) {
+  const supabase = await createServerActionClient()
+  const { error } = await supabase
+    .from('packages')
+    .update(data)
+    .eq('id', id)
 
   if (error) throw error
+  revalidatePath('/admin/first-secondary')
+}
 
+export async function updateLecture(
+  id: string,
+  data: {
+    title: string
+    description: string | null
+    image_url: string | null
+    order_number: number
+    package_id: string
+  }
+) {
+  const supabase = await createServerActionClient()
+  const { error } = await supabase
+    .from('lectures')
+    .update(data)
+    .eq('id', id)
+
+  if (error) throw error
+  revalidatePath('/admin/first-secondary')
+}
+
+export async function updateContent(
+  id: string,
+  data: {
+    lecture_id: string
+    type: string
+    title: string
+    description: string | null
+    content_url: string | null
+    max_attempts: number
+    order_number: number
+  }
+) {
+  const supabase = await createServerActionClient()
+  const { error } = await supabase
+    .from('lecture_contents')
+    .update(data)
+    .eq('id', id)
+
+  if (error) throw error
+  revalidatePath('/admin/first-secondary')
+}
+
+// ================== DELETE ==================
+
+export async function deletePackage(id: string) {
+  const supabase = await createServerActionClient()
+  const { error } = await supabase.from('packages').delete().eq('id', id)
+  if (error) throw error
+  revalidatePath('/admin/first-secondary')
+}
+
+export async function deleteLecture(id: string) {
+  const supabase = await createServerActionClient()
+  const { error } = await supabase.from('lectures').delete().eq('id', id)
+  if (error) throw error
+  revalidatePath('/admin/first-secondary')
+}
+
+export async function deleteContent(id: string) {
+  const supabase = await createServerActionClient()
+  const { error } = await supabase.from('lecture_contents').delete().eq('id', id)
+  if (error) throw error
   revalidatePath('/admin/first-secondary')
 }
