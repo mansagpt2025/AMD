@@ -1,7 +1,3 @@
-/* ==================== CSS PROFESSIONAL STYLES ==================== */
-/* ==================== ENHANCED STYLES FOR PROFESSIONAL DESIGN ==================== */
-
-/* ==================== CARD HOVER EFFECTS ENHANCEMENT ==================== */
 .packageCard {
   position: relative;
   transform-style: preserve-3d;
@@ -30,7 +26,6 @@
   transform: translateZ(20px);
 }
 
-/* ==================== GLASSMORPHISM EFFECTS ==================== */
 .glass-effect {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
@@ -38,7 +33,6 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* ==================== ANIMATION ENHANCEMENTS ==================== */
 @keyframes float {
   0%, 100% {
     transform: translateY(0);
@@ -68,7 +62,6 @@
   }
 }
 
-/* ==================== SCROLLBAR STYLING ==================== */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -89,7 +82,6 @@
   background: linear-gradient(135deg, var(--accent), var(--primary));
 }
 
-/* ==================== BUTTON ENHANCEMENTS ==================== */
 .btn-gradient {
   background: linear-gradient(135deg, var(--primary), var(--accent));
   color: white;
@@ -115,7 +107,6 @@
   left: 100%;
 }
 
-/* ==================== LOADING SKELETON ==================== */
 .skeleton {
   background: linear-gradient(90deg, var(--bg-light) 25%, var(--border) 50%, var(--bg-light) 75%);
   background-size: 1000px 100%;
@@ -133,7 +124,6 @@
   border-radius: 16px;
 }
 
-/* ==================== TOOLTIP STYLES ==================== */
 .tooltip {
   position: relative;
   display: inline-block;
@@ -163,7 +153,6 @@
   opacity: 1;
 }
 
-/* ==================== PROGRESS BARS ==================== */
 .progress-bar {
   width: 100%;
   height: 8px;
@@ -180,7 +169,6 @@
   transition: width 0.5s ease;
 }
 
-/* ==================== NOTIFICATION BADGE ==================== */
 .notification-badge {
   position: absolute;
   top: -8px;
@@ -199,7 +187,6 @@
   z-index: 10;
 }
 
-/* ==================== RIBBON STYLES ==================== */
 .ribbon {
   position: absolute;
   top: 20px;
@@ -214,7 +201,6 @@
   z-index: 10;
 }
 
-/* ==================== PULSE ANIMATION ==================== */
 .pulse {
   animation: pulse 2s infinite;
   box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
@@ -232,7 +218,6 @@
   }
 }
 
-/* ==================== MODAL OVERLAY ==================== */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -259,7 +244,6 @@
   animation: slideInUp 0.3s ease;
 }
 
-/* ==================== FORM ELEMENTS ==================== */
 .input-group {
   margin-bottom: 1.5rem;
 }
@@ -292,7 +276,6 @@
   border-color: var(--danger);
 }
 
-/* ==================== TAG STYLES ==================== */
 .tag {
   display: inline-flex;
   align-items: center;
@@ -325,7 +308,6 @@
   color: var(--danger);
 }
 
-/* ==================== AVATAR STYLES ==================== */
 .avatar {
   width: 48px;
   height: 48px;
@@ -338,7 +320,6 @@
   background: linear-gradient(135deg, var(--primary), var(--accent));
 }
 
-/* ==================== TIMELINE STYLES ==================== */
 .timeline {
   position: relative;
   padding-left: 2rem;
@@ -371,7 +352,6 @@
   border: 3px solid var(--bg);
 }
 
-/* ==================== FILTER TABS ==================== */
 .filter-tabs {
   display: flex;
   gap: 0.5rem;
@@ -401,13 +381,11 @@
   border-color: transparent;
 }
 
-/* ==================== COUNTER ANIMATION ==================== */
 .counter {
   font-weight: 700;
   color: var(--primary);
 }
 
-/* ==================== STICKY HEADER ==================== */
 .sticky-header {
   position: sticky;
   top: 0;
@@ -427,7 +405,6 @@
   }
 }
 
-/* ==================== CHIP STYLES ==================== */
 .chip {
   display: inline-flex;
   align-items: center;
@@ -452,7 +429,6 @@
   font-size: 0.75rem;
 }
 
-/* ==================== BREADCRUMB ==================== */
 .breadcrumb {
   display: flex;
   align-items: center;
@@ -475,7 +451,6 @@
   color: var(--border);
 }
 
-/* ==================== STEPPER ==================== */
 .stepper {
   display: flex;
   justify-content: space-between;
@@ -527,7 +502,6 @@
   color: white;
 }
 
-/* ==================== COLOR SCHEME TOGGLE ==================== */
 .color-scheme-toggle {
   position: fixed;
   bottom: 2rem;
@@ -552,7 +526,6 @@
   box-shadow: var(--shadow-xl);
 }
 
-/* ==================== DARK MODE ENHANCEMENTS ==================== */
 @media (prefers-color-scheme: dark) {
   .glass-effect {
     background: rgba(31, 41, 55, 0.5);
@@ -568,7 +541,6 @@
   }
 }
 
-/* ==================== PRINT STYLES ==================== */
 @media print {
   .color-scheme-toggle,
   .actionButton,
@@ -583,17 +555,6 @@
   }
 }
 
-/* ==================== ACCESSIBILITY FOCUS STYLES ==================== */
-*:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-*:focus:not(.focus-visible) {
-  outline: none;
-}
-
-/* ==================== HIGH CONTRAST MODE ==================== */
 @media (prefers-contrast: high) {
   :root {
     --primary: #2563eb;
@@ -603,16 +564,5 @@
   
   .packageCard {
     border: 2px solid var(--border);
-  }
-}
-
-/* ==================== REDUCED MOTION ==================== */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
   }
 }
