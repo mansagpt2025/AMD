@@ -62,7 +62,7 @@ export default function CodesPage() {
     expires_at: '',
   });
 
-  const timeoutRef = useRef<NodeJS.Timeout>();
+const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // دالة لتحميل جميع الباقات
   const loadAllPackages = async () => {
