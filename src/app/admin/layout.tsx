@@ -1,31 +1,22 @@
-import { verifyAdmin } from '@/lib/auth-admin';
-import { redirect } from 'next/navigation';
-import type { Metadata } from 'next';
+import Header from '@/components/admin/Header';
+import Sidebar from '@/components/admin/Sidebar';
+import { AuthProvider } from '@/contexts/AuthContext';
+import './layout.css';
 
-export const metadata: Metadata = {
-  title: 'لوحة تحكم إدارة المنصة',
-  description: 'لوحة تحكم إدارة المنصة التعليمية للثانوية العامة',
-};
-
-export default async function AdminLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // التحقق من صلاحية المدير
-  const isAdmin = await verifyAdmin();
-  
-  if (!isAdmin) {
-    redirect('/login');
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mr-64"> {/* مساحة للشريط الجانبي */}
-        <main className="p-8">
-          {children}
-        </main>
+    <AuthProvider>
+      <div className="admin-layout">
+        <Sidebar />
+        <div className="admin-content">
+          <Header />
+          <main className="admin-main">{children}</main>
+        </div>
       </div>
-    </div>
+    </AuthProvider>
   );
 }

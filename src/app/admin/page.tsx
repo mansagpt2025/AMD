@@ -65,12 +65,7 @@ const quickActions = [
     icon: <Wallet className="w-8 h-8 text-orange-600" />,
     href: '/admin/wallet'
   },
-  {
-    title: 'التقارير',
-    description: 'عرض تقارير الأداء والنتائج',
-    icon: <TrendingUp className="w-8 h-8 text-red-600" />,
-    href: '#'
-  },
+
   {
     title: 'الإشعارات',
     description: 'إرسال إشعارات للطلاب',
@@ -78,7 +73,7 @@ const quickActions = [
     href: '#'
   }
   ,{
-    title: 'ادارة كلماتمرور الطلاب',
+    title: 'ادارة كلمات مرور الطلاب',
     icon: <CreditCard className="w-8 h-8 text-blue-600" />,
     href: '/admin/passwords'
   },

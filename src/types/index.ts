@@ -11,6 +11,7 @@ export interface UserProfile {
   city: string
   school: string
   created_at: string
+  role: string;
 }
 
 export interface Package {
@@ -25,6 +26,7 @@ export interface Package {
   is_active: boolean
   created_at: string
 }
+
 
 export interface UserPackage {
   id: string
@@ -54,6 +56,15 @@ export interface Code {
   used_at: string | null
   created_at: string
   expires_at: string | null
+  packages?: {
+    name: string;
+    grade: string;
+    type: string;
+  };
+  profiles?: {
+    full_name: string;
+    email: string;
+  };
 }
 
 export interface Notification {
@@ -67,3 +78,22 @@ export interface Notification {
   target_grade: string | null
   target_section: string | null
 }
+
+export interface Grade {
+  id: number;
+  name: string;
+  slug: string;
+  created_at: string;
+}
+
+export interface PasswordChangeRequest {
+  identifier: string;
+  newPassword: string;
+}
+
+export interface ApiResponse<T = any> {
+  data: T | null;
+  error: string | null;
+  success?: boolean;
+}
+
