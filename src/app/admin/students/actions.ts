@@ -102,7 +102,7 @@ export async function getStudents(search?: string, grade?: string) {
   }
 }
 
-// جلب سجل مشاهدة الفيديو
+// جلب سجل مشاهدة الفيديو - نسخة مبسطة
 export async function getVideoViews(
   userId?: string, 
   grade?: string,
@@ -115,37 +115,81 @@ export async function getVideoViews(
     const start = (page - 1) * limit;
     const end = start + limit - 1;
 
+    // جلب بيانات مشاهدة الفيديو أولاً
     let query = supabase
       .from('video_views')
-      .select(`
-        *,
-        profiles!video_views_user_id_fkey (
-          full_name,
-          email,
-          grade
-        ),
-        lecture_contents!video_views_content_id_fkey (
-          title,
-          type
-        )
-      `, { count: 'exact' });
+      .select('*', { count: 'exact' });
 
     if (userId) {
       query = query.eq('user_id', userId);
     }
 
-    if (grade) {
-      query = query.eq('profiles.grade', grade);
-    }
-
-    const { data, error, count } = await query
+    const { data: videoData, error, count } = await query
       .order('last_watched_at', { ascending: false })
       .range(start, end);
 
     if (error) throw error;
 
+    // إذا لم يكن هناك بيانات
+    if (!videoData || videoData.length === 0) {
+      return {
+        data: [],
+        total: 0,
+        totalPages: 0,
+        error: null
+      };
+    }
+
+    // جلب بيانات المستخدمين والمحتوى بشكل منفصل
+    const userIds = [...new Set(videoData.map(v => v.user_id).filter(Boolean))];
+    const contentIds = [...new Set(videoData.map(v => v.content_id).filter(Boolean))];
+
+    const [usersResult, contentResult] = await Promise.all([
+      userIds.length > 0 ? supabase
+        .from('profiles')
+        .select('id, full_name, email, grade')
+        .in('id', userIds) : Promise.resolve({ data: [] }),
+      
+      contentIds.length > 0 ? supabase
+        .from('lecture_contents')
+        .select('id, title, type')
+        .in('id', contentIds) : Promise.resolve({ data: [] })
+    ]);
+
+    const usersMap = new Map();
+    const contentMap = new Map();
+
+    if (usersResult.data) {
+      usersResult.data.forEach(user => usersMap.set(user.id, user));
+    }
+
+    if (contentResult.data) {
+      contentResult.data.forEach(content => contentMap.set(content.id, content));
+    }
+
+    // دمج البيانات
+    const mergedData = videoData.map(video => ({
+      ...video,
+      profiles: usersMap.get(video.user_id) || null,
+      lecture_contents: contentMap.get(video.content_id) || null
+    }));
+
+    // إذا كان هناك تصفية بالصف
+    if (grade) {
+      const filteredData = mergedData.filter(item => 
+        item.profiles && item.profiles.grade === grade
+      );
+      
+      return {
+        data: filteredData,
+        total: filteredData.length,
+        totalPages: Math.ceil(filteredData.length / limit),
+        error: null
+      };
+    }
+
     return {
-      data: data || [],
+      data: mergedData,
       total: count || 0,
       totalPages: Math.ceil((count || 0) / limit),
       error: null
@@ -161,7 +205,7 @@ export async function getVideoViews(
   }
 }
 
-// جلب سجل درجات الامتحان
+// جلب سجل درجات الامتحان - نسخة مبسطة
 export async function getExamResults(
   userId?: string,
   grade?: string,
@@ -176,36 +220,77 @@ export async function getExamResults(
 
     let query = supabase
       .from('exam_results')
-      .select(`
-        *,
-        profiles!exam_results_user_id_fkey (
-          full_name,
-          email,
-          grade
-        ),
-        lecture_contents!exam_results_content_id_fkey (
-          title,
-          type,
-          pass_score
-        )
-      `, { count: 'exact' });
+      .select('*', { count: 'exact' });
 
     if (userId) {
       query = query.eq('user_id', userId);
     }
 
-    if (grade) {
-      query = query.eq('profiles.grade', grade);
-    }
-
-    const { data, error, count } = await query
+    const { data: examData, error, count } = await query
       .order('completed_at', { ascending: false })
       .range(start, end);
 
     if (error) throw error;
 
+    if (!examData || examData.length === 0) {
+      return {
+        data: [],
+        total: 0,
+        totalPages: 0,
+        error: null
+      };
+    }
+
+    // جلب البيانات المرتبطة
+    const userIds = [...new Set(examData.map(e => e.user_id).filter(Boolean))];
+    const contentIds = [...new Set(examData.map(e => e.content_id).filter(Boolean))];
+
+    const [usersResult, contentResult] = await Promise.all([
+      userIds.length > 0 ? supabase
+        .from('profiles')
+        .select('id, full_name, email, grade')
+        .in('id', userIds) : Promise.resolve({ data: [] }),
+      
+      contentIds.length > 0 ? supabase
+        .from('lecture_contents')
+        .select('id, title, type, pass_score')
+        .in('id', contentIds) : Promise.resolve({ data: [] })
+    ]);
+
+    const usersMap = new Map();
+    const contentMap = new Map();
+
+    if (usersResult.data) {
+      usersResult.data.forEach(user => usersMap.set(user.id, user));
+    }
+
+    if (contentResult.data) {
+      contentResult.data.forEach(content => contentMap.set(content.id, content));
+    }
+
+    // دمج البيانات
+    const mergedData = examData.map(exam => ({
+      ...exam,
+      profiles: usersMap.get(exam.user_id) || null,
+      lecture_contents: contentMap.get(exam.content_id) || null
+    }));
+
+    // تصفية بالصف إذا كان مطلوبًا
+    if (grade) {
+      const filteredData = mergedData.filter(item => 
+        item.profiles && item.profiles.grade === grade
+      );
+      
+      return {
+        data: filteredData,
+        total: filteredData.length,
+        totalPages: Math.ceil(filteredData.length / limit),
+        error: null
+      };
+    }
+
     return {
-      data: data || [],
+      data: mergedData,
       total: count || 0,
       totalPages: Math.ceil((count || 0) / limit),
       error: null
@@ -221,7 +306,7 @@ export async function getExamResults(
   }
 }
 
-// جلب سجل تسجيل الدخول (من خلال auth.users)
+// جلب سجل تسجيل الدخول - نسخة مبسطة
 export async function getLoginHistory(
   userId?: string,
   grade?: string,
@@ -234,30 +319,35 @@ export async function getLoginHistory(
     const start = (page - 1) * limit;
     const end = start + limit - 1;
 
-    // أولاً نجلب الطلاب المطلوبين
-    let profilesQuery = supabase
+    let query = supabase
       .from('profiles')
-      .select('id, full_name, email, grade, last_sign_in_at')
+      .select('id, full_name, email, grade, created_at, updated_at', { count: 'exact' })
       .eq('role', 'student');
 
     if (userId) {
-      profilesQuery = profilesQuery.eq('id', userId);
+      query = query.eq('id', userId);
     }
 
     if (grade) {
-      profilesQuery = profilesQuery.eq('grade', grade);
+      query = query.eq('grade', grade);
     }
 
-    const { data: profiles, error: profilesError } = await profilesQuery
-      .order('last_sign_in_at', { ascending: false })
+    const { data, error, count } = await query
+      .order('updated_at', { ascending: false })
       .range(start, end);
 
-    if (profilesError) throw profilesError;
+    if (error) throw error;
+
+    // استخدام updated_at كتاريخ آخر نشاط
+    const formattedData = (data || []).map((profile: any) => ({
+      ...profile,
+      last_sign_in_at: profile.updated_at || profile.created_at
+    }));
 
     return {
-      data: profiles || [],
-      total: 50, // تقديري - يمكن تعديله حسب احتياجاتك
-      totalPages: Math.ceil(50 / limit),
+      data: formattedData,
+      total: count || 0,
+      totalPages: Math.ceil((count || 0) / limit),
       error: null
     };
   } catch (error: any) {
@@ -271,7 +361,7 @@ export async function getLoginHistory(
   }
 }
 
-// جلب سجل شراء المحاضرات
+// جلب سجل شراء المحاضرات - نسخة مبسطة
 export async function getPurchases(
   userId?: string,
   grade?: string,
@@ -286,36 +376,77 @@ export async function getPurchases(
 
     let query = supabase
       .from('user_packages')
-      .select(`
-        *,
-        profiles!user_packages_user_id_fkey (
-          full_name,
-          email,
-          grade
-        ),
-        packages!user_packages_package_id_fkey (
-          name,
-          type,
-          price
-        )
-      `, { count: 'exact' });
+      .select('*', { count: 'exact' });
 
     if (userId) {
       query = query.eq('user_id', userId);
     }
 
-    if (grade) {
-      query = query.eq('profiles.grade', grade);
-    }
-
-    const { data, error, count } = await query
+    const { data: purchasesData, error, count } = await query
       .order('purchased_at', { ascending: false })
       .range(start, end);
 
     if (error) throw error;
 
+    if (!purchasesData || purchasesData.length === 0) {
+      return {
+        data: [],
+        total: 0,
+        totalPages: 0,
+        error: null
+      };
+    }
+
+    // جلب البيانات المرتبطة
+    const userIds = [...new Set(purchasesData.map(p => p.user_id).filter(Boolean))];
+    const packageIds = [...new Set(purchasesData.map(p => p.package_id).filter(Boolean))];
+
+    const [usersResult, packagesResult] = await Promise.all([
+      userIds.length > 0 ? supabase
+        .from('profiles')
+        .select('id, full_name, email, grade')
+        .in('id', userIds) : Promise.resolve({ data: [] }),
+      
+      packageIds.length > 0 ? supabase
+        .from('packages')
+        .select('id, name, type, price')
+        .in('id', packageIds) : Promise.resolve({ data: [] })
+    ]);
+
+    const usersMap = new Map();
+    const packagesMap = new Map();
+
+    if (usersResult.data) {
+      usersResult.data.forEach(user => usersMap.set(user.id, user));
+    }
+
+    if (packagesResult.data) {
+      packagesResult.data.forEach(pkg => packagesMap.set(pkg.id, pkg));
+    }
+
+    // دمج البيانات
+    const mergedData = purchasesData.map(purchase => ({
+      ...purchase,
+      profiles: usersMap.get(purchase.user_id) || null,
+      packages: packagesMap.get(purchase.package_id) || null
+    }));
+
+    // تصفية بالصف إذا كان مطلوبًا
+    if (grade) {
+      const filteredData = mergedData.filter(item => 
+        item.profiles && item.profiles.grade === grade
+      );
+      
+      return {
+        data: filteredData,
+        total: filteredData.length,
+        totalPages: Math.ceil(filteredData.length / limit),
+        error: null
+      };
+    }
+
     return {
-      data: data || [],
+      data: mergedData,
       total: count || 0,
       totalPages: Math.ceil((count || 0) / limit),
       error: null
@@ -331,7 +462,7 @@ export async function getPurchases(
   }
 }
 
-// جلب سجل استخدام الأكواد
+// جلب سجل استخدام الأكواد - نسخة مبسطة
 export async function getCodeUsage(
   userId?: string,
   grade?: string,
@@ -346,36 +477,78 @@ export async function getCodeUsage(
 
     let query = supabase
       .from('codes')
-      .select(`
-        *,
-        profiles!codes_used_by_fkey (
-          full_name,
-          email,
-          grade
-        ),
-        packages!codes_package_id_fkey (
-          name,
-          type
-        )
-      `, { count: 'exact' })
+      .select('*', { count: 'exact' })
       .eq('is_used', true);
 
     if (userId) {
       query = query.eq('used_by', userId);
     }
 
-    if (grade) {
-      query = query.eq('profiles.grade', grade);
-    }
-
-    const { data, error, count } = await query
+    const { data: codesData, error, count } = await query
       .order('used_at', { ascending: false })
       .range(start, end);
 
     if (error) throw error;
 
+    if (!codesData || codesData.length === 0) {
+      return {
+        data: [],
+        total: 0,
+        totalPages: 0,
+        error: null
+      };
+    }
+
+    // جلب البيانات المرتبطة
+    const userIds = [...new Set(codesData.map(c => c.used_by).filter(Boolean))];
+    const packageIds = [...new Set(codesData.map(c => c.package_id).filter(Boolean))];
+
+    const [usersResult, packagesResult] = await Promise.all([
+      userIds.length > 0 ? supabase
+        .from('profiles')
+        .select('id, full_name, email, grade')
+        .in('id', userIds) : Promise.resolve({ data: [] }),
+      
+      packageIds.length > 0 ? supabase
+        .from('packages')
+        .select('id, name, type')
+        .in('id', packageIds) : Promise.resolve({ data: [] })
+    ]);
+
+    const usersMap = new Map();
+    const packagesMap = new Map();
+
+    if (usersResult.data) {
+      usersResult.data.forEach(user => usersMap.set(user.id, user));
+    }
+
+    if (packagesResult.data) {
+      packagesResult.data.forEach(pkg => packagesMap.set(pkg.id, pkg));
+    }
+
+    // دمج البيانات
+    const mergedData = codesData.map(code => ({
+      ...code,
+      profiles: code.used_by ? usersMap.get(code.used_by) || null : null,
+      packages: packagesMap.get(code.package_id) || null
+    }));
+
+    // تصفية بالصف إذا كان مطلوبًا
+    if (grade) {
+      const filteredData = mergedData.filter(item => 
+        item.profiles && item.profiles.grade === grade
+      );
+      
+      return {
+        data: filteredData,
+        total: filteredData.length,
+        totalPages: Math.ceil(filteredData.length / limit),
+        error: null
+      };
+    }
+
     return {
-      data: data || [],
+      data: mergedData,
       total: count || 0,
       totalPages: Math.ceil((count || 0) / limit),
       error: null

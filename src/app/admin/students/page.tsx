@@ -183,7 +183,7 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSelectStudent = (studentId: string) => {
     setSelectedStudent(studentId);
-    setActiveTab('videos'); // التبديل إلى أول تبويب
+    setActiveTab('videos');
   };
 
   const handleClearFilters = () => {
@@ -191,6 +191,11 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     setSelectedGrade('');
     setSearchTerm('');
     setCurrentPage(1);
+    if (activeTab === 'students') {
+      handleSearch();
+    } else {
+      loadTabData();
+    }
   };
 
   const getGradeName = (gradeSlug: string) => {
@@ -199,13 +204,31 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ar-SA', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ar-SA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return 'غير محدد';
+    }
+  };
+
+  const formatDateTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ar-SA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'غير محدد';
+    }
   };
 
   const renderStudentsTab = () => (
@@ -278,13 +301,12 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <th>المحتوى</th>
             <th>عدد المشاهدات</th>
             <th>آخر مشاهدة</th>
-            <th>التحكم</th>
           </tr>
         </thead>
         <tbody>
           {videoViews.length === 0 ? (
             <tr>
-              <td colSpan={5} className="no-data">
+              <td colSpan={4} className="no-data">
                 <p>لا توجد سجلات للمشاهدة</p>
               </td>
             </tr>
@@ -302,13 +324,7 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 <td>
                   <span className="badge badge-purple">{record.watch_count || 0}</span>
                 </td>
-                <td>{record.last_watched_at ? formatDate(record.last_watched_at) : 'لم يشاهد'}</td>
-                <td>
-                  <button className="action-btn view">
-                    <i className="fas fa-eye"></i>
-                    تفاصيل
-                  </button>
-                </td>
+                <td>{record.last_watched_at ? formatDateTime(record.last_watched_at) : 'لم يشاهد'}</td>
               </tr>
             ))
           )}
@@ -325,7 +341,6 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <th>الطالب</th>
             <th>الامتحان</th>
             <th>الدرجة</th>
-            <th>النسبة</th>
             <th>التاريخ</th>
             <th>الحالة</th>
           </tr>
@@ -333,14 +348,15 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         <tbody>
           {examResults.length === 0 ? (
             <tr>
-              <td colSpan={6} className="no-data">
+              <td colSpan={5} className="no-data">
                 <p>لا توجد سجلات للامتحانات</p>
               </td>
             </tr>
           ) : (
             examResults.map((record) => {
               const passScore = record.lecture_contents?.pass_score || 70;
-              const percentage = Math.round((record.score / (record.total_questions || 100)) * 100);
+              const percentage = record.total_questions ? 
+                Math.round((record.score / record.total_questions) * 100) : 0;
               const passed = percentage >= passScore;
               
               return (
@@ -355,12 +371,7 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       {record.score}/{record.total_questions || '?'}
                     </span>
                   </td>
-                  <td>
-                    <span className={`badge ${passed ? 'badge-success' : 'badge-warning'}`}>
-                      {percentage}%
-                    </span>
-                  </td>
-                  <td>{formatDate(record.completed_at)}</td>
+                  <td>{formatDateTime(record.completed_at)}</td>
                   <td>
                     <span className={`badge ${passed ? 'badge-success' : 'badge-warning'}`}>
                       {passed ? 'ناجح' : 'راسب'}
@@ -383,7 +394,7 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <th>الطالب</th>
             <th>البريد الإلكتروني</th>
             <th>الصف</th>
-            <th>آخر تسجيل دخول</th>
+            <th>آخر نشاط</th>
             <th>تاريخ التسجيل</th>
           </tr>
         </thead>
@@ -391,7 +402,7 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           {loginHistory.length === 0 ? (
             <tr>
               <td colSpan={5} className="no-data">
-                <p>لا توجد سجلات لتسجيل الدخول</p>
+                <p>لا توجد سجلات للنشاط</p>
               </td>
             </tr>
           ) : (
@@ -403,13 +414,9 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   <span className="badge badge-purple">{getGradeName(record.grade)}</span>
                 </td>
                 <td>
-                  {record.last_sign_in_at ? (
-                    <span className="badge badge-success">
-                      {formatDate(record.last_sign_in_at)}
-                    </span>
-                  ) : (
-                    <span className="badge badge-warning">لم يسجل دخول</span>
-                  )}
+                  <span className="badge badge-success">
+                    {formatDateTime(record.last_sign_in_at)}
+                  </span>
                 </td>
                 <td>{formatDate(record.created_at)}</td>
               </tr>
@@ -428,7 +435,6 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <th>الطالب</th>
             <th>الباقة</th>
             <th>النوع</th>
-            <th>السعر</th>
             <th>تاريخ الشراء</th>
             <th>الحالة</th>
           </tr>
@@ -436,7 +442,7 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         <tbody>
           {purchases.length === 0 ? (
             <tr>
-              <td colSpan={6} className="no-data">
+              <td colSpan={5} className="no-data">
                 <p>لا توجد سجلات للشراء</p>
               </td>
             </tr>
@@ -451,10 +457,7 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 <td>
                   <span className="badge badge-info">{record.packages?.type || 'غير معروف'}</span>
                 </td>
-                <td>
-                  <span className="badge badge-success">{record.packages?.price || 0} جنيه</span>
-                </td>
-                <td>{formatDate(record.purchased_at)}</td>
+                <td>{formatDateTime(record.purchased_at)}</td>
                 <td>
                   <span className={`badge ${record.is_active ? 'badge-success' : 'badge-warning'}`}>
                     {record.is_active ? 'نشط' : 'منتهي'}
@@ -477,13 +480,12 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <th>الكود</th>
             <th>الباقة</th>
             <th>تاريخ الاستخدام</th>
-            <th>الحالة</th>
           </tr>
         </thead>
         <tbody>
           {codeUsage.length === 0 ? (
             <tr>
-              <td colSpan={5} className="no-data">
+              <td colSpan={4} className="no-data">
                 <p>لا توجد سجلات لاستخدام الأكواد</p>
               </td>
             </tr>
@@ -495,7 +497,13 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   <small>{record.profiles?.email || ''}</small>
                 </td>
                 <td>
-                  <code style={{ fontFamily: 'monospace', background: '#f7fafc', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
+                  <code style={{ 
+                    fontFamily: 'monospace', 
+                    background: '#f7fafc', 
+                    padding: '0.25rem 0.5rem', 
+                    borderRadius: '4px',
+                    fontSize: '0.875rem'
+                  }}>
                     {record.code}
                   </code>
                 </td>
@@ -503,10 +511,7 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   <div>{record.packages?.name || 'غير محدد'}</div>
                   <small className="badge badge-info">{record.packages?.type || 'غير معروف'}</small>
                 </td>
-                <td>{record.used_at ? formatDate(record.used_at) : 'غير محدد'}</td>
-                <td>
-                  <span className="badge badge-success">مستخدم</span>
-                </td>
+                <td>{record.used_at ? formatDateTime(record.used_at) : 'غير محدد'}</td>
               </tr>
             ))
           )}
@@ -646,7 +651,7 @@ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               مسح الفلاتر
             </button>
             <button
-              onClick={handleSearch}
+              onClick={() => activeTab === 'students' ? handleSearch() : loadTabData()}
               className="apply-btn"
             >
               <i className="fas fa-search"></i>
