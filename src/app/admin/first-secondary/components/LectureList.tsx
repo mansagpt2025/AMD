@@ -7,10 +7,12 @@ import type { Database } from '@/types/supabase';
 import styles from './LectureList.module.css';
 
 type LectureRow = Database['public']['Tables']['lectures']['Row'];
-type PackageRow = Database['public']['Tables']['packages']['Row'];
 
 type Lecture = LectureRow & {
-  packages?: PackageRow | null;
+  packages?: {
+    id?: string;
+    name?: string;
+  } | null;
 };
 
 interface LectureListProps {
