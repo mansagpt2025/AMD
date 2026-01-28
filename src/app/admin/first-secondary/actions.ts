@@ -54,7 +54,7 @@ export async function getLectures(packageId?: string) {
 
   let query = supabase
     .from('lectures')
-    .select('*, packages(name)')
+    .select('*, packages(*)')
     .order('order_number')
 
   if (packageId) query = query.eq('package_id', packageId)
