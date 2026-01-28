@@ -2,12 +2,6 @@
 /* ==================== ENHANCED STYLES FOR PROFESSIONAL DESIGN ==================== */
 
 /* ==================== GLOBAL ENHANCEMENTS ==================== */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
 html {
   scroll-behavior: smooth;
   font-size: 16px;
