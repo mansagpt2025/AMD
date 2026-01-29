@@ -13,8 +13,7 @@ export default function AdminClientLayout({
     <AuthProvider>
       <div className="admin-layout">
         <div className="admin-content">
-          <Header />
-          <main className="admin-main">{children}</main>
+          {children}
         </div>
       </div>
     </AuthProvider>
