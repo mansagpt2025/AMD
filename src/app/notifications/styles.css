@@ -36,8 +36,11 @@ body {
   min-height: 100vh;
 }
 
-/* حاوية الصفحة الرئيسية */
+/* حاوية الصفحة الرئيسية 
+*/
 .notifications-page {
+    font-family: 'GE SS Two';
+
   max-width: 100%;
   min-height: 100vh;
   background-color: var(--white);
