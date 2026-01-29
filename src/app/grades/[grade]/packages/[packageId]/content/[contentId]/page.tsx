@@ -178,7 +178,7 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 // ==========================================
-// SUPABASE CLIENT
+// SUPABASE CLIENT - مع تعديل لمنع الحلقة
 // ==========================================
 let supabaseInstance: SupabaseClient | null = null
 
@@ -198,9 +198,14 @@ const getSupabaseClient = (): SupabaseClient | null => {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true,
+      detectSessionInUrl: false, // تغيير من true إلى false لمنع الحلقة
       storageKey: 'sb-auth-token',
       storage: window.localStorage
+    },
+    global: {
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
     }
   })
   
@@ -220,6 +225,76 @@ interface Question {
 interface Theme {
   primary: string
   success: string
+}
+
+// ==========================================
+// وظيفة للتحقق من المصادقة بشكل موثوق
+// ==========================================
+const checkAuth = async (): Promise<{ user: any; session: any } | null> => {
+  try {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      console.error('Supabase client not available')
+      return null
+    }
+
+    // الحصول على الجلسة الحالية
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError) {
+      console.error('Session error:', sessionError)
+      return null
+    }
+    
+    if (!session) {
+      console.log('No session found')
+      return null
+    }
+    
+    // التحقق من صلاحية التوكين
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError) {
+      console.error('User error:', userError)
+      return null
+    }
+    
+    if (!user) {
+      console.log('No user found')
+      return null
+    }
+    
+    console.log('Auth check successful for user:', user.id)
+    return { user, session }
+  } catch (error) {
+    console.error('Auth check error:', error)
+    return null
+  }
+}
+
+// ==========================================
+// تنظيف الجلسات القديمة
+// ==========================================
+const cleanOldSessions = async (): Promise<void> => {
+  try {
+    const supabase = getSupabaseClient()
+    if (!supabase) return
+    
+    // تسجيل الخروج من الجلسات القديمة
+    await supabase.auth.signOut()
+    
+    // تنظيف التخزين المحلي
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('sb-auth-token')
+      localStorage.removeItem('sb-auth-token-error')
+      localStorage.removeItem('sb-auth-token-expired')
+      sessionStorage.clear()
+    }
+    
+    console.log('Old sessions cleaned successfully')
+  } catch (error) {
+    console.error('Error cleaning old sessions:', error)
+  }
 }
 
 // ==========================================
@@ -695,7 +770,7 @@ function getGradeTheme(gradeSlug: string): Theme {
 }
 
 // ==========================================
-// MAIN PAGE
+// MAIN PAGE - النسخة المعدلة لمنع الحلقة
 // ==========================================
 function LoadingState() {
   return (
@@ -709,7 +784,6 @@ function LoadingState() {
 function ContentViewer() {
   const router = useRouter()
   const params = useParams()
-  const [mounted, setMounted] = useState(false)
   
   const gradeSlug = params?.grade as string
   const packageId = params?.packageId as string
@@ -728,150 +802,171 @@ function ContentViewer() {
   const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
   const [videoProgress, setVideoProgress] = useState(0)
   
-  const authCheckStarted = useRef(false)
-  const authCheckCompleted = useRef(false)
+  const authCheckedRef = useRef(false)
+  const dataLoadedRef = useRef(false)
 
   useEffect(() => {
-    setMounted(true)
+    // تنظيف أي جلسات قديمة عند التحميل الأولي
+    const initialize = async () => {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('sb-auth-token-error')
+        localStorage.removeItem('sb-auth-token-expired')
+      }
+    }
+    
+    initialize()
   }, [])
 
   useEffect(() => {
-    if (!mounted || authCheckStarted.current) return
+    if (authCheckedRef.current) return
     
-    authCheckStarted.current = true
+    authCheckedRef.current = true
     
-    const supabase = getSupabaseClient()
-    if (!supabase) {
-      setError('فشل الاتصال بالخادم')
-      setLoading(false)
-      return
-    }
-
-    let timeoutId: NodeJS.Timeout
-    let subscription: { unsubscribe: () => void } | null = null
-    
-    const hasToken = typeof window !== 'undefined' && localStorage.getItem('sb-auth-token') !== null
-    
-    if (!hasToken) {
-      redirectToLogin()
-      return
-    }
-
-    function redirectToLogin() {
-      if (authCheckCompleted.current) return
-      authCheckCompleted.current = true
-      
-      const returnUrl = `/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`
-      router.replace(`/login?returnUrl=${encodeURIComponent(returnUrl)}`)
-    }
-
-    async function handleAuthSuccess(user: any) {
-      if (authCheckCompleted.current) return
-      authCheckCompleted.current = true
-      
-      setCurrentUser(user)
-      
+    const loadContent = async () => {
       try {
-        const { data: contentData, error: contentError } = await supabase!.from('lecture_contents').select('*').eq('id', contentId).single()
+        setLoading(true)
         
-        if (contentError || !contentData) {
-          setError('المحتوى غير موجود')
-          setLoading(false)
+        // 1. التحقق من المصادقة أولاً
+        const authResult = await checkAuth()
+        
+        if (!authResult?.user) {
+          // تنظيف الجلسات القديمة لمنع الحلقة
+          await cleanOldSessions()
+          
+          // توجيه إلى صفحة تسجيل الدخول
+          const returnUrl = `/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`
+          const loginUrl = `/login?returnUrl=${encodeURIComponent(returnUrl)}`
+          console.log('Redirecting to login:', loginUrl)
+          router.replace(loginUrl)
           return
         }
         
-        setContent(contentData)
+        setCurrentUser(authResult.user)
         
-        const [lectureRes, packageRes, userPackageRes] = await Promise.all([
-          supabase!.from('lectures').select('*').eq('id', contentData.lecture_id).single(),
-          supabase!.from('packages').select('*').eq('id', packageId).single(),
-          supabase!.from('user_packages').select('*').eq('user_id', user.id).eq('package_id', packageId).eq('is_active', true).gt('expires_at', new Date().toISOString()).maybeSingle()
-        ])
+        // 2. تحميل بيانات المحتوى
+        await loadContentData(authResult.user.id)
         
-        setLecture(lectureRes.data)
-        setPackageData(packageRes.data)
-        
-        if (!userPackageRes.data) {
-          router.push(`/grades/${gradeSlug}/packages/${packageId}?error=no_access`)
-          return
-        }
-        
-        setUserPackage(userPackageRes.data)
-        
-        const { data: progressData } = await supabase!.from('user_progress').select('*').eq('user_id', user.id).eq('lecture_content_id', contentId).maybeSingle()
-        
-        const now = new Date().toISOString()
-        
-        if (!progressData) {
-          const { data: newProgress } = await supabase!.from('user_progress').insert({
-            user_id: user.id, lecture_content_id: contentId, package_id: packageId,
-            status: 'in_progress', last_accessed_at: now, created_at: now
-          }).select().single()
-          setUserProgress(newProgress)
-        } else {
-          if (progressData.status === 'not_started') {
-            await supabase!.from('user_progress').update({ status: 'in_progress', last_accessed_at: now }).eq('id', progressData.id)
-            setUserProgress({ ...progressData, status: 'in_progress', last_accessed_at: now })
-          } else {
-            await supabase!.from('user_progress').update({ last_accessed_at: now }).eq('id', progressData.id)
-            setUserProgress(progressData)
-          }
-        }
-        
-        setLoading(false)
       } catch (err: any) {
-        console.error('Load error:', err)
-        setError(err?.message || 'حدث خطأ')
+        console.error('Error loading content:', err)
+        setError(err?.message || 'حدث خطأ في تحميل المحتوى')
         setLoading(false)
       }
     }
-
-    const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth event:', event, session?.user?.id)
-      
-      if (event === 'INITIAL_SESSION') {
-        if (session?.user) {
-          clearTimeout(timeoutId)
-          handleAuthSuccess(session.user)
-        } else {
-          clearTimeout(timeoutId)
-          timeoutId = setTimeout(() => {
-            redirectToLogin()
-          }, 2000)
-        }
-      } else if (event === 'SIGNED_IN' && session?.user) {
-        clearTimeout(timeoutId)
-        handleAuthSuccess(session.user)
-      }
-    })
     
-    subscription = sub
+    loadContent()
+  }, [gradeSlug, packageId, contentId, router])
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        clearTimeout(timeoutId)
-        handleAuthSuccess(session.user)
+  const loadContentData = async (userId: string) => {
+    try {
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        throw new Error('فشل الاتصال بالخادم')
       }
-    })
-
-    timeoutId = setTimeout(() => {
-      if (!authCheckCompleted.current) {
-        redirectToLogin()
+      
+      // تحميل المحتوى
+      const { data: contentData, error: contentError } = await supabase
+        .from('lecture_contents')
+        .select('*')
+        .eq('id', contentId)
+        .single()
+      
+      if (contentError || !contentData) {
+        setError('المحتوى غير موجود')
+        setLoading(false)
+        return
       }
-    }, 5000)
-
-    return () => {
-      clearTimeout(timeoutId)
-      if (subscription) subscription.unsubscribe()
+      
+      setContent(contentData)
+      
+      // تحميل البيانات الأخرى بشكل متوازي
+      const [
+        lectureRes,
+        packageRes,
+        userPackageRes,
+        progressRes
+      ] = await Promise.all([
+        supabase.from('lectures').select('*').eq('id', contentData.lecture_id).single(),
+        supabase.from('packages').select('*').eq('id', packageId).single(),
+        supabase.from('user_packages')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('package_id', packageId)
+          .eq('is_active', true)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle(),
+        supabase.from('user_progress')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('lecture_content_id', contentId)
+          .maybeSingle()
+      ])
+      
+      setLecture(lectureRes.data)
+      setPackageData(packageRes.data)
+      
+      if (!userPackageRes.data) {
+        setError('ليس لديك صلاحية للوصول إلى هذه الباقة')
+        setLoading(false)
+        return
+      }
+      
+      setUserPackage(userPackageRes.data)
+      
+      const now = new Date().toISOString()
+      
+      if (!progressRes.data) {
+        // إنشاء سجل تقدم جديد
+        const { data: newProgress } = await supabase
+          .from('user_progress')
+          .insert({
+            user_id: userId,
+            lecture_content_id: contentId,
+            package_id: packageId,
+            status: 'in_progress',
+            last_accessed_at: now,
+            created_at: now
+          })
+          .select()
+          .single()
+        
+        setUserProgress(newProgress)
+      } else {
+        // تحديث سجل التقدم الحالي
+        const updatedProgress = {
+          ...progressRes.data,
+          last_accessed_at: now,
+          status: progressRes.data.status === 'not_started' ? 'in_progress' : progressRes.data.status
+        }
+        
+        await supabase
+          .from('user_progress')
+          .update({ 
+            last_accessed_at: now,
+            status: updatedProgress.status 
+          })
+          .eq('id', progressRes.data.id)
+        
+        setUserProgress(updatedProgress)
+      }
+      
+      dataLoadedRef.current = true
+      setLoading(false)
+      
+    } catch (err: any) {
+      console.error('Content load error:', err)
+      setError(err?.message || 'حدث خطأ في تحميل البيانات')
+      setLoading(false)
     }
-  }, [mounted, gradeSlug, packageId, contentId, router])
-
-  const handleVideoProgress = (progress: number) => {
-    setVideoProgress(progress)
-    if (progress >= 80 && content?.type === 'video') markAsCompleted()
   }
 
-  const markAsCompleted = async () => {
+  const handleVideoProgress = useCallback((progress: number) => {
+    setVideoProgress(progress)
+    if (progress >= 80 && content?.type === 'video') {
+      markAsCompleted()
+    }
+  }, [content])
+
+  const markAsCompleted = useCallback(async () => {
     if (!userProgress || !content || !currentUser) return
     if (userProgress.status === 'completed' || userProgress.status === 'passed') return
 
@@ -881,27 +976,75 @@ function ContentViewer() {
     try {
       const supabase = getSupabaseClient()
       if (!supabase) return
-      await supabase.from('user_progress').update({ status, completed_at: now }).eq('id', userProgress.id)
-      setUserProgress({ ...userProgress, status, completed_at: now })
+      
+      await supabase
+        .from('user_progress')
+        .update({ 
+          status, 
+          completed_at: now,
+          score: content.type === 'exam' ? userProgress.score : 100
+        })
+        .eq('id', userProgress.id)
+      
+      setUserProgress({ 
+        ...userProgress, 
+        status, 
+        completed_at: now 
+      })
     } catch (err) {
       console.error('Mark complete error:', err)
     }
-  }
+  }, [userProgress, content, currentUser])
 
-  const handleBack = () => router.push(`/grades/${gradeSlug}/packages/${packageId}`)
+  const handleBack = useCallback(() => {
+    router.push(`/grades/${gradeSlug}/packages/${packageId}`)
+  }, [router, gradeSlug, packageId])
 
-  const renderContent = () => {
+  const renderContent = useCallback(() => {
     if (!content) return null
-    switch (content.type) {
-      case 'video': return <ProtectedVideoPlayer videoUrl={content.content_url || ''} contentId={contentId} userId={currentUser?.id} packageId={packageId} onProgress={handleVideoProgress} theme={theme} />
-      case 'pdf': return <PDFViewer pdfUrl={content.content_url || ''} contentId={contentId} packageId={packageId} userId={currentUser?.id} theme={theme} />
-      case 'exam': return <ExamViewer examContent={content} contentId={contentId} packageId={packageId} userId={currentUser?.id} theme={theme} onComplete={markAsCompleted} />
-      case 'text': return <div style={styles.textContent}><div style={styles.textContentInner} dangerouslySetInnerHTML={{ __html: content.content_url || 'لا يوجد محتوى' }} /></div>
-      default: return <div style={styles.unsupportedContent}><AlertCircle style={styles.unsupportedIcon} /><p>نوع المحتوى غير مدعوم</p></div>
+    
+    const commonProps = {
+      contentId,
+      userId: currentUser?.id,
+      packageId,
+      theme
     }
-  }
+    
+    switch (content.type) {
+      case 'video': 
+        return (
+          <ProtectedVideoPlayer 
+            videoUrl={content.content_url || ''} 
+            {...commonProps}
+            onProgress={handleVideoProgress}
+          />
+        )
+      case 'pdf': 
+        return <PDFViewer pdfUrl={content.content_url || ''} {...commonProps} />
+      case 'exam': 
+        return <ExamViewer examContent={content} {...commonProps} onComplete={markAsCompleted} />
+      case 'text': 
+        return (
+          <div style={styles.textContent}>
+            <div 
+              style={styles.textContentInner} 
+              dangerouslySetInnerHTML={{ 
+                __html: content.content_url || 'لا يوجد محتوى' 
+              }} 
+            />
+          </div>
+        )
+      default: 
+        return (
+          <div style={styles.unsupportedContent}>
+            <AlertCircle style={styles.unsupportedIcon} />
+            <p>نوع المحتوى غير مدعوم</p>
+          </div>
+        )
+    }
+  }, [content, currentUser, contentId, packageId, theme, handleVideoProgress, markAsCompleted])
 
-  const getContentTypeLabel = () => {
+  const getContentTypeLabel = useCallback(() => {
     switch (content?.type) {
       case 'video': return 'فيديو'
       case 'pdf': return 'PDF'
@@ -909,33 +1052,58 @@ function ContentViewer() {
       case 'text': return 'نص'
       default: return 'محتوى'
     }
-  }
+  }, [content])
 
-  if (!mounted || loading) return <LoadingState />
-  if (error) return (
-    <div style={styles.errorContainer}>
-      <div style={styles.errorContent}>
-        <AlertCircle style={styles.errorIcon} />
-        <h2 style={styles.errorTitle}>حدث خطأ</h2>
-        <p style={styles.errorMessage}>{error}</p>
-        <button onClick={handleBack} style={styles.backBtn}>العودة للباقة</button>
+  if (loading) return <LoadingState />
+  
+  if (error) {
+    return (
+      <div style={styles.errorContainer}>
+        <div style={styles.errorContent}>
+          <AlertCircle style={styles.errorIcon} />
+          <h2 style={styles.errorTitle}>حدث خطأ</h2>
+          <p style={styles.errorMessage}>{error}</p>
+          <button onClick={handleBack} style={styles.backBtn}>
+            العودة للباقة
+          </button>
+        </div>
       </div>
-    </div>
-  )
-  if (!content) return (
-    <div style={styles.errorContainer}>
-      <div style={styles.errorContent}>
-        <AlertCircle style={styles.errorIcon} />
-        <h2 style={styles.errorTitle}>حدث خطأ</h2>
-        <p style={styles.errorMessage}>المحتوى غير موجود</p>
-        <button onClick={handleBack} style={styles.backBtn}>العودة للباقة</button>
+    )
+  }
+  
+  if (!content) {
+    return (
+      <div style={styles.errorContainer}>
+        <div style={styles.errorContent}>
+          <AlertCircle style={styles.errorIcon} />
+          <h2 style={styles.errorTitle}>حدث خطأ</h2>
+          <p style={styles.errorMessage}>المحتوى غير موجود</p>
+          <button onClick={handleBack} style={styles.backBtn}>
+            العودة للباقة
+          </button>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div style={styles.pageContainer}>
-      <style jsx global>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style jsx global>{`
+        @keyframes spin { 
+          from { transform: rotate(0deg); } 
+          to { transform: rotate(360deg); } 
+        }
+        
+        /* إضافة تحسينات للأداء */
+        * {
+          -webkit-tap-highlight-color: transparent;
+        }
+        
+        input[type="range"] {
+          -webkit-appearance: none;
+        }
+      `}</style>
+      
       <div style={styles.header}>
         <div style={styles.headerContent}>
           <div style={styles.breadcrumb}>
