@@ -560,12 +560,9 @@ function PackageContent() {
                 <>
                   <li className={styles.noteItem}><Shield size={16} />يجب إتمام كل محتوى قبل الانتقال للذي يليه</li>
                   <li className={styles.noteItem}><Target size={16} />لابد من اجتياز الامتحان قبل الانتقال للمحاضرة التالية</li>
-                  <li className={styles.noteItem}><Users size={16} />يمكنك إعادة الامتحان حتى 3 مرات</li>
                 </>
               ) : (
                 <>
-                  <li className={styles.noteItem}><Unlock size={16} />جميع المحاضرات متاحة مباشرة</li>
-                  <li className={styles.noteItem}><PlayCircle size={16} />يمكنك البدء بأي محاضرة تريد</li>
                 </>
               )}
               {userPackage?.expires_at && (
