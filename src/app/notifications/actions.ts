@@ -1,217 +1,155 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { cookies as nextCookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
 
-// استيراد Supabase بشكل ديناميكي
-async function getSupabase() {
-  try {
-    const { createClient } = await import('@supabase/supabase-js');
+// =========================
+// Helpers
+// =========================
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+async function getSupabaseServer() {
+  const cookieStore = await nextCookies(); // ننتظر Promise
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('بيانات الاتصال بـ Supabase غير متوفرة');
-    }
-
-    return createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
       },
-    });
-  } catch (error) {
-    console.error('خطأ في إنشاء عميل Supabase:', error);
-    throw error;
-  }
+    }
+  );
 }
 
-/* =========================
-   الإشعارات Notifications
-========================= */
+async function getServerUser() {
+  const supabase = await getSupabaseServer();
+  const { data: { user }, error } = await supabase.auth.getUser();
 
-export async function getUserNotifications(
-  userId: string,
-  page: number = 1,
-  limit: number = 15
-) {
+  if (error || !user) throw new Error('غير مصرح');
+  return { supabase, user };
+}
+
+// =========================
+// Notifications
+// =========================
+
+export async function getUserNotifications(page = 1, limit = 15) {
   try {
-    const supabase = await getSupabase();
-
+    const { supabase, user } = await getServerUser();
     const start = (page - 1) * limit;
     const end = start + limit - 1;
 
-    const { data, error, count } = await supabase
-      .from('notifications')
-      .select('*', { count: 'exact' })
-      .or(`user_id.eq.${userId},target_grade.is.null,target_section.is.null`)
-      .order('created_at', { ascending: false })
-      .range(start, end);
-
-    if (error) throw error;
-
-    // جلب الصف والشعبة
-    const { data: userProfile } = await supabase
+    const { data: profile } = await supabase
       .from('profiles')
       .select('grade, section')
-      .eq('id', userId)
+      .eq('id', user.id)
       .single();
 
-    if (userProfile?.grade) {
-      const { data: gradeNotifications } = await supabase
-        .from('notifications')
+    const queries: any[] = [
+      supabase.from('notifications')
         .select('*')
-        .eq('target_grade', userProfile.grade)
-        .is('target_section', null)
-        .order('created_at', { ascending: false })
-        .range(start, end);
+        .or(`user_id.eq.${user.id},target_grade.is.null,target_section.is.null`)
+    ];
 
-      const { data: sectionNotifications } = userProfile?.section
-        ? await supabase
-            .from('notifications')
-            .select('*')
-            .eq('target_section', userProfile.section)
-            .order('created_at', { ascending: false })
-            .range(start, end)
-        : { data: null };
-
-      const allNotifications = [
-        ...(data || []),
-        ...(gradeNotifications || []),
-        ...(sectionNotifications || []),
-      ];
-
-      const uniqueNotifications = allNotifications.filter(
-        (notification, index, self) =>
-          index === self.findIndex((n) => n.id === notification.id)
+    if (profile?.grade) {
+      queries.push(
+        supabase.from('notifications')
+          .select('*')
+          .eq('target_grade', profile.grade)
+          .is('target_section', null)
       );
-
-      uniqueNotifications.sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() -
-          new Date(a.created_at).getTime()
-      );
-
-      const total =
-        (count || 0) +
-        (gradeNotifications?.length || 0) +
-        (sectionNotifications?.length || 0);
-
-      return {
-        data: uniqueNotifications.slice(0, limit),
-        total,
-        totalPages: Math.ceil(total / limit),
-        error: null,
-      };
     }
 
-    return {
-      data: data || [],
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-      error: null,
-    };
-  } catch (error: any) {
-    console.error('Error in getUserNotifications:', error);
-    return {
-      data: null,
-      total: 0,
-      totalPages: 0,
-      error: error.message || 'حدث خطأ أثناء جلب الإشعارات',
-    };
+    if (profile?.section) {
+      queries.push(
+        supabase.from('notifications')
+          .select('*')
+          .eq('target_section', profile.section)
+      );
+    }
+
+    const results = await Promise.all(queries.map(q => q.order('created_at', { ascending: false })));
+
+    const allNotifications = results.flatMap(r => r.data || []);
+    const uniqueNotifications = allNotifications.filter(
+      (n, i, arr) => i === arr.findIndex(x => x.id === n.id)
+    );
+
+    uniqueNotifications.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const total = uniqueNotifications.length;
+    const totalPages = Math.ceil(total / limit);
+    const pageData = uniqueNotifications.slice(start, end + 1);
+
+    return { data: pageData, total, totalPages, error: null };
+  } catch (err: any) {
+    return { data: [], total: 0, totalPages: 1, error: err.message || 'حدث خطأ أثناء جلب الإشعارات' };
   }
 }
 
-export async function getUnreadCount(userId: string) {
+export async function getUnreadCount() {
   try {
-    const supabase = await getSupabase();
+    const { supabase, user } = await getServerUser();
 
     const { count, error } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
-      .or(`user_id.eq.${userId},target_grade.is.null,target_section.is.null`)
+      .or(`user_id.eq.${user.id},target_grade.is.null,target_section.is.null`)
       .eq('is_read', false);
 
     if (error) throw error;
-
     return { count: count || 0, error: null };
-  } catch (error: any) {
-    console.error('Error in getUnreadCount:', error);
-    return {
-      count: 0,
-      error: error.message || 'حدث خطأ أثناء جلب عدد الإشعارات غير المقروءة',
-    };
+  } catch (err: any) {
+    return { count: 0, error: err.message || 'خطأ في جلب غير المقروء' };
   }
 }
 
-export async function markAsRead(userId: string, notificationId: string) {
+export async function markAsRead(notificationId: string) {
   try {
-    const supabase = await getSupabase();
-
+    const { supabase, user } = await getServerUser();
     const { error } = await supabase
       .from('notifications')
       .update({ is_read: true })
       .eq('id', notificationId)
-      .eq('user_id', userId);
+      .eq('user_id', user.id);
 
     if (error) throw error;
-
-    revalidatePath('/notifications');
     return { success: true, error: null };
-  } catch (error: any) {
-    console.error('Error in markAsRead:', error);
-    return {
-      success: false,
-      error: error.message || 'حدث خطأ أثناء تحديث الإشعار',
-    };
+  } catch (err: any) {
+    return { success: false, error: err.message };
   }
 }
 
-export async function markAllAsRead(userId: string) {
+export async function markAllAsRead() {
   try {
-    const supabase = await getSupabase();
-
+    const { supabase, user } = await getServerUser();
     const { error } = await supabase
       .from('notifications')
       .update({ is_read: true })
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .eq('is_read', false);
 
     if (error) throw error;
-
-    revalidatePath('/notifications');
     return { success: true, error: null };
-  } catch (error: any) {
-    console.error('Error in markAllAsRead:', error);
-    return {
-      success: false,
-      error: error.message || 'حدث خطأ أثناء تحديث جميع الإشعارات',
-    };
+  } catch (err: any) {
+    return { success: false, error: err.message };
   }
 }
 
-export async function deleteNotification(
-  userId: string,
-  notificationId: string
-) {
+export async function deleteNotification(notificationId: string) {
   try {
-    const supabase = await getSupabase();
-
+    const { supabase, user } = await getServerUser();
     const { error } = await supabase
       .from('notifications')
       .delete()
       .eq('id', notificationId)
-      .eq('user_id', userId);
+      .eq('user_id', user.id);
 
     if (error) throw error;
-
-    revalidatePath('/notifications');
     return { success: true, error: null };
-  } catch (error: any) {
-    console.error('Error in deleteNotification:', error);
-    return {
-      success: false,
-      error: error.message || 'حدث خطأ أثناء حذف الإشعار',
-    };
+  } catch (err: any) {
+    return { success: false, error: err.message };
   }
 }
