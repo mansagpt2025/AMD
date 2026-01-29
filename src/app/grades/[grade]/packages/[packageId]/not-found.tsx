@@ -1,12 +1,18 @@
-// app/grades/[grade]/packages/[packageId]/not-found.tsx
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { AlertCircle, Home } from 'lucide-react'
+import { AlertCircle, Home, ArrowRight } from 'lucide-react'
 import styles from './PackagePage.module.css'
 
 export default function PackageNotFound() {
   const router = useRouter()
+  
+  const handleGoBack = () => {
+    // Try to get grade from URL or default to first grade
+    const pathParts = window.location.pathname.split('/')
+    const grade = pathParts[2] || 'first'
+    router.push(`/grades/${grade}`)
+  }
   
   return (
     <div className={styles.errorContainer}>
@@ -20,10 +26,11 @@ export default function PackageNotFound() {
           <li>غير نشطة</li>
           <li>منتهية الصلاحية</li>
           <li>تم إلغاؤها</li>
+          <li>غير موجودة</li>
         </ul>
         <div className={styles.errorActions}>
           <button
-            onClick={() => router.push('/grades/first')} // استبدل بالصف المناسب
+            onClick={handleGoBack}
             className={styles.backButton}
           >
             <Home className={styles.buttonIcon} />

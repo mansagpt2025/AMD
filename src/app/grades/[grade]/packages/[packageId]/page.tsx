@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { createClientBrowser } from '@/lib/supabase/sf-client'
@@ -124,6 +124,10 @@ function PackageContent() {
   const [error, setError] = useState<string | null>(null)
   const [completion, setCompletion] = useState(0)
   const [activeSection, setActiveSection] = useState<string | null>(null)
+  
+  // Fix: Prevent multiple fetch calls and redirect loops
+  const isFetchingRef = useRef(false)
+  const hasRedirected = useRef(false)
 
   // Ensure client-side only execution
   useEffect(() => {
@@ -140,7 +144,11 @@ function PackageContent() {
   }, [])
 
   const checkAccessAndLoadData = useCallback(async () => {
+    // Prevent concurrent fetches
+    if (isFetchingRef.current || hasRedirected.current) return
     if (!packageId || !gradeSlug) return
+    
+    isFetchingRef.current = true
     
     try {
       setLoading(true)
@@ -152,6 +160,7 @@ function PackageContent() {
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       
       if (authError || !user) {
+        hasRedirected.current = true
         router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}`)
         return
       }
@@ -166,7 +175,8 @@ function PackageContent() {
         .gt('expires_at', new Date().toISOString())
         .maybeSingle()
 
-      if (!userPackageData) {
+      if (!userPackageData && !accessError) {
+        hasRedirected.current = true
         router.push(`/grades/${gradeSlug}?error=not_subscribed&package=${packageId}`)
         return
       }
@@ -187,6 +197,7 @@ function PackageContent() {
       
       // Verify grade matches
       if (pkgData.grade !== gradeSlug) {
+        hasRedirected.current = true
         router.push(`/grades/${pkgData.grade}/packages/${packageId}`)
         return
       }
@@ -234,15 +245,16 @@ function PackageContent() {
       setError(err?.message || 'حدث خطأ في تحميل البيانات')
     } finally {
       setLoading(false)
+      isFetchingRef.current = false
     }
   }, [packageId, gradeSlug, router, calculateCompletion])
 
   // Load data on mount
   useEffect(() => {
-    if (mounted && packageId && gradeSlug) {
+    if (mounted && packageId && gradeSlug && !isFetchingRef.current) {
       checkAccessAndLoadData()
     }
-  }, [mounted, packageId, gradeSlug, checkAccessAndLoadData])
+  }, [mounted, packageId, gradeSlug]) // Removed checkAccessAndLoadData from deps to prevent loop
 
   // Helper functions
   const isContentAccessible = useCallback((lectureIndex: number, contentIndex: number, content: LectureContent) => {
