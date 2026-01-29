@@ -253,51 +253,16 @@ export default async function DashboardPage() {
           </div>
 
           <div className="header-right">
-            <div className="notifications-container">
-              <button className="notification-button">
-                <Bell size={24} />
-                {userNotifications && userNotifications.length > 0 && (
-                  <span className="notification-badge">{userNotifications.length}</span>
-                )}
-              </button>
-              
-              {/* Notifications Dropdown */}
-              <div className="notifications-dropdown">
-                <div className="notifications-header">
-                  <h3>الإشعارات</h3>
-                  <span className="unread-count">{userNotifications?.length || 0} غير مقروء</span>
-                </div>
-                <div className="notifications-list">
-                  {userNotifications && userNotifications.length > 0 ? (
-                    userNotifications.map((notification) => (
-                      <div key={notification.id} className="notification-item">
-                        <div className="notification-icon">
-                          {notification.type === 'info' && <Info size={16} />}
-                          {notification.type === 'warning' && <AlertTriangle size={16} />}
-                          {notification.type === 'success' && <CheckCircle size={16} />}
-                        </div>
-                        <div className="notification-content">
-                          <h4>{notification.title}</h4>
-                          <p>{notification.message}</p>
-                          <span className="notification-time">
-                            {formatDate(notification.created_at)}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="no-notifications">
-                      <Bell size={32} />
-                      <p>لا توجد إشعارات جديدة</p>
-                    </div>
-                  )}
-                </div>
-                <Link href="/notifications" className="view-all-button">
-                  عرض كل الإشعارات
-                </Link>
-              </div>
-            </div>
-
+  <Link 
+    href="/notifications" 
+    className="notification-link"
+    aria-label="الإشعارات"
+  >
+    <Bell size={20} strokeWidth={2.5} />
+    {userNotifications && userNotifications.length > 0 && (
+      <span className="notification-badge">{userNotifications.length}</span>
+    )}
+  </Link>
             <div className="user-profile-card">
               <div className="user-info">
                 <p className="user-name">{profile.full_name}</p>
