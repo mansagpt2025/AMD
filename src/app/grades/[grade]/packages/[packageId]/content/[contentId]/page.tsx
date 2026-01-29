@@ -178,7 +178,7 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 // ==========================================
-// SUPABASE CLIENT - مع تعديل لمنع الحلقة
+// SUPABASE CLIENT - مع إصلاحات لمنع الحلقة
 // ==========================================
 let supabaseInstance: SupabaseClient | null = null
 
@@ -200,11 +200,13 @@ const getSupabaseClient = (): SupabaseClient | null => {
       autoRefreshToken: true,
       detectSessionInUrl: false, // تغيير من true إلى false لمنع الحلقة
       storageKey: 'sb-auth-token',
-      storage: window.localStorage
+      storage: window.localStorage,
+      flowType: 'pkce'
     },
     global: {
       headers: {
-        'Cache-Control': 'no-cache'
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       }
     }
   })
@@ -225,76 +227,6 @@ interface Question {
 interface Theme {
   primary: string
   success: string
-}
-
-// ==========================================
-// وظيفة للتحقق من المصادقة بشكل موثوق
-// ==========================================
-const checkAuth = async (): Promise<{ user: any; session: any } | null> => {
-  try {
-    const supabase = getSupabaseClient()
-    if (!supabase) {
-      console.error('Supabase client not available')
-      return null
-    }
-
-    // الحصول على الجلسة الحالية
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError) {
-      console.error('Session error:', sessionError)
-      return null
-    }
-    
-    if (!session) {
-      console.log('No session found')
-      return null
-    }
-    
-    // التحقق من صلاحية التوكين
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError) {
-      console.error('User error:', userError)
-      return null
-    }
-    
-    if (!user) {
-      console.log('No user found')
-      return null
-    }
-    
-    console.log('Auth check successful for user:', user.id)
-    return { user, session }
-  } catch (error) {
-    console.error('Auth check error:', error)
-    return null
-  }
-}
-
-// ==========================================
-// تنظيف الجلسات القديمة
-// ==========================================
-const cleanOldSessions = async (): Promise<void> => {
-  try {
-    const supabase = getSupabaseClient()
-    if (!supabase) return
-    
-    // تسجيل الخروج من الجلسات القديمة
-    await supabase.auth.signOut()
-    
-    // تنظيف التخزين المحلي
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('sb-auth-token')
-      localStorage.removeItem('sb-auth-token-error')
-      localStorage.removeItem('sb-auth-token-expired')
-      sessionStorage.clear()
-    }
-    
-    console.log('Old sessions cleaned successfully')
-  } catch (error) {
-    console.error('Error cleaning old sessions:', error)
-  }
 }
 
 // ==========================================
@@ -770,7 +702,7 @@ function getGradeTheme(gradeSlug: string): Theme {
 }
 
 // ==========================================
-// MAIN PAGE - النسخة المعدلة لمنع الحلقة
+// MAIN PAGE - مع إصلاح كامل للحلقة
 // ==========================================
 function LoadingState() {
   return (
@@ -802,58 +734,89 @@ function ContentViewer() {
   const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
   const [videoProgress, setVideoProgress] = useState(0)
   
-  const authCheckedRef = useRef(false)
-  const dataLoadedRef = useRef(false)
+  const authInitialized = useRef(false)
+  const authCheckCount = useRef(0)
 
   useEffect(() => {
-    // تنظيف أي جلسات قديمة عند التحميل الأولي
-    const initialize = async () => {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('sb-auth-token-error')
-        localStorage.removeItem('sb-auth-token-expired')
-      }
-    }
-    
-    initialize()
-  }, [])
+    // تجنب التهيئة المتعددة
+    if (authInitialized.current) return
+    authInitialized.current = true
 
-  useEffect(() => {
-    if (authCheckedRef.current) return
-    
-    authCheckedRef.current = true
-    
-    const loadContent = async () => {
+    const initializeApp = async () => {
       try {
-        setLoading(true)
-        
-        // 1. التحقق من المصادقة أولاً
-        const authResult = await checkAuth()
-        
-        if (!authResult?.user) {
-          // تنظيف الجلسات القديمة لمنع الحلقة
-          await cleanOldSessions()
-          
-          // توجيه إلى صفحة تسجيل الدخول
-          const returnUrl = `/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`
-          const loginUrl = `/login?returnUrl=${encodeURIComponent(returnUrl)}`
-          console.log('Redirecting to login:', loginUrl)
-          router.replace(loginUrl)
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+          setError('فشل الاتصال بالخادم')
+          setLoading(false)
           return
         }
+
+        // التحقق من وجود جلسة
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
-        setCurrentUser(authResult.user)
+        if (sessionError) {
+          console.error('Session error:', sessionError)
+          // تنظيف الجلسة التالفة
+          localStorage.removeItem('sb-auth-token')
+          await supabase.auth.signOut()
+          redirectToLogin()
+          return
+        }
+
+        if (!session) {
+          console.log('No session found, redirecting to login')
+          redirectToLogin()
+          return
+        }
+
+        // التحقق من صحة الجلسة
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
         
-        // 2. تحميل بيانات المحتوى
-        await loadContentData(authResult.user.id)
+        if (userError || !user) {
+          console.error('Invalid session:', userError)
+          localStorage.removeItem('sb-auth-token')
+          await supabase.auth.signOut()
+          redirectToLogin()
+          return
+        }
+
+        console.log('User authenticated:', user.id)
+        setCurrentUser(user)
         
+        // تحميل محتوى الصفحة
+        await loadContentData(user.id)
+
       } catch (err: any) {
-        console.error('Error loading content:', err)
-        setError(err?.message || 'حدث خطأ في تحميل المحتوى')
+        console.error('Initialization error:', err)
+        setError('حدث خطأ أثناء التحميل')
         setLoading(false)
       }
     }
-    
-    loadContent()
+
+    const redirectToLogin = () => {
+      authCheckCount.current++
+      
+      // منع الحلقات - إذا فشل التحقق أكثر من 3 مرات، أظهر خطأ
+      if (authCheckCount.current > 3) {
+        setError('فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.')
+        setLoading(false)
+        return
+      }
+
+      const returnUrl = `/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`
+      const loginUrl = `/login?returnUrl=${encodeURIComponent(returnUrl)}`
+      
+      // تنظيف الجلسة قبل التوجيه
+      const supabase = getSupabaseClient()
+      if (supabase) {
+        supabase.auth.signOut()
+      }
+      localStorage.removeItem('sb-auth-token')
+      
+      router.replace(loginUrl)
+    }
+
+    initializeApp()
   }, [gradeSlug, packageId, contentId, router])
 
   const loadContentData = async (userId: string) => {
@@ -949,7 +912,6 @@ function ContentViewer() {
         setUserProgress(updatedProgress)
       }
       
-      dataLoadedRef.current = true
       setLoading(false)
       
     } catch (err: any) {
