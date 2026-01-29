@@ -1,6 +1,32 @@
 /* ============================================
+
+
    Design System & Variables - Enhanced Palette
    ============================================ */
+
+   /* في بداية الملف - تأكد من وجود هذه المتغيرات */
+:root {
+  --primary-50: #eef2ff;
+  --primary-100: #e0e7ff;
+  --primary-600: #4f46e5;
+  --secondary-50: #f0fdfa;
+  --secondary-100: #ccfbf1;
+  --secondary-600: #0d9488;
+  --success-light: #d1fae5;
+  --success-dark: #065f46;
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+}
+
+/* إضافة هذا للتأكد من عدم وجود مشاكل في الصور */
+.package-image-fallback {
+  height: 180px;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+}
+
 :root {
   --primary-50: #eef2ff;
   --primary-100: #e0e7ff;
