@@ -207,7 +207,7 @@
 
 /* قسم الشعار */
 .logo-section {
-  background: var(--gradient-primary);
+  background: linear-gradient(180deg, rgb(0, 102, 192) 90%, rgb(0, 191, 255) 100%);
   padding: 2.5rem 2rem;
   text-align: center;
   position: relative;
@@ -245,7 +245,7 @@
 .logo-text {
   font-size: 2.5rem;
   font-weight: 800;
-  background: linear-gradient(to right, white, var(--secondary-300));
+  background: linear-gradient(180deg, rgb(255, 200, 0), rgb(242, 255, 0));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: -1px;
@@ -505,6 +505,8 @@
 }
 
 .button-text {
+    font-family: 'GE SS Two';
+font-weight: 300;
   position: relative;
   z-index: 2;
 }
@@ -533,6 +535,17 @@
   z-index: 2;
 }
 
+.leftbutton-sparkles {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 1rem;
+  display: flex;
+  gap: 0.25rem;
+  z-index: 2;
+}
+
+
 .sparkle-icon {
   width: 16px;
   height: 16px;
@@ -553,15 +566,16 @@
 }
 
 .register-text {
-  color: var(--gray-600);
+  color: black;
   font-size: 0.95rem;
+  
 }
 
 .register-cta {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--primary-600);
+  color: rgb(204, 4, 4);
   font-weight: 600;
   text-decoration: none;
   transition: all 0.3s ease;

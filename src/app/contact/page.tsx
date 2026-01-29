@@ -95,7 +95,7 @@ export default function ContactPage() {
                       <MessageCircle className="text-black-600" />
                     </div>
                     <div className="item-text">
-                      <h5>الدعم الفنى ( التواصل واتساب فقط ) </h5>
+                      <h5>الدعم الفنى  ( واتساب فقط ) </h5>
                       <p>011 00 196 131</p>
                     </div>
                   </div>

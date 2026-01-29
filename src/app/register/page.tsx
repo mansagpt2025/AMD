@@ -183,6 +183,9 @@ export default function RegisterPage() {
         <div className="register-card">
           {/* خطوات التسجيل */}
           <div className="steps-container">
+                        <div className="step-labels">
+              <span> </span>
+            </div>
             {[1, 2, 3].map((stepNumber) => (
               <div key={stepNumber} className="step-wrapper">
                 <div className={`step-circle ${step === stepNumber ? 'active' : step > stepNumber ? 'completed' : ''}`}>
@@ -195,11 +198,7 @@ export default function RegisterPage() {
                 <div className="step-line"></div>
               </div>
             ))}
-            <div className="step-labels">
-              <span>المعلومات الشخصية</span>
-              <span>المعلومات الدراسية</span>
-              <span>إنشاء الحساب</span>
-            </div>
+
           </div>
 
           {/* الرسالة الناجحة */}
@@ -207,7 +206,6 @@ export default function RegisterPage() {
             <div className="success-overlay">
               <div className="success-content">
                 <div className="success-animation">
-                  <Sparkles className="success-sparkle" />
                   <div className="checkmark">✓</div>
                 </div>
                 <h3 className="success-title">!تم إنشاء الحساب بنجاح</h3>
@@ -222,10 +220,8 @@ export default function RegisterPage() {
           {/* الشعار */}
           <div className="register-header">
             <div className="register-logo">
-              <Sparkles className="logo-sparkle" />
-              <h1 className="register-logo-text">
-                <span className="logo-primary">محمود</span>
-                <span className="logo-secondary">الديب</span>
+            <h1 className="register-logo-text">
+                <span className="logo-primary">البارع محمود الديب</span>
               </h1>
             </div>
             <p className="register-subtitle">انضم إلى مجتمعنا التعليمي المتميز</p>
@@ -234,7 +230,6 @@ export default function RegisterPage() {
           <div className="register-form-container">
             <div className="form-header-section">
               <h2 className="register-form-title">إنشاء حساب جديد</h2>
-              <p className="register-form-subtitle">املأ النموذج للبدء في رحلتك التعليمية</p>
             </div>
             
             {error && (
@@ -260,14 +255,12 @@ export default function RegisterPage() {
                   <div className="step-title">
                     <User className="step-icon" />
                     <h3>المعلومات الشخصية</h3>
-                    <p className="step-description">أدخل معلوماتك الشخصية الأساسية</p>
                   </div>
                   
                   <div className="input-grid">
                     <div className="input-group">
                       <label className="input-label">
-                        <span className="label-text">الاسم الكامل *</span>
-                        <span className="label-hint">كما سيظهر في شهادة الإتمام</span>
+                        <span className="label-text">الاسم الكامل </span>
                       </label>
                       <div className="input-wrapper">
                         <input
@@ -277,7 +270,6 @@ export default function RegisterPage() {
                           onChange={handleChange}
                           required
                           className="register-input"
-                          placeholder="أحمد محمد علي"
                         />
                         <div className="input-border"></div>
                       </div>
@@ -285,8 +277,7 @@ export default function RegisterPage() {
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span className="label-text">البريد الإلكتروني *</span>
-                        <span className="label-hint">لن نشاركه مع أي جهة خارجية</span>
+                        <span className="label-text">البريد الإلكتروني</span>
                       </label>
                       <div className="input-wrapper">
                         <Mail className="field-icon" />
@@ -297,7 +288,6 @@ export default function RegisterPage() {
                           onChange={handleChange}
                           required
                           className="register-input with-icon"
-                          placeholder="example@email.com"
                         />
                         <div className="input-border"></div>
                       </div>
@@ -305,8 +295,7 @@ export default function RegisterPage() {
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span className="label-text">رقم هاتف الطالب *</span>
-                        <span className="label-hint">يبدأ بـ 01</span>
+                        <span className="label-text">رقم هاتف الطالب </span>
                       </label>
                       <div className="input-wrapper">
                         <Phone className="field-icon" />
@@ -326,8 +315,7 @@ export default function RegisterPage() {
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span className="label-text">رقم ولي الأمر *</span>
-                        <span className="label-hint">للاتصال في حالة الطوارئ</span>
+                        <span className="label-text">رقم ولي الأمر</span>
                       </label>
                       <div className="input-wrapper">
                         <Phone className="field-icon" />
@@ -353,8 +341,7 @@ export default function RegisterPage() {
                       className="next-button"
                       disabled={!formData.full_name || !formData.email || !formData.phone || !formData.parent_phone}
                     >
-                      <span>التالي</span>
-                      <span className="button-arrow">→</span>
+                      <span>الخطوة التالية</span>
                     </button>
                   </div>
                 </div>
@@ -366,13 +353,12 @@ export default function RegisterPage() {
                   <div className="step-title">
                     <School className="step-icon" />
                     <h3>المعلومات الدراسية</h3>
-                    <p className="step-description">أدخل معلوماتك الدراسية الحالية</p>
                   </div>
                   
                   <div className="input-grid">
                     <div className="input-group">
                       <label className="input-label">
-                        <span className="label-text">الصف الدراسي *</span>
+                        <span className="label-text">الصف الدراسي </span>
                       </label>
                       <div className="select-wrapper">
                         <select
@@ -390,13 +376,12 @@ export default function RegisterPage() {
                           ))}
                         </select>
                         <div className="select-border"></div>
-                        <div className="select-arrow">▼</div>
                       </div>
                     </div>
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span className="label-text">الشعبة *</span>
+                        <span className="label-text">الشعبة</span>
                       </label>
                       <div className="select-wrapper">
                         <select
@@ -415,13 +400,12 @@ export default function RegisterPage() {
                           ))}
                         </select>
                         <div className="select-border"></div>
-                        <div className="select-arrow">▼</div>
                       </div>
                     </div>
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span className="label-text">المحافظة *</span>
+                        <span className="label-text">المحافظة</span>
                       </label>
                       <div className="select-wrapper">
                         <select
@@ -439,14 +423,12 @@ export default function RegisterPage() {
                           ))}
                         </select>
                         <div className="select-border"></div>
-                        <div className="select-arrow">▼</div>
                       </div>
                     </div>
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span className="label-text">المدينة *</span>
-                        <span className="label-hint">المدينة التابع لها مدرستك</span>
+                        <span className="label-text">المدينة</span>
                       </label>
                       <div className="input-wrapper">
                         <MapPin className="field-icon" />
@@ -457,7 +439,6 @@ export default function RegisterPage() {
                           onChange={handleChange}
                           required
                           className="register-input with-icon"
-                          placeholder="أدخل المدينة"
                         />
                         <div className="input-border"></div>
                       </div>
@@ -465,8 +446,7 @@ export default function RegisterPage() {
                     
                     <div className="input-group full-width">
                       <label className="input-label">
-                        <span className="label-text">المدرسة *</span>
-                        <span className="label-hint">الاسم الرسمي للمدرسة</span>
+                        <span className="label-text">المدرسة </span>
                       </label>
                       <div className="input-wrapper">
                         <Building className="field-icon" />
@@ -477,7 +457,6 @@ export default function RegisterPage() {
                           onChange={handleChange}
                           required
                           className="register-input with-icon"
-                          placeholder="أدخل اسم المدرسة"
                         />
                         <div className="input-border"></div>
                       </div>
@@ -490,8 +469,7 @@ export default function RegisterPage() {
                       onClick={prevStep}
                       className="prev-button"
                     >
-                      <span className="button-arrow">←</span>
-                      <span>السابق</span>
+                      <span>الخطوة السابقة</span>
                     </button>
                     <button
                       type="button"
@@ -499,8 +477,7 @@ export default function RegisterPage() {
                       className="next-button"
                       disabled={!formData.grade || !formData.section || !formData.governorate || !formData.city || !formData.school}
                     >
-                      <span>التالي</span>
-                      <span className="button-arrow">→</span>
+                      <span>الخطوة التالية</span>
                     </button>
                   </div>
                 </div>
@@ -511,15 +488,13 @@ export default function RegisterPage() {
                 <div className="form-step step-3">
                   <div className="step-title">
                     <Sparkles className="step-icon" />
-                    <h3>إنشاء الحساب</h3>
-                    <p className="step-description">اختر كلمة مرور قوية لحسابك</p>
+                    <h3>كلمة المرور</h3>
                   </div>
                   
                   <div className="input-grid">
                     <div className="input-group">
                       <label className="input-label">
-                        <span className="label-text">كلمة المرور *</span>
-                        <span className="label-hint">6 أحرف على الأقل</span>
+                        <span className="label-text">كلمة المرور</span>
                       </label>
                       <div className="input-wrapper">
                         <input
@@ -543,19 +518,18 @@ export default function RegisterPage() {
                         <div className="input-border"></div>
                       </div>
                       <div className="password-strength">
-                        <div className={`strength-bar ${formData.password.length >= 6 ? 'strong' : formData.password.length >= 4 ? 'medium' : 'weak'}`}>
+                        <div className={`strength-bar ${formData.password.length >= 9 ? 'strong' : formData.password.length >= 8 ? 'medium' : 'weak'}`}>
                           <div className="strength-fill"></div>
                         </div>
                         <span className="strength-text">
-                          {formData.password.length >= 6 ? 'قوية' : formData.password.length >= 4 ? 'متوسطة' : 'ضعيفة'}
+                          {formData.password.length >= 9 ? 'قوية' : formData.password.length >= 8 ? 'متوسطة' : 'ضعيفة'}
                         </span>
                       </div>
                     </div>
                     
                     <div className="input-group">
                       <label className="input-label">
-                        <span className="label-text">تأكيد كلمة المرور *</span>
-                        <span className="label-hint">أعد إدخال كلمة المرور للتأكيد</span>
+                        <span className="label-text">تأكيد كلمة المرور </span>
                       </label>
                       <div className="input-wrapper">
                         <input
@@ -594,8 +568,7 @@ export default function RegisterPage() {
                         id="terms-agreement"
                       />
                       <span className="terms-text">
-                        أوافق على <Link href="/terms" className="terms-link">الشروط والأحكام</Link> و <Link href="/privacy" className="terms-link">سياسة الخصوصية</Link>
-                      </span>
+أؤكد على صحة البيانات المقدمة</span>
                     </label>
                   </div>
                   
@@ -605,8 +578,7 @@ export default function RegisterPage() {
                       onClick={prevStep}
                       className="prev-button"
                     >
-                      <span className="button-arrow">←</span>
-                      <span>السابق</span>
+                      <span>الخطوة السابقة</span>
                     </button>
                     <button
                       type="submit"
@@ -620,8 +592,10 @@ export default function RegisterPage() {
                         </>
                       ) : (
                         <>
+                          <Sparkles className="leftbutton-sparkle2" />
                           <span className="button-text">إنشاء حساب</span>
                           <Sparkles className="button-sparkle" />
+
                         </>
                       )}
                       <span className="button-glow"></span>
@@ -633,10 +607,9 @@ export default function RegisterPage() {
               {/* رابط تسجيل الدخول */}
               <div className="login-link">
                 <p className="login-text">
-                  لديك حساب بالفعل؟{' '}
+                  لديك حساب بالفعل ؟{' '}
                   <Link href="/login" className="login-cta">
                     <span className="cta-text">سجل الدخول هنا</span>
-                    <span className="cta-arrow">↗</span>
                   </Link>
                 </p>
               </div>

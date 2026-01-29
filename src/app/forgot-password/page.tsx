@@ -10,7 +10,7 @@ export default function ForgotPasswordPage() {
   const [floatingElements, setFloatingElements] = useState<Array<{ x: number; y: number; size: number; delay: number }>>([])
   
   const phoneNumber = '201100196131'
-  const whatsappUrl = `https://wa.me/${phoneNumber}?text=مرحباً، أحتاج مساعدة في استعادة كلمة المرور لمنصة محمود الديب`
+  const whatsappUrl = `https://wa.me/${phoneNumber}?text= مرحبًا فريق الدعم : أريد استعدة كلمة مرور حسابي على منصة البارع محمود الديب `
 
   // إنشاء العناصر العائمة
   useEffect(() => {
@@ -58,13 +58,11 @@ export default function ForgotPasswordPage() {
           {/* الشعار */}
           <div className="forgot-header">
             <div className="forgot-logo">
-              <Sparkles className="logo-sparkle" />
               <h1 className="forgot-logo-text">
-                <span className="logo-primary">محمود</span>
-                <span className="logo-secondary">الديب</span>
+                <span className="logo-primary">البارع محمود الديب</span>
               </h1>
             </div>
-            <p className="forgot-subtitle">منصة التعليم الإلكتروني للثانوية العامة</p>
+            <p className="forgot-subtitle">أفضل منصة في اللغة العربية للثانوية العامة</p>
           </div>
 
           <div className="forgot-content">
@@ -79,7 +77,7 @@ export default function ForgotPasswordPage() {
             
             <div className="support-message">
               <p className="message-text">
-                <span className="highlight">لا تقلق!</span> نحن هنا لمساعدتك في استعادة حسابك.
+                <span className="highlight">لا تقلق</span> نحن هنا لمساعدتك في استعادة حسابك.
               </p>
               <p className="message-subtext">
                 للاستفسار عن كلمة المرور أو إعادة تعيينها، يرجى التواصل مباشرة مع الدعم الفني عبر واتساب
@@ -109,9 +107,7 @@ export default function ForgotPasswordPage() {
                   <a 
                     href={`tel:${phoneNumber}`}
                     className="phone-number"
-                  >
-                    +20 11 0019 6131
-                  </a>
+                  >131 196 00 011</a>
                   <p className="contact-description">
                     التواصل واتساب فقط
                   </p>
@@ -128,14 +124,12 @@ export default function ForgotPasswordPage() {
             >
               <div className="button-content">
                 <div className="whatsapp-icon-container">
-                  <MessageCircle className="whatsapp-icon" />
                   <div className="icon-pulse"></div>
                 </div>
                 <div className="button-texts">
                   <span className="button-main-text">تواصل مع الدعم الفني</span>
                   <span className="button-subtext">اضغط للدردشة مباشرة على واتساب</span>
                 </div>
-                <ArrowRight className={`arrow-icon ${isHovering ? 'animated' : ''}`} />
               </div>
               <div className="button-glow"></div>
             </button>
@@ -148,14 +142,22 @@ export default function ForgotPasswordPage() {
               </p>
             </div>
 
+            <div className="confirmation-message">
+              <div className="confirmation-icon">✓</div>
+              <p className="confirmation-text">
+نعتذر على التأخير نظرًا لضغط الرسائل              </p>
+            </div>
+
             {/* روابط أخرى */}
             <div className="additional-links">
               <Link href="/login" className="back-link">
                 <span className="link-arrow">←</span>
                 <span>العودة لتسجيل الدخول</span>
+                <span className="link-arrow">←</span>
               </Link>
               
               <Link href="/register" className="register-link">
+                <span className="link-arrow">←</span>
                 <span>إنشاء حساب جديد</span>
                 <span className="link-arrow">→</span>
               </Link>
@@ -165,7 +167,7 @@ export default function ForgotPasswordPage() {
             <div className="note-section">
               <div className="note-icon">!</div>
               <p className="note-text">
-                <strong>ملاحظة:</strong> يرجى تقديم اسم المستخدم أو البريد الإلكتروني المسجل عند التواصل
+                <strong>ملاحظة :</strong> يرجى تقديم رقم الهاتف أو البريد الإلكتروني المسجل عند التواصل مع الدعم الفني
               </p>
             </div>
           </div>

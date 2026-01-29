@@ -3,9 +3,9 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'محمود الديب - التعليم التفاعلي',
+    name: 'محمود الديب',
     short_name: 'محمود الديب',
-    description: 'منصة التعليم التفاعلي للثانوية العامة مع الأستاذ محمود الديب',
+    description: 'منصة تعليمية متكاملة لكل صفوف المرحلة الثانوية تضمن لك التفوق و التميز في اللغة العربية.',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
@@ -56,18 +56,5 @@ export default function manifest(): MetadataRoute.Manifest {
     id: '/',
     dir: 'rtl',
     lang: 'ar',
-
-    shortcuts: [
-      {
-        name: 'لوحة التحكم',
-        url: '/dashboard',
-        description: 'الذهاب إلى لوحة التحكم',
-      },
-      {
-        name: 'الباقات',
-        url: '/grades/first',
-        description: 'عرض باقات الصف الأول',
-      },
-    ],
   }
 }

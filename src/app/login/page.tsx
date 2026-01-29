@@ -107,23 +107,24 @@ export default function LoginPage() {
       </div>
 
       <div className="login-card-wrapper">
+        
         <div className="login-card">
           {/* الشعار مع أنيميشن */}
           <div className="logo-section">
+    
+          
             <div className="logo-container">
-              <Sparkles className="logo-sparkle" />
             </div>
             <div className="welcome-text">
               <h1 className="logo-text">
                 <span className="logo-primary">البارع محمود الديب </span>
-              </h1>
+             </h1>
             </div>
           </div>
           
           <div className="login-form-container">
             <div className="form-header">
               <h2 className="form-title">تسجيل الدخول</h2>
-              <p className="form-subtitle">سجل دخولك للوصول إلى حسابك</p>
             </div>
             
             {error && (
@@ -138,7 +139,7 @@ export default function LoginPage() {
               <div className="input-group">
                 <label className="input-label">
                   <Mail className="input-icon" />
-                  <span>البريد الإلكتروني أو رقم الهاتف *</span>
+                  <span>البريد الإلكتروني أو رقم الهاتف </span>
                 </label>
                 <div className="input-wrapper">
                   <input
@@ -147,7 +148,7 @@ export default function LoginPage() {
                     onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                     required
                     className="login-input"
-                    placeholder="email@example.com أو 01xxxxxxxxx"
+                    placeholder="يفضل استخدام البريد الالكتروني"
                   />
                   <div className="input-border"></div>
                 </div>
@@ -158,15 +159,9 @@ export default function LoginPage() {
                 <div className="password-header">
                   <label className="input-label">
                     <Lock className="input-icon" />
-                    <span>كلمة المرور *</span>
+                    <span>كلمة المرور </span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => alert('لإعادة تعيين كلمة المرور، تواصل مع الدعم الفني')}
-                    className="forgot-password"
-                  >
-                    نسيت كلمة المرور؟
-                  </button>
+
                 </div>
                 <div className="input-wrapper">
                   <input
@@ -194,6 +189,11 @@ export default function LoginPage() {
                 disabled={loading}
                 className={`login-button ${loading ? 'loading' : ''}`}
               >
+                                                <span className="leftbutton-sparkles">
+                  <Sparkles className="sparkle-icon" />
+                  <Sparkles className="sparkle-icon" />
+                </span>
+
                 <span className="button-text">
                   {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
                 </span>
@@ -207,6 +207,7 @@ export default function LoginPage() {
               <div className="forgot-password-link">
                 <p className="forgot-password-button">
                   <Link href="/forgot-password" className="register-cta">
+                    <span className="cta-arrow">←</span>
                     <span className="cta-text">نسيت كلمة المرور؟</span>
                     <span className="cta-arrow">→</span>
                   </Link>
@@ -218,6 +219,7 @@ export default function LoginPage() {
                 <p className="register-text">
                   ليس لديك حساب؟{' '}
                   <Link href="/register" className="register-cta">
+                    <span className="cta-arrow">←</span>
                     <span className="cta-text">أنشئ حساب الآن</span>
                     <span className="cta-arrow">→</span>
                   </Link>

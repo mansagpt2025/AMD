@@ -14,8 +14,6 @@ const inter = Inter({
 })
 
 export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
 }
 export const metadata: Metadata = {
   title: {
@@ -381,18 +379,6 @@ export const metadata: Metadata = {
   creator: 'محمود الديب',
   publisher: 'البارع محمود الديب',
 
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-      'max-video-preview': -1,
-    },
-  },
-
   alternates: {
     canonical: 'https://mahmoud-eldeeb.com',
   },
@@ -433,9 +419,8 @@ export default function RootLayout({
     <html
       lang="ar"
       dir="rtl"
-      className={`${notoSansArabic.variable} ${inter.variable}`}
-    >
-      <body className={`${notoSansArabic.className} antialiased`}>
+        >
+      <body>
         {children}
       </body>
     </html>

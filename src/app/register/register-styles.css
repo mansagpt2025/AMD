@@ -162,12 +162,16 @@
 
 /* الكارد الرئيسي */
 .register-card-wrapper {
+    align-items: center;
+  justify-content: center;
   width: 100%;
   max-width: 800px;
   animation: slideRight 0.8s ease-out;
 }
 
 .register-card {
+    align-items: center;
+  justify-content: center;
   background: white;
   border-radius: 24px;
   overflow: hidden;
@@ -197,15 +201,17 @@
 
 /* خطوات التسجيل */
 .steps-container {
-  padding: 2rem 2rem 1rem;
+  padding: 2rem 2rem 2rem;
   background: var(--gradient-primary);
   position: relative;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+  
   align-items: center;
 }
 
 .step-wrapper {
+  margin-bottom: 10;
   display: flex;
   align-items: center;
   flex: 1;
@@ -213,6 +219,7 @@
 }
 
 .step-circle {
+  
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -252,7 +259,7 @@
   flex: 1;
   height: 3px;
   background: rgba(255, 255, 255, 0.3);
-  margin: 0 10px;
+  margin: 0 8px;
   position: relative;
   overflow: hidden;
 }
@@ -277,8 +284,8 @@
   display: flex;
   justify-content: space-between;
   padding: 1rem 2rem 0;
-  background: var(--gradient-primary);
-  color: white;
+  background: rgba(255, 255, 255, 0);
+  color: rgba(255, 255, 255, 0);
   font-size: 0.8rem;
   font-weight: 500;
 }
@@ -382,10 +389,14 @@
 
 /* حاوية النموذج */
 .register-form-container {
+    align-items: center;
+  justify-content: center;
   padding: 1rem 2rem 2rem;
 }
 
 .form-header-section {
+    align-items: center;
+  justify-content: center;
   text-align: center;
   margin-bottom: 2rem;
 }
@@ -440,14 +451,14 @@
 .step-title h3 {
   font-size: 1.4rem;
   font-weight: 600;
-  color: var(--gray-800);
+  color: black;
   margin: 0;
 }
 
 .step-icon {
   width: 24px;
   height: 24px;
-  color: var(--primary-500);
+  color: rgb(0, 127, 0);
 }
 
 .input-grid {
@@ -468,7 +479,7 @@
 }
 
 .input-label {
-  color: var(--gray-700);
+  color: rgb(3, 3, 156);
   font-weight: 500;
   font-size: 0.9rem;
   display: flex;
@@ -497,7 +508,7 @@
   border: 2px solid var(--gray-200);
   border-radius: 12px;
   font-size: 1rem;
-  color: var(--gray-800);
+  color: var(--gray-900);
   background: var(--gray-50);
   transition: all 0.3s ease;
 }
@@ -522,12 +533,13 @@
 }
 
 .input-border {
-  position: absolute;
-  bottom: -2px;
-  left: 0;
+  position: center;
+  bottom: 0px;
+  left: 6;
+  right: 6;
   width: 0;
   height: 2px;
-  background: var(--gradient-primary);
+  background: rgba(103, 3, 78, 0);
   border-radius: 0 0 12px 12px;
   transition: all 0.3s ease;
   opacity: 0;
@@ -686,7 +698,7 @@
 }
 
 .terms-text {
-  color: var(--gray-700);
+  color: var(--gray-900);
   font-size: 0.9rem;
 }
 
@@ -712,6 +724,8 @@
 
 .prev-button,
 .next-button {
+    font-family: 'GE SS Two';
+
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -720,13 +734,14 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  border: 2px solid transparent;
+  border: 0.5px solid transparent;
 }
 
 .prev-button {
   background: var(--gray-100);
-  color: var(--gray-700);
-  border-color: var(--gray-200);
+  color: rgb(1, 72, 149);
+  border-color: black;
+
 }
 
 .prev-button:hover {
@@ -736,6 +751,9 @@
 
 .next-button {
   background: var(--primary-600);
+    font-family: 'GE SS Two';
+      font-weight: 400;
+
   color: white;
 }
 
@@ -760,13 +778,15 @@
 /* زر التسجيل */
 .register-button {
   position: relative;
+      font-family: 'GE SS Two';
+
   background: var(--gradient-primary);
   color: white;
   border: none;
   border-radius: 12px;
   padding: 1rem 2.5rem;
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   overflow: hidden;
   transition: all 0.3s ease;
@@ -805,7 +825,36 @@
 .button-sparkle {
   position: absolute;
   right: 1rem;
-  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: white;
+  z-index: 2;
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+.button-sparkle2 {
+  position: absolute;
+  right: 3rem;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: white;
+  z-index: 2;
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+.leftbutton-sparkle2 {
+  position: absolute;
+  left: 1rem;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: white;
+  z-index: 2;
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+.leftbutton-sparkle {
+  position: absolute;
+  left: 3rem;
   transform: translateY(-50%);
   width: 20px;
   height: 20px;
@@ -842,7 +891,7 @@
 }
 
 .login-cta:hover {
-  color: var(--primary-800);
+  color: green;
   background: var(--primary-50);
 }
 
@@ -915,13 +964,5 @@
   
   .form-step {
     transition: all 0.5s ease;
-  }
-  
-  .step-2 {
-    transform: translateX(100%);
-  }
-  
-  .step-3 {
-    transform: translateX(200%);
   }
 }
