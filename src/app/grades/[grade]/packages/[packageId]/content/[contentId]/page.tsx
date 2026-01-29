@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 import {
   Video, FileText, BookOpen, Clock, CheckCircle,
   X, ArrowRight, AlertCircle, Loader2, Download,
@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 
 // ==========================================
-// STYLES
+// STYLES (نفس الـ styles اللي عندك)
 // ==========================================
 const styles: Record<string, React.CSSProperties> = {
   pageContainer: { minHeight: '100vh', background: '#f8fafc' },
@@ -178,112 +178,22 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 // ==========================================
-// SUPABASE CLIENT - إصلاح نهائي
+// SUPABASE CLIENT - نفس نظام PackagePage
 // ==========================================
-let supabaseInstance: SupabaseClient | null = null
+declare global {
+  var __contentPageSupabase: ReturnType<typeof createBrowserClient> | undefined
+}
 
-const getSupabaseClient = (): SupabaseClient | null => {
+const getSupabase = () => {
   if (typeof window === 'undefined') return null
-  if (supabaseInstance) return supabaseInstance
   
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  
-  if (!supabaseUrl || !supabaseKey) {
-    console.error('Missing Supabase credentials')
-    return null
+  if (!globalThis.__contentPageSupabase) {
+    globalThis.__contentPageSupabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
   }
-  
-  supabaseInstance = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: false,
-      storageKey: 'sb-auth-token',
-      storage: window.localStorage,
-      flowType: 'pkce',
-      debug: true // تفعيل وضع التصحيح
-    }
-  })
-  
-  return supabaseInstance
-}
-
-// ==========================================
-// وظيفة لإعادة تعيين الجلسة تماماً
-// ==========================================
-const resetAuthState = async (): Promise<void> => {
-  try {
-    const supabase = getSupabaseClient()
-    if (supabase) {
-      await supabase.auth.signOut()
-    }
-    
-    // تنظيف كامل للتخزين
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('sb-auth-token')
-      localStorage.removeItem('sb-auth-token-2')
-      localStorage.removeItem('supabase.auth.token')
-      
-      // حذف جميع الكوكيز
-      document.cookie.split(';').forEach(cookie => {
-        const [name] = cookie.split('=')
-        document.cookie = `${name.trim()}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
-      })
-    }
-    
-    console.log('Auth state reset complete')
-  } catch (error) {
-    console.error('Error resetting auth state:', error)
-  }
-}
-
-// ==========================================
-// وظيفة التحقق من المصادقة مع إصلاح الحلقة
-// ==========================================
-const checkAuth = async (): Promise<{ user: any; session: any } | null> => {
-  try {
-    const supabase = getSupabaseClient()
-    if (!supabase) {
-      console.error('Supabase client not available')
-      return null
-    }
-
-    // الحصول على الجلسة بدون trigger أي أحداث
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError) {
-      console.error('Session error in checkAuth:', sessionError)
-      await resetAuthState()
-      return null
-    }
-    
-    if (!session) {
-      console.log('No session found in checkAuth')
-      return null
-    }
-    
-    // التحقق من صلاحية التوكين بدون trigger تحديث
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError) {
-      console.error('User error in checkAuth:', userError)
-      await resetAuthState()
-      return null
-    }
-    
-    if (!user) {
-      console.log('No user found in checkAuth')
-      return null
-    }
-    
-    console.log('Auth check successful for user:', user.id)
-    return { user, session }
-  } catch (error) {
-    console.error('Auth check error:', error)
-    await resetAuthState()
-    return null
-  }
+  return globalThis.__contentPageSupabase
 }
 
 // ==========================================
@@ -334,7 +244,7 @@ function ProtectedVideoPlayer({
   const saveProgress = useCallback(async (currentTimeValue: number, totalDuration: number) => {
     if (!userId || !contentId) return
     try {
-      const supabase = getSupabaseClient()
+      const supabase = getSupabase()
       if (!supabase) return
       const progress = totalDuration > 0 ? (currentTimeValue / totalDuration) * 100 : 0
       if (Math.abs(currentTimeValue - lastSavedTimeRef.current) < 10 && progress < 95) return
@@ -516,7 +426,7 @@ function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: 
   const saveProgress = useCallback(async () => {
     if (!userId || !contentId || progressSaved) return
     try {
-      const supabase = getSupabaseClient()
+      const supabase = getSupabase()
       if (!supabase) return
       await supabase.from('user_progress').upsert({
         user_id: userId,
@@ -684,7 +594,7 @@ function ExamViewer({ examContent, contentId, packageId, userId, theme, onComple
     if (finalScore >= (examContent?.pass_score || 50)) onComplete()
 
     try {
-      const supabase = getSupabaseClient()
+      const supabase = getSupabase()
       if (supabase) await supabase.from('exam_results').insert({
         user_id: userId, content_id: contentId, score: finalScore,
         total_questions: questions.length, correct_answers: correctCount, wrong_answers: questions.length - correctCount
@@ -774,7 +684,7 @@ function getGradeTheme(gradeSlug: string): Theme {
 }
 
 // ==========================================
-// MAIN PAGE - إصلاح نهائي للحلقة
+// MAIN PAGE - الإصلاح النهائي
 // ==========================================
 function LoadingState() {
   return (
@@ -805,161 +715,115 @@ function ContentViewer() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
   const [videoProgress, setVideoProgress] = useState(0)
+  const [authChecked, setAuthChecked] = useState(false)
   
-  const pageInitialized = useRef(false)
+  // استخدام نفس نظام PackagePage
+  const supabase = useMemo(() => getSupabase(), [])
 
   useEffect(() => {
-    if (pageInitialized.current) return
-    pageInitialized.current = true
-    
-    console.log('Content page initialized')
-    
+    if (!supabase || !gradeSlug || !packageId || !contentId || authChecked) return
+
     const initializePage = async () => {
       try {
         setLoading(true)
         
-        // تنظيف أي جلسات قديمة تالفة
-        await resetAuthState()
+        // 1. التحقق من الجلسة (نفس PackagePage)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
-        // التحقق من المصادقة
-        const authResult = await checkAuth()
+        if (sessionError || !session?.user) {
+          console.log('No session, redirecting...')
+          router.replace(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
+          return
+        }
+
+        const user = session.user
+        setCurrentUser(user)
         
-        if (!authResult?.user) {
-          console.log('No valid auth found, redirecting to login')
-          
-          // تنظيف كامل قبل التوجيه
-          await resetAuthState()
-          
-          const returnUrl = `/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`
-          const loginUrl = `/login?returnUrl=${encodeURIComponent(returnUrl)}`
-          
-          console.log('Redirecting to:', loginUrl)
-          router.replace(loginUrl)
+        // 2. التحقق من صلاحية الباقة
+        const { data: userPackageData, error: accessError } = await supabase
+          .from('user_packages')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('package_id', packageId)
+          .eq('is_active', true)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle()
+
+        if (!userPackageData) {
+          router.replace(`/grades/${gradeSlug}?error=not_subscribed`)
           return
         }
         
-        console.log('User authenticated:', authResult.user.id)
-        setCurrentUser(authResult.user)
+        setUserPackage(userPackageData)
         
-        // تحميل البيانات
-        await loadContentData(authResult.user.id)
+        // 3. تحميل بيانات المحتوى
+        const { data: contentData, error: contentError } = await supabase
+          .from('lecture_contents')
+          .select('*')
+          .eq('id', contentId)
+          .single()
+        
+        if (contentError || !contentData) {
+          setError('المحتوى غير موجود')
+          setLoading(false)
+          setAuthChecked(true)
+          return
+        }
+        
+        setContent(contentData)
+        
+        // 4. تحميل البيانات الأخرى
+        const [lectureRes, packageRes, progressRes] = await Promise.all([
+          supabase.from('lectures').select('*').eq('id', contentData.lecture_id).single(),
+          supabase.from('packages').select('*').eq('id', packageId).single(),
+          supabase.from('user_progress')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('lecture_content_id', contentId)
+            .maybeSingle()
+        ])
+        
+        setLecture(lectureRes.data)
+        setPackageData(packageRes.data)
+        
+        const now = new Date().toISOString()
+        
+        if (!progressRes.data) {
+          const { data: newProgress } = await supabase
+            .from('user_progress')
+            .insert({
+              user_id: user.id,
+              lecture_content_id: contentId,
+              package_id: packageId,
+              status: 'in_progress',
+              last_accessed_at: now,
+              created_at: now
+            })
+            .select()
+            .single()
+          setUserProgress(newProgress)
+        } else {
+          await supabase
+            .from('user_progress')
+            .update({ last_accessed_at: now })
+            .eq('id', progressRes.data.id)
+          
+          setUserProgress({...progressRes.data, last_accessed_at: now})
+        }
+        
+        setLoading(false)
+        setAuthChecked(true)
         
       } catch (err: any) {
-        console.error('Page initialization error:', err)
-        setError('حدث خطأ أثناء تحميل الصفحة')
+        console.error('Error:', err)
+        setError(err?.message || 'حدث خطأ في تحميل البيانات')
         setLoading(false)
+        setAuthChecked(true)
       }
     }
     
     initializePage()
-    
-    // تنظيف عند مغادرة الصفحة
-    return () => {
-      console.log('Content page cleanup')
-    }
-  }, [gradeSlug, packageId, contentId, router])
-
-  const loadContentData = async (userId: string) => {
-    try {
-      const supabase = getSupabaseClient()
-      if (!supabase) {
-        throw new Error('فشل الاتصال بالخادم')
-      }
-      
-      // تحميل المحتوى
-      const { data: contentData, error: contentError } = await supabase
-        .from('lecture_contents')
-        .select('*')
-        .eq('id', contentId)
-        .single()
-      
-      if (contentError || !contentData) {
-        setError('المحتوى غير موجود')
-        setLoading(false)
-        return
-      }
-      
-      setContent(contentData)
-      
-      // تحميل البيانات الأخرى بشكل متوازي
-      const [
-        lectureRes,
-        packageRes,
-        userPackageRes,
-        progressRes
-      ] = await Promise.all([
-        supabase.from('lectures').select('*').eq('id', contentData.lecture_id).single(),
-        supabase.from('packages').select('*').eq('id', packageId).single(),
-        supabase.from('user_packages')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('package_id', packageId)
-          .eq('is_active', true)
-          .gt('expires_at', new Date().toISOString())
-          .maybeSingle(),
-        supabase.from('user_progress')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('lecture_content_id', contentId)
-          .maybeSingle()
-      ])
-      
-      setLecture(lectureRes.data)
-      setPackageData(packageRes.data)
-      
-      if (!userPackageRes.data) {
-        setError('ليس لديك صلاحية للوصول إلى هذه الباقة')
-        setLoading(false)
-        return
-      }
-      
-      setUserPackage(userPackageRes.data)
-      
-      const now = new Date().toISOString()
-      
-      if (!progressRes.data) {
-        // إنشاء سجل تقدم جديد
-        const { data: newProgress } = await supabase
-          .from('user_progress')
-          .insert({
-            user_id: userId,
-            lecture_content_id: contentId,
-            package_id: packageId,
-            status: 'in_progress',
-            last_accessed_at: now,
-            created_at: now
-          })
-          .select()
-          .single()
-        
-        setUserProgress(newProgress)
-      } else {
-        // تحديث سجل التقدم الحالي
-        const updatedProgress = {
-          ...progressRes.data,
-          last_accessed_at: now,
-          status: progressRes.data.status === 'not_started' ? 'in_progress' : progressRes.data.status
-        }
-        
-        await supabase
-          .from('user_progress')
-          .update({ 
-            last_accessed_at: now,
-            status: updatedProgress.status 
-          })
-          .eq('id', progressRes.data.id)
-        
-        setUserProgress(updatedProgress)
-      }
-      
-      setLoading(false)
-      
-    } catch (err: any) {
-      console.error('Content load error:', err)
-      setError(err?.message || 'حدث خطأ في تحميل البيانات')
-      setLoading(false)
-    }
-  }
+  }, [gradeSlug, packageId, contentId, supabase, authChecked, router])
 
   const handleVideoProgress = useCallback((progress: number) => {
     setVideoProgress(progress)
@@ -976,7 +840,7 @@ function ContentViewer() {
     const now = new Date().toISOString()
     
     try {
-      const supabase = getSupabaseClient()
+      const supabase = getSupabase()
       if (!supabase) return
       
       await supabase
@@ -988,11 +852,7 @@ function ContentViewer() {
         })
         .eq('id', userProgress.id)
       
-      setUserProgress({ 
-        ...userProgress, 
-        status, 
-        completed_at: now 
-      })
+      setUserProgress({ ...userProgress, status, completed_at: now })
     } catch (err) {
       console.error('Mark complete error:', err)
     }
@@ -1096,7 +956,6 @@ function ContentViewer() {
           to { transform: rotate(360deg); } 
         }
         
-        /* إضافة تحسينات للأداء */
         * {
           -webkit-tap-highlight-color: transparent;
         }
