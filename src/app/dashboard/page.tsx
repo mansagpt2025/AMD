@@ -1,9 +1,8 @@
-// app/dashboard/page.tsx
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/supabase-server'
 import type { Metadata } from 'next'
-import { Bell, BookOpen, Clock, Package, TrendingUp, Award, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Bell, BookOpen, Clock, Package, TrendingUp, Award } from 'lucide-react'
 import './dashboard.css'
 
 // Viewport
@@ -58,11 +57,6 @@ interface Profile {
   email: string;
 }
 
-interface Wallet {
-  id: string;
-  balance: number;
-}
-
 const DEFAULT_PACKAGE_IMAGES = {
   weekly: '/images/weekly-package.jpg',
   monthly: '/images/monthly-package.jpg',
@@ -110,12 +104,11 @@ export default async function DashboardPage() {
   }
 
   // =========================
-  // PURCHASED PACKAGES - الطريقة الصحيحة
+  // PURCHASED PACKAGES
   // =========================
   let userPackages: UserPackage[] | null = null
   
   try {
-    // الطريقة الأولى: جلب user_packages ثم جلب كل package على حدة
     const { data: purchasedPackages, error: packagesError } = await supabase
       .from('user_packages')
       .select('*')
@@ -127,7 +120,6 @@ export default async function DashboardPage() {
     }
 
     if (purchasedPackages && purchasedPackages.length > 0) {
-      // جلب تفاصيل كل package
       const packageIds = purchasedPackages.map(p => p.package_id)
       const { data: packagesData, error: packagesDataError } = await supabase
         .from('packages')
@@ -138,12 +130,11 @@ export default async function DashboardPage() {
         console.error('Packages data error:', packagesDataError)
       }
 
-      // دمج البيانات
       userPackages = purchasedPackages.map(up => {
         const packageDetails = packagesData?.find(p => p.id === up.package_id)
         return {
           ...up,
-          packages: packageDetails
+          packages: packageDetails as PackageData
         } as UserPackage
       })
     }
@@ -172,7 +163,6 @@ export default async function DashboardPage() {
   let userNotifications: Notification[] | null = null
   
   try {
-    // جلب الإشعارات العامة والإشعارات المخصصة للصف
     const { data: notifications, error: notificationsError } = await supabase
       .from('notifications')
       .select('*')
@@ -185,7 +175,7 @@ export default async function DashboardPage() {
       console.error('Notifications error:', notificationsError)
     }
 
-    userNotifications = notifications as unknown as Notification[] | null
+    userNotifications = notifications as Notification[] | null
   } catch (error) {
     console.error('Error fetching notifications:', error)
   }
@@ -226,20 +216,6 @@ export default async function DashboardPage() {
       month: 'long',
       day: 'numeric',
     })
-  }
-
-  const calculateDaysRemaining = (expiryDate: string | null): string => {
-    if (!expiryDate) return 'لا يوجد'
-    
-    const now = new Date()
-    const expiry = new Date(expiryDate)
-    const diffTime = expiry.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
-    if (diffDays < 0) return 'منتهي'
-    if (diffDays === 0) return 'ينتهي اليوم'
-    if (diffDays === 1) return 'يوم واحد'
-    return `${diffDays} يوم`
   }
 
   return (
@@ -299,13 +275,11 @@ export default async function DashboardPage() {
 
               <div className="welcome-actions">
                 <div className="wallet-balance">
-                  <span className="balance-label" > رصيد المحفظة : </span>
+                  <span className="balance-label"> رصيد المحفظة : </span>
                   <span className="balance-amount">
                     {wallet?.balance ?? 0} ج.م
                   </span>
                 </div>
-
-
               </div>
             </div>
 
@@ -388,7 +362,6 @@ export default async function DashboardPage() {
             <div className="packages-grid">
               {userPackages.map((userPackage) => (
                 <div key={userPackage.id} className="package-card">
-                  {/* Package Image */}
                   {userPackage.packages?.image_url ? (
                     <div className="package-image-container">
                       <img 
@@ -464,10 +437,3 @@ export default async function DashboardPage() {
     </div>
   )
 }
-
-// Helper components for icons
-const Info = ({ size }: { size: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-  </svg>
-)

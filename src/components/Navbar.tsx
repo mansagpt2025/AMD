@@ -359,10 +359,7 @@ const Navbar = ({ toggleTheme, onLogout, theme }: NavbarProps) => {
                       </div>
                     </div>
                     <div className={styles.dropdownDivider}></div>
-                    <Link href="/profile" className={styles.dropdownItem}>
-                      <FiUser className={styles.dropdownIcon} />
-                      الملف الشخصي
-                    </Link>
+                    {/* تم حذف رابط الملف الشخصي */}
                     <div className={styles.dropdownDivider}></div>
                     <button
                       onClick={handleLogout}
@@ -463,13 +460,7 @@ const Navbar = ({ toggleTheme, onLogout, theme }: NavbarProps) => {
               </div>
             ) : (
               <div className={styles.mobileUserActions}>
-                <Link
-                  href="/profile"
-                  className={styles.mobileProfileButton}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  الملف الشخصي
-                </Link>
+                {/* تم حذف رابط الملف الشخصي */}
                 <button
                   onClick={() => {
                     handleLogout();

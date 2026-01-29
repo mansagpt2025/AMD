@@ -110,14 +110,10 @@
 }
 
 /* ============================================
-   Import Arabic Font
-   ============================================ */
-
-/* ============================================
    Layout Container
    ============================================ */
 .dashboard-container {
-  font-family: 'GE SS Two';
+  font-family: 'GE SS Two', 'Segoe UI', system-ui, sans-serif;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -804,6 +800,25 @@
 .grade-illustration {
   display: none;
 }
+
+.books-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.book {
+  width: 60px;
+  height: 20px;
+  background: linear-gradient(135deg, var(--primary-400), var(--primary-600));
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.book-1 { width: 50px; height: 15px; opacity: 0.7; }
+.book-2 { width: 60px; height: 18px; opacity: 0.85; }
+.book-3 { width: 55px; height: 16px; opacity: 1; }
 
 /* ============================================
    Packages Section

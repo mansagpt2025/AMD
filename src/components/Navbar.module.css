@@ -266,8 +266,9 @@ body {
 }
 
 .profileButton {
-  background: none;
+  background: white;
   border: none;
+  opacity: 0.9;
   padding: 0;
   cursor: pointer;
 }
