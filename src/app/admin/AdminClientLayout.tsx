@@ -12,7 +12,6 @@ export default function AdminClientLayout({
   return (
     <AuthProvider>
       <div className="admin-layout">
-        <Sidebar />
         <div className="admin-content">
           <Header />
           <main className="admin-main">{children}</main>
