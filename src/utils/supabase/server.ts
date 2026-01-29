@@ -1,9 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+// ⚠️ مهم: خليها async
 export async function createClient() {
-  // في الإصدارات الحديثة من Next.js cookies() بقت async
-  const cookieStore = await cookies()
+  const cookieStore = await cookies() // ← حط await هنا
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,16 +13,11 @@ export async function createClient() {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
-
-        // ⚠️ مهم:
-        // في Server Components ماينفعش نعدل على الكوكيز
-        // التعديل الحقيقي لازم يتم في Middleware
         set(name: string, value: string, options: any) {
-          // intentionally empty
+          // فارغة عمداً - التعديل في Middleware بس
         },
-
         remove(name: string, options: any) {
-          // intentionally empty
+          // فارغة عمداً - التعديل في Middleware بس
         },
       },
     }
