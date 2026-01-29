@@ -116,11 +116,9 @@ const styles: Record<string, React.CSSProperties> = {
   volumeSlider: { width: 80, accentColor: 'white' },
   protectionIndicator: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', color: '#fbbf24', background: 'rgba(0,0,0,0.5)', padding: '0.25rem 0.75rem', borderRadius: '9999px' },
   protectionBadge: { position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(0,0,0,0.7)', color: '#fbbf24', padding: '0.5rem 1rem', borderRadius: '9999px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', zIndex: 5 },
-  youtubeContainer: { width: '100%', height: '100%', position: 'relative' },
   youtubeIframe: { position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' },
   errorContainerVideo: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', color: 'white', textAlign: 'center' },
   videoErrorHint: { fontSize: '0.875rem', marginTop: '0.5rem', opacity: 0.8 },
-  
   pdfViewerContainer: { background: 'white', borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid #e2e8f0' },
   pdfHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '1rem' },
   headerLeft: { display: 'flex', alignItems: 'center', gap: '1rem' },
@@ -168,6 +166,13 @@ const styles: Record<string, React.CSSProperties> = {
   passed: { background: '#d1fae5', border: '2px solid #059669' },
   failed: { background: '#fee2e2', border: '2px solid #dc2626' },
   resultIcon: { marginBottom: '1.5rem' },
+  youtubeContainer: { 
+  width: '100%', 
+  height: '100%', 
+  position: 'relative',
+  userSelect: 'none', // يمنع تحديد النص
+  WebkitUserSelect: 'none'
+},
   scoreText: { fontSize: '3rem', fontWeight: 800, margin: '1rem 0', color: '#1e293b' },
   passScoreText: { color: '#64748b', marginBottom: '1.5rem' },
   stats: { display: 'flex', justifyContent: 'center', gap: '2rem', margin: '2rem 0' },
@@ -318,19 +323,37 @@ function ProtectedVideoPlayer({
   if (isYouTube && youtubeId) {
     return (
       <div ref={containerRef} style={styles.videoPlayerContainer}>
-        <div style={styles.youtubeContainer}>
-          <iframe
-            src={`https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1&showinfo=0&controls=1&disablekb=1&fs=1`}
-            title="YouTube video player"
-            style={styles.youtubeIframe}
-            allowFullScreen
-          />
-        </div>
-        <div style={styles.protectionBadge}>
-          <Lock size={16} />
-          <span>محمي ضد النسخ</span>
-        </div>
-      </div>
+<div 
+  style={styles.youtubeContainer} 
+  onContextMenu={(e) => e.preventDefault()}
+>
+  <iframe
+    src={`https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1&showinfo=0&controls=0&disablekb=1&fs=0&iv_load_policy=3&cc_load_policy=0&playsinline=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
+    title="Protected Video"
+    style={{...styles.youtubeIframe, pointerEvents: 'none'}} // pointerEvents: 'none' يمنع النقر على links اليوتيوب
+    sandbox="allow-scripts allow-same-origin allow-presentation"
+    referrerPolicy="strict-origin-when-cross-origin"
+  />
+  {/* Overlay شفاف يمنع استخراج الرابط بالكليك يمين */}
+  <div 
+    style={{
+      position: 'absolute',
+      inset: 0,
+      zIndex: 5,
+      cursor: 'default'
+    }} 
+    onContextMenu={(e) => {
+      e.preventDefault();
+      alert('المحتوى محمي ©');
+      return false;
+    }}
+  />
+</div>
+<div style={{...styles.protectionBadge, zIndex: 6}}>
+  <Shield size={16} />
+  <span>محمي ضد النسخ</span>
+</div>
+ </div>
     )
   }
 
@@ -549,29 +572,61 @@ function ExamViewer({ examContent, contentId, packageId, userId, theme, onComple
   const [score, setScore] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const generateQuestions = () => {
-      const qs: Question[] = []
-      const count = examContent?.total_questions || 5
-      for (let i = 1; i <= count; i++) {
-        qs.push({
-          id: i,
-          text: examContent?.questions?.[i-1] || `السؤال ${i}: ما الإجابة الصحيحة؟`,
-          options: [
-            { id: 'A', text: 'الإجابة أ' },
-            { id: 'B', text: 'الإجابة ب' },
-            { id: 'C', text: 'الإجابة ج' },
-            { id: 'D', text: 'الإجابة د' }
-          ],
-          correctAnswer: ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)]
-        })
+useEffect(() => {
+  const fetchQuestions = async () => {
+    try {
+      const supabase = getSupabase()
+      if (!supabase) {
+        setLoading(false)
+        return
       }
-      return qs
+
+      // جلب الأسئلة من جدول questions
+      const { data, error } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('content_id', contentId)
+        .eq('is_active', true)
+        .order('order_number', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching questions:', error)
+        setError('فشل تحميل الأسئلة')
+        setLoading(false)
+        return
+      }
+
+      if (!data || data.length === 0) {
+        setError('لا توجد أسئلة متاحة لهذا الامتحان')
+        setLoading(false)
+        return
+      }
+
+      // تنسيق البيانات لتتناسب مع الـ interface
+      const formattedQuestions: Question[] = data.map((q: any, index: number) => ({
+        id: q.id || index + 1,
+        text: q.question_text || q.text,
+        options: Array.isArray(q.options) ? q.options : [
+          { id: 'A', text: q.option_a || 'الإجابة أ' },
+          { id: 'B', text: q.option_b || 'الإجابة ب' },
+          { id: 'C', text: q.option_c || 'الإجابة ج' },
+          { id: 'D', text: q.option_d || 'الإجابة د' }
+        ],
+        correctAnswer: q.correct_answer || 'A'
+      }))
+
+      setQuestions(formattedQuestions)
+      setTimeLeft((examContent?.duration_minutes || 10) * 60)
+      setLoading(false)
+    } catch (err) {
+      console.error('Exam fetch error:', err)
+      setError('حدث خطأ في تحميل الامتحان')
+      setLoading(false)
     }
-    setQuestions(generateQuestions())
-    setTimeLeft((examContent?.duration_minutes || 10) * 60)
-    setLoading(false)
-  }, [examContent])
+  }
+
+  fetchQuestions()
+}, [contentId, examContent])
 
   useEffect(() => {
     if (showResults || loading) return
@@ -1045,4 +1100,8 @@ export default function ContentPage() {
       <ContentViewer />
     </Suspense>
   )
+}
+
+function setError(arg0: string) {
+  throw new Error('Function not implemented.')
 }
