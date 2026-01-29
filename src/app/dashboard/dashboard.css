@@ -1,33 +1,10 @@
+/* dashboard.css */
+
 /* ============================================
-
-
    Design System & Variables - Enhanced Palette
    ============================================ */
-
-   /* في بداية الملف - تأكد من وجود هذه المتغيرات */
 :root {
-  --primary-50: #eef2ff;
-  --primary-100: #e0e7ff;
-  --primary-600: #4f46e5;
-  --secondary-50: #f0fdfa;
-  --secondary-100: #ccfbf1;
-  --secondary-600: #0d9488;
-  --success-light: #d1fae5;
-  --success-dark: #065f46;
-  --slate-50: #f8fafc;
-  --slate-100: #f1f5f9;
-  --slate-200: #e2e8f0;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-}
-
-/* إضافة هذا للتأكد من عدم وجود مشاكل في الصور */
-.package-image-fallback {
-  height: 180px;
-  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
-}
-
-:root {
+  /* Primary - Royal Indigo (Cleaner & Deeper) */
   --primary-50: #eef2ff;
   --primary-100: #e0e7ff;
   --primary-200: #c7d2fe;
@@ -39,6 +16,7 @@
   --primary-800: #3730a3;
   --primary-900: #312e81;
   
+  /* Secondary - Rich Teal/Cyan (Instead of Pink) */
   --secondary-50: #f0fdfa;
   --secondary-100: #ccfbf1;
   --secondary-200: #99f6e4;
@@ -48,9 +26,11 @@
   --secondary-600: #0d9488;
   --secondary-700: #0f766e;
   
+  /* Accent - Warm Amber for highlights */
   --accent-500: #f59e0b;
   --accent-600: #d97706;
   
+  /* Semantic Colors - Softer & Modern */
   --success: #10b981;
   --success-light: #d1fae5;
   --success-dark: #065f46;
@@ -63,6 +43,7 @@
   --danger-light: #fee2e2;
   --danger-dark: #991b1b;
   
+  /* Neutral - Slate (More Sophisticated than Gray) */
   --slate-50: #f8fafc;
   --slate-100: #f1f5f9;
   --slate-200: #e2e8f0;
@@ -74,6 +55,7 @@
   --slate-800: #1e293b;
   --slate-900: #0f172a;
   
+  /* Spacing Scale */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -85,8 +67,10 @@
   --space-12: 3rem;
   --space-16: 4rem;
   
+  /* Typography */
   --font-sans: 'Tajawal', 'Inter', system-ui, -apple-system, sans-serif;
   
+  /* Font Sizes - Fluid */
   --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
   --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
   --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
@@ -95,6 +79,7 @@
   --text-2xl: clamp(1.5rem, 1.3rem + 0.75vw, 2rem);
   --text-3xl: clamp(1.875rem, 1.6rem + 1vw, 2.5rem);
   
+  /* Radius - Softer */
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
@@ -103,6 +88,7 @@
   --radius-3xl: 1.5rem;
   --radius-full: 9999px;
   
+  /* Shadows - More Depth Hierarchy */
   --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.05);
   --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.08);
   --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.1), 0 2px 4px -2px rgb(15 23 42 / 0.1);
@@ -111,26 +97,35 @@
   --shadow-2xl: 0 25px 50px -12px rgb(15 23 42 / 0.25);
   --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
   
+  /* Transitions */
   --transition-all: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-transform: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-colors: color, background-color, border-color 0.2s ease;
   
+  /* Z-Index */
   --z-base: 0;
   --z-dropdown: 50;
   --z-sticky: 100;
   --z-modal: 200;
 }
 
+
+/* ============================================
+   Layout Container
+   ============================================ */
 .dashboard-container {
-  font-family: 'GE SS Two', 'Segoe UI', system-ui, sans-serif;
+    font-family: 'GE SS Two';
+
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   position: relative;
   isolation: isolate;
-  direction: rtl;
 }
 
+/* ============================================
+   Header - Modern Glassmorphism
+   ============================================ */
 .dashboard-header {
   position: sticky;
   top: 0;
@@ -153,6 +148,7 @@
   gap: var(--space-3);
 }
 
+/* Header Left */
 .header-left {
   display: flex;
   align-items: center;
@@ -203,31 +199,17 @@
 }
 
 .header-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.platform-name {
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: var(--slate-900);
-  line-height: 1.2;
-}
-
-.platform-description {
-  font-size: 0.75rem;
-  color: var(--slate-500);
-  font-weight: 500;
   display: none;
 }
 
+/* Header Right */
 .header-right {
   display: flex;
   align-items: center;
   gap: var(--space-3);
 }
 
+/* Notifications Link - Direct Link Style */
 .notification-link {
   position: relative;
   width: 40px;
@@ -291,6 +273,7 @@
   50% { transform: scale(1.1); box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
 }
 
+/* User Profile */
 .user-profile-card {
   display: flex;
   align-items: center;
@@ -365,6 +348,9 @@
   to { transform: translateX(100%); }
 }
 
+/* ============================================
+   Main Content
+   ============================================ */
 .main-content {
   flex: 1;
   max-width: 1440px;
@@ -376,6 +362,9 @@
   gap: var(--space-8);
 }
 
+/* ============================================
+   Welcome Card - Deep Indigo Gradient
+   ============================================ */
 .welcome-card {
   background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4f46e5 100%);
   border-radius: var(--radius-2xl);
@@ -530,6 +519,9 @@
   display: none;
 }
 
+/* ============================================
+   Stats Section - Clean Cards
+   ============================================ */
 .stats-section {
   display: flex;
   flex-direction: column;
@@ -629,7 +621,7 @@
   color: var(--secondary-600); 
 }
 
-.bg-success { 
+.bg-success-500\/10 { 
   background: linear-gradient(135deg, var(--success-light), #a7f3d0); 
   color: var(--success-dark); 
 }
@@ -660,6 +652,9 @@
   white-space: nowrap;
 }
 
+/* ============================================
+   Grade Section - Indigo Card
+   ============================================ */
 .grade-section {
   display: flex;
   flex-direction: column;
@@ -791,25 +786,9 @@
   display: none;
 }
 
-.books-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-}
-
-.book {
-  width: 60px;
-  height: 20px;
-  background: linear-gradient(135deg, var(--primary-400), var(--primary-600));
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.book-1 { width: 50px; height: 15px; opacity: 0.7; }
-.book-2 { width: 60px; height: 18px; opacity: 0.85; }
-.book-3 { width: 55px; height: 16px; opacity: 1; }
-
+/* ============================================
+   Packages Section
+   ============================================ */
 .packages-section {
   display: flex;
   flex-direction: column;
@@ -856,66 +835,12 @@
   opacity: 1;
 }
 
-.package-image-container {
-  width: 100%;
-  height: 180px;
-  overflow: hidden;
-  position: relative;
-}
-
-.package-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s ease;
-}
-
-.package-card:hover .package-image {
-  transform: scale(1.05);
-}
-
-.package-image-container::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
-  background: linear-gradient(to top, rgba(255,255,255,0.9), transparent);
-  pointer-events: none;
-}
-
-.package-image-default {
-  width: 100%;
-  height: 180px;
-  background: linear-gradient(135deg, var(--primary-100), var(--secondary-100));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  color: var(--primary-700);
-}
-
-.package-image-default svg {
-  opacity: 0.7;
-}
-
-.package-image-default span {
-  font-weight: 700;
-  font-size: var(--text-sm);
-  text-align: center;
-  padding: 0 var(--space-4);
-}
-
 .package-header {
   padding: var(--space-5) var(--space-5) 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--space-4);
-  position: relative;
-  z-index: 1;
 }
 
 .package-badge {
@@ -973,8 +898,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  position: relative;
-  z-index: 1;
 }
 
 .package-content h4 {
@@ -1073,6 +996,12 @@
   transform: translateY(0);
 }
 
+.access-button span {
+  position: relative;
+  z-index: 1;
+}
+
+/* Empty State */
 .empty-state {
   background: white;
   border-radius: var(--radius-2xl);
@@ -1128,11 +1057,23 @@
     padding: var(--space-4) var(--space-6);
   }
   
+  .header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  
   .platform-name {
     font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--slate-900);
+    line-height: 1.2;
   }
   
   .platform-description {
+    font-size: 0.75rem;
+    color: var(--slate-500);
+    font-weight: 500;
     display: none;
   }
   
@@ -1217,10 +1158,6 @@
   .secondary-button {
     width: auto;
   }
-  
-  .platform-description {
-    display: block;
-  }
 }
 
 /* ============================================
@@ -1250,6 +1187,10 @@
     height: 60px;
   }
   
+  .platform-description {
+    display: block;
+  }
+  
   .stats-grid {
     gap: var(--space-5);
   }
@@ -1276,6 +1217,7 @@
   }
 }
 
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -1295,13 +1237,8 @@
   background: var(--slate-400);
 }
 
+/* Selection */
 ::selection {
   background: var(--primary-200);
   color: var(--primary-900);
-}
-
-@media (max-width: 400px) {
-  .platform-name {
-    font-size: 0.9rem;
-  }
 }
