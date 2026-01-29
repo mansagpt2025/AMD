@@ -94,7 +94,7 @@ export default async function AdminDashboard() {
         <div className={styles.headerContent}>
           <div>
             <h1 className={styles.title}>لوحة التحكم الإدارية</h1>
-            <p className={styles.subtitle}>نظام إدارة منصة الأستاذ محمود الدهيبي</p>
+            <p className={styles.subtitle}>نظام إدارة منصة الأستاذ محمود الديب</p>
           </div>
           <div className={styles.dateBadge}>
             <Clock size={16} />

@@ -39,33 +39,43 @@ interface UserPackage {
   packages: PackageData;
 }
 
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  type: string;
-  created_at: string;
-}
-
 export default async function DashboardPage() {
-  const cookieStore = await cookies()
-  
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-      },
-    }
-  )
-
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+    // الحصول على cookies بشكل آمن
+    const cookieStore = await cookies()
+    
+    // إنشاء supabase client مع معالجة cookies بشكل صحيح
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // في Server Components نحن لا نستطيع تعيين cookies مباشرة
+            // لكن نحتاج لتمرير الدالة لـ createServerClient
+            try {
+              cookieStore.set(name, value, options)
+            } catch (error) {
+              // تجاهل خطأ cookies في القراءة فقط
+            }
+          },
+          remove(name: string, options: any) {
+            try {
+              cookieStore.set(name, '', { ...options, maxAge: 0 })
+            } catch (error) {
+              // تجاهل خطأ cookies في القراءة فقط
+            }
+          },
+        },
+      }
+    )
 
-    if (!user) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
       redirect('/login')
     }
 
@@ -79,7 +89,8 @@ export default async function DashboardPage() {
       .single()
 
     if (profileError || !profile) {
-      console.error('Profile error:', profileError)
+      console.error('Profile error:', profileError?.message)
+      // إذا لم يوجد profile، نحاول إنشاء redirect لصفحة إكمال الملف الشخصي
       redirect('/complete-profile')
     }
 
@@ -90,68 +101,94 @@ export default async function DashboardPage() {
       .from('wallets')
       .select('balance')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     // =========================
     // PURCHASED PACKAGES
     // =========================
     let userPackages: UserPackage[] = []
     
-    const { data: purchasedPackages } = await supabase
-      .from('user_packages')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-
-    if (purchasedPackages && purchasedPackages.length > 0) {
-      const packageIds = purchasedPackages.map(p => p.package_id)
-      const { data: packagesData } = await supabase
-        .from('packages')
+    try {
+      const { data: purchasedPackages } = await supabase
+        .from('user_packages')
         .select('*')
-        .in('id', packageIds)
+        .eq('user_id', user.id)
+        .eq('is_active', true)
 
-      if (packagesData) {
-        userPackages = purchasedPackages.map(up => ({
-          ...up,
-          packages: packagesData.find(p => p.id === up.package_id) || {
-            id: '',
-            name: 'غير معروف',
-            description: null,
-            image_url: null,
-            lecture_count: 0,
-            duration_days: 0,
-            type: '',
-            grade: ''
-          }
-        })) as UserPackage[]
+      if (purchasedPackages && purchasedPackages.length > 0) {
+        const packageIds = purchasedPackages.map(p => p.package_id)
+        const { data: packagesData } = await supabase
+          .from('packages')
+          .select('*')
+          .in('id', packageIds)
+
+        if (packagesData) {
+          userPackages = purchasedPackages.map(up => {
+            const pkg = packagesData.find(p => p.id === up.package_id)
+            return {
+              ...up,
+              packages: pkg || {
+                id: up.package_id,
+                name: 'باقة غير معروفة',
+                description: null,
+                image_url: null,
+                lecture_count: 0,
+                duration_days: 0,
+                type: '',
+                grade: ''
+              }
+            } as UserPackage
+          })
+        }
       }
+    } catch (packagesError) {
+      console.error('Packages fetch error:', packagesError)
     }
 
     // =========================
     // STATISTICS
     // =========================
-    const { count: activePackagesCount } = await supabase
-      .from('user_packages')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('is_active', true)
+    let activePackagesCount = 0
+    let completedLecturesCount = 0
 
-    const { count: completedLecturesCount } = await supabase
-      .from('user_progress')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('status', 'completed')
+    try {
+      const { count: activeCount } = await supabase
+        .from('user_packages')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+      
+      activePackagesCount = activeCount || 0
+    } catch (e) { console.error('Active count error:', e) }
+
+    try {
+      const { count: completedCount } = await supabase
+        .from('user_progress')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'completed')
+      
+      completedLecturesCount = completedCount || 0
+    } catch (e) { console.error('Progress count error:', e) }
 
     // =========================
     // NOTIFICATIONS
     // =========================
-    const { data: userNotifications } = await supabase
-      .from('notifications')
-      .select('*')
-      .or(`user_id.eq.${user.id},and(target_grade.eq.${profile.grade},user_id.is.null)`)
-      .eq('is_read', false)
-      .order('created_at', { ascending: false })
-      .limit(5)
+    let userNotifications: any[] = []
+    
+    try {
+      const { data: notifications } = await supabase
+        .from('notifications')
+        .select('*')
+        .or(`user_id.eq.${user.id},and(target_grade.eq.${profile.grade},user_id.is.null)`)
+        .eq('is_read', false)
+        .order('created_at', { ascending: false })
+        .limit(5)
+      
+      userNotifications = notifications || []
+    } catch (notifError) {
+      console.error('Notifications error:', notifError)
+    }
 
     // Helpers
     const getGradeText = (grade: string): string => {
@@ -183,16 +220,21 @@ export default async function DashboardPage() {
     }
 
     const formatDate = (dateString: string) => {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('ar-EG', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
+      try {
+        const date = new Date(dateString)
+        return date.toLocaleDateString('ar-EG', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      } catch (e) {
+        return 'تاريخ غير معروف'
+      }
     }
 
     return (
       <div className="dashboard-container">
+        {/* Header */}
         <header className="dashboard-header">
           <div className="header-content">
             <div className="header-left">
@@ -234,6 +276,7 @@ export default async function DashboardPage() {
         </header>
 
         <main className="main-content">
+          {/* Welcome Card */}
           <div className="welcome-card">
             <div className="welcome-content">
               <div className="welcome-text">
@@ -260,6 +303,7 @@ export default async function DashboardPage() {
             </div>
           </div>
 
+          {/* Stats */}
           <div className="stats-section">
             <h3 className="section-title">إحصائياتك</h3>
             <div className="stats-grid">
@@ -268,7 +312,7 @@ export default async function DashboardPage() {
                   <Package size={24} />
                 </div>
                 <div className="stat-content">
-                  <h4 className="stat-value">{activePackagesCount || 0}</h4>
+                  <h4 className="stat-value">{activePackagesCount}</h4>
                   <p className="stat-label">الباقات النشطة</p>
                 </div>
               </div>
@@ -278,7 +322,7 @@ export default async function DashboardPage() {
                   <BookOpen size={24} />
                 </div>
                 <div className="stat-content">
-                  <h4 className="stat-value">{completedLecturesCount || 0}</h4>
+                  <h4 className="stat-value">{completedLecturesCount}</h4>
                   <p className="stat-label">محاضرات مكتملة</p>
                 </div>
               </div>
@@ -288,15 +332,14 @@ export default async function DashboardPage() {
                   <TrendingUp size={24} />
                 </div>
                 <div className="stat-content">
-                  <h4 className="stat-value">
-                    {userPackages?.length || 0}
-                  </h4>
+                  <h4 className="stat-value">{userPackages.length}</h4>
                   <p className="stat-label">إجمالي المشتريات</p>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* Grade Section */}
           <div className="grade-section">
             <div className="grade-card">
               <div className="grade-content">
@@ -321,12 +364,13 @@ export default async function DashboardPage() {
             </div>
           </div>
 
+          {/* Packages */}
           <div className="packages-section">
             <div className="section-header">
               <h3 className="section-title">الباقات المشتركة</h3>
             </div>
             
-            {userPackages && userPackages.length > 0 ? (
+            {userPackages.length > 0 ? (
               <div className="packages-grid">
                 {userPackages.map((userPackage) => (
                   <div key={userPackage.id} className="package-card">
@@ -336,8 +380,13 @@ export default async function DashboardPage() {
                           src={userPackage.packages.image_url} 
                           alt={userPackage.packages.name}
                           className="package-image"
+                          loading="lazy"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/default-package-image.jpg';
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            const parent = (e.target as HTMLImageElement).parentElement;
+                            if (parent) {
+                              parent.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:180px;background:linear-gradient(135deg, #eef2ff, #e0e7ff);color:#6366f1;"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg><span style="margin-top:8px;font-weight:700;">${userPackage.packages.name || 'باقة تعليمية'}</span></div>`;
+                            }
                           }}
                         />
                       </div>
@@ -404,8 +453,9 @@ export default async function DashboardPage() {
         </main>
       </div>
     )
-  } catch (error) {
-    console.error('Dashboard error:', error)
+  } catch (error: any) {
+    console.error('Dashboard critical error:', error)
+    // في حالة وجود خطأ حقيقي، نحول للـ login
     redirect('/login')
   }
 }
