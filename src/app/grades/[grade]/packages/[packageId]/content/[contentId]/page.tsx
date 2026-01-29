@@ -178,7 +178,7 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 // ==========================================
-// SUPABASE CLIENT - مع إصلاحات لمنع الحلقة
+// SUPABASE CLIENT - إصلاح نهائي
 // ==========================================
 let supabaseInstance: SupabaseClient | null = null
 
@@ -198,16 +198,11 @@ const getSupabaseClient = (): SupabaseClient | null => {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false, // هذا هو الحل الرئيسي
+      detectSessionInUrl: false,
       storageKey: 'sb-auth-token',
       storage: window.localStorage,
-      flowType: 'pkce'
-    },
-    global: {
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      }
+      flowType: 'pkce',
+      debug: true // تفعيل وضع التصحيح
     }
   })
   
@@ -215,7 +210,36 @@ const getSupabaseClient = (): SupabaseClient | null => {
 }
 
 // ==========================================
-// وظيفة التحقق من المصادقة
+// وظيفة لإعادة تعيين الجلسة تماماً
+// ==========================================
+const resetAuthState = async (): Promise<void> => {
+  try {
+    const supabase = getSupabaseClient()
+    if (supabase) {
+      await supabase.auth.signOut()
+    }
+    
+    // تنظيف كامل للتخزين
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('sb-auth-token')
+      localStorage.removeItem('sb-auth-token-2')
+      localStorage.removeItem('supabase.auth.token')
+      
+      // حذف جميع الكوكيز
+      document.cookie.split(';').forEach(cookie => {
+        const [name] = cookie.split('=')
+        document.cookie = `${name.trim()}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+      })
+    }
+    
+    console.log('Auth state reset complete')
+  } catch (error) {
+    console.error('Error resetting auth state:', error)
+  }
+}
+
+// ==========================================
+// وظيفة التحقق من المصادقة مع إصلاح الحلقة
 // ==========================================
 const checkAuth = async (): Promise<{ user: any; session: any } | null> => {
   try {
@@ -225,32 +249,31 @@ const checkAuth = async (): Promise<{ user: any; session: any } | null> => {
       return null
     }
 
-    // الحصول على الجلسة الحالية
+    // الحصول على الجلسة بدون trigger أي أحداث
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     
     if (sessionError) {
-      console.error('Session error:', sessionError)
-      // تنظيف الجلسة التالفة
-      localStorage.removeItem('sb-auth-token')
+      console.error('Session error in checkAuth:', sessionError)
+      await resetAuthState()
       return null
     }
     
     if (!session) {
-      console.log('No session found')
+      console.log('No session found in checkAuth')
       return null
     }
     
-    // التحقق من صلاحية التوكين
+    // التحقق من صلاحية التوكين بدون trigger تحديث
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     
     if (userError) {
-      console.error('User error:', userError)
-      localStorage.removeItem('sb-auth-token')
+      console.error('User error in checkAuth:', userError)
+      await resetAuthState()
       return null
     }
     
     if (!user) {
-      console.log('No user found')
+      console.log('No user found in checkAuth')
       return null
     }
     
@@ -258,7 +281,7 @@ const checkAuth = async (): Promise<{ user: any; session: any } | null> => {
     return { user, session }
   } catch (error) {
     console.error('Auth check error:', error)
-    localStorage.removeItem('sb-auth-token')
+    await resetAuthState()
     return null
   }
 }
@@ -751,7 +774,7 @@ function getGradeTheme(gradeSlug: string): Theme {
 }
 
 // ==========================================
-// MAIN PAGE - مع إصلاح نهائي للحلقة
+// MAIN PAGE - إصلاح نهائي للحلقة
 // ==========================================
 function LoadingState() {
   return (
@@ -783,32 +806,39 @@ function ContentViewer() {
   const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
   const [videoProgress, setVideoProgress] = useState(0)
   
-  const isInitialized = useRef(false)
+  const pageInitialized = useRef(false)
 
   useEffect(() => {
-    if (isInitialized.current) return
-    isInitialized.current = true
-
+    if (pageInitialized.current) return
+    pageInitialized.current = true
+    
+    console.log('Content page initialized')
+    
     const initializePage = async () => {
       try {
         setLoading(true)
         
-        // التحقق من المصادقة أولاً
+        // تنظيف أي جلسات قديمة تالفة
+        await resetAuthState()
+        
+        // التحقق من المصادقة
         const authResult = await checkAuth()
         
         if (!authResult?.user) {
-          // تنظيف الجلسة القديمة
-          localStorage.removeItem('sb-auth-token')
+          console.log('No valid auth found, redirecting to login')
           
-          // توجيه إلى تسجيل الدخول
+          // تنظيف كامل قبل التوجيه
+          await resetAuthState()
+          
           const returnUrl = `/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`
           const loginUrl = `/login?returnUrl=${encodeURIComponent(returnUrl)}`
           
-          console.log('Redirecting to login:', loginUrl)
+          console.log('Redirecting to:', loginUrl)
           router.replace(loginUrl)
           return
         }
         
+        console.log('User authenticated:', authResult.user.id)
         setCurrentUser(authResult.user)
         
         // تحميل البيانات
@@ -820,8 +850,13 @@ function ContentViewer() {
         setLoading(false)
       }
     }
-
+    
     initializePage()
+    
+    // تنظيف عند مغادرة الصفحة
+    return () => {
+      console.log('Content page cleanup')
+    }
   }, [gradeSlug, packageId, contentId, router])
 
   const loadContentData = async (userId: string) => {
@@ -846,7 +881,7 @@ function ContentViewer() {
       
       setContent(contentData)
       
-      // تحميل البيانات الأخرى
+      // تحميل البيانات الأخرى بشكل متوازي
       const [
         lectureRes,
         packageRes,
