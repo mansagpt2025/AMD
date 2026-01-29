@@ -1,13 +1,12 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { Bell, BookOpen, Clock, Package, TrendingUp, Award } from 'lucide-react'
 import './dashboard.css'
 
-export const dynamic = 'force-dynamic' // إجبار الصفحة على العمل كـ Dynamic Rendering
-export const revalidate = 0 // تعطيل الكاش
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export const metadata: Metadata = {
   title: 'لوحة التحكم | محمود الديب',
@@ -35,7 +34,6 @@ interface UserPackage {
   packages: PackageData
 }
 
-// مكون منفصل للأخطاء (Error UI)
 function ErrorFallback({ message }: { message: string }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -56,49 +54,9 @@ function ErrorFallback({ message }: { message: string }) {
 
 export default async function DashboardPage() {
   try {
-    // الحصول على cookies بشكل آمن (Next.js 15)
-    let cookieStore
-    try {
-      cookieStore = await cookies()
-    } catch (e) {
-      console.error('Cookies access error:', e)
-      return <ErrorFallback message="فشل في الوصول إلى بيانات الجلسة" />
-    }
-
-    // التحقق من وجود متغيرات البيئة
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.error('Missing environment variables')
-      return <ErrorFallback message="إعدادات النظام غير مكتملة" />
-    }
-
-    // إنشاء Supabase Client
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            // في Server Components، نحاول تعيين الكوكي ولكن قد لا يعمل دائماً
-            try {
-              cookieStore.set(name, value, options)
-            } catch (e) {
-              // تجاهل الخطأ في وضع القراءة فقط
-            }
-          },
-          remove(name: string, options: CookieOptions) {
-            try {
-              cookieStore.set(name, '', { ...options, maxAge: 0 })
-            } catch (e) {
-              // تجاهل الخطأ في وضع القراءة فقط
-            }
-          },
-        },
-      }
-    )
-
+    // استخدام الدالة المساعدة الجديدة
+const supabase = await createClient()
+    
     // التحقق من المستخدم
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -107,111 +65,90 @@ export default async function DashboardPage() {
       return null
     }
 
-    // جلب البيانات الأساسية مع معالجة الأخطاء لكل عملية على حدة
-    let profile = null
-    let wallet = null
-    let userPackages: UserPackage[] = []
-    let activePackagesCount = 0
-    let completedLecturesCount = 0
-    let notifications: any[] = []
-
-    // 1. جلب الملف الشخصي
-    try {
-      const { data, error } = await supabase
+    // جلب كل البيانات مرة واحدة بشكل متوازي (أسرع أداء)
+    const [
+      { data: profile, error: profileError },
+      { data: wallet },
+      { data: purchasedPackages },
+      { count: activePackagesCount },
+      { count: completedLecturesCount },
+      { data: notifications }
+    ] = await Promise.all([
+      // 1. الملف الشخصي
+      supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single()
+        .single(),
       
-      if (error) throw error
-      profile = data
-    } catch (e: any) {
-      console.error('Profile fetch error:', e?.message)
+      // 2. المحفظة (اختياري - ما نوقفش الصفحة لو فشل)
+      supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      
+      // 3. الباقات المشتراة
+      supabase
+        .from('user_packages')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true),
+      
+      // 4. عدد الباقات النشطة
+      supabase
+        .from('user_packages')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_active', true),
+      
+      // 5. المحاضرات المكتملة
+      supabase
+        .from('user_progress')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'completed'),
+      
+      // 6. الإشعارات
+      supabase
+        .from('notifications')
+        .select('*')
+        .or(`user_id.eq.${user.id},and(target_grade.eq.${user.id},user_id.is.null)`)
+        .eq('is_read', false)
+        .order('created_at', { ascending: false })
+        .limit(5)
+    ])
+
+    // التحقق من الملف الشخصي (إجباري)
+    if (profileError || !profile) {
       redirect('/complete-profile')
       return null
     }
 
-    // 2. جلب المحفظة (اختياري - لا نوقف الصفحة إذا فشل)
-    try {
-      const { data } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', user.id)
-        .maybeSingle()
-      wallet = data
-    } catch (e) {
-      console.error('Wallet fetch error:', e)
-      wallet = { balance: 0 }
-    }
-
-    // 3. جلب الباقات المشتركة
-    try {
-      const { data: purchasedPackages } = await supabase
-        .from('user_packages')
+    // معالجة بيانات الباقات
+    let userPackages: UserPackage[] = []
+    if (purchasedPackages && purchasedPackages.length > 0) {
+      const packageIds = purchasedPackages.map(p => p.package_id)
+      const { data: packagesData } = await supabase
+        .from('packages')
         .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
+        .in('id', packageIds)
 
-      if (purchasedPackages && purchasedPackages.length > 0) {
-        const packageIds = purchasedPackages.map(p => p.package_id)
-        const { data: packagesData } = await supabase
-          .from('packages')
-          .select('*')
-          .in('id', packageIds)
-
-        if (packagesData) {
-          userPackages = purchasedPackages.map(up => ({
-            ...up,
-            packages: packagesData.find(p => p.id === up.package_id) || {
-              id: up.package_id,
-              name: 'باقة غير معروفة',
-              description: null,
-              image_url: null,
-              lecture_count: 0,
-              duration_days: 0,
-              type: '',
-              grade: profile.grade
-            }
-          })) as UserPackage[]
-        }
+      if (packagesData) {
+        userPackages = purchasedPackages.map(up => ({
+          ...up,
+          packages: packagesData.find(p => p.id === up.package_id) || {
+            id: up.package_id,
+            name: 'باقة غير معروفة',
+            description: null,
+            image_url: null,
+            lecture_count: 0,
+            duration_days: 0,
+            type: '',
+            grade: profile.grade
+          }
+        })) as UserPackage[]
       }
-    } catch (e) {
-      console.error('Packages fetch error:', e)
-      userPackages = []
-    }
-
-    // 4. الإحصائيات
-    try {
-      const { count } = await supabase
-        .from('user_packages')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-      activePackagesCount = count || 0
-    } catch (e) { console.error('Stats error:', e) }
-
-    try {
-      const { count } = await supabase
-        .from('user_progress')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('status', 'completed')
-      completedLecturesCount = count || 0
-    } catch (e) { console.error('Progress error:', e) }
-
-    // 5. الإشعارات
-    try {
-      const { data } = await supabase
-        .from('notifications')
-        .select('*')
-        .or(`user_id.eq.${user.id},and(target_grade.eq.${profile.grade},user_id.is.null)`)
-        .eq('is_read', false)
-        .order('created_at', { ascending: false })
-        .limit(5)
-      notifications = data || []
-    } catch (e) {
-      console.error('Notifications error:', e)
-      notifications = []
     }
 
     // Helper functions
@@ -258,7 +195,6 @@ export default async function DashboardPage() {
       }
     }
 
-    // Render
     return (
       <div className="dashboard-container">
         {/* Header */}
@@ -277,7 +213,7 @@ export default async function DashboardPage() {
             <div className="header-right">
               <Link href="/notifications" className="notification-link" aria-label="الإشعارات">
                 <Bell size={20} strokeWidth={2.5} />
-                {notifications.length > 0 && (
+                {notifications && notifications.length > 0 && (
                   <span className="notification-badge">{notifications.length}</span>
                 )}
               </Link>
@@ -321,13 +257,13 @@ export default async function DashboardPage() {
             <div className="stats-grid">
               <StatCard 
                 icon={<Package size={24} />}
-                value={activePackagesCount}
+                value={activePackagesCount || 0}
                 label="الباقات النشطة"
                 color="primary"
               />
               <StatCard 
                 icon={<BookOpen size={24} />}
-                value={completedLecturesCount}
+                value={completedLecturesCount || 0}
                 label="محاضرات مكتملة"
                 color="secondary"
               />
@@ -389,12 +325,11 @@ export default async function DashboardPage() {
     )
   } catch (error: any) {
     console.error('Critical Dashboard Error:', error?.message || error)
-    redirect('/login')
-    return null
+    return <ErrorFallback message="حدث خطأ غير متوقع في تحميل البيانات" />
   }
 }
 
-// مكونات فرعية داخل نفس الملف لتقليل الأخطاء
+// المكونات الفرعية
 function StatCard({ icon, value, label, color }: { 
   icon: React.ReactNode
   value: number
