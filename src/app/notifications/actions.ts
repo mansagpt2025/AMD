@@ -1,155 +1,187 @@
-'use server'
+'use server';
 
-import { createClient } from '@supabase/supabase-js'
+import { revalidatePath } from 'next/cache';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const adminClient = createClient(supabaseUrl, supabaseServiceKey)
-
-export async function getWalletBalance(userId: string) {
+// استيراد Supabase بشكل ديناميكي
+async function getSupabase() {
   try {
-    const { data, error } = await adminClient
-      .from('wallets')
-      .select('balance, id')
-      .eq('user_id', userId)
-      .single()
+    const { createClient } = await import('@supabase/supabase-js');
     
-    if (error) throw error
-    return { success: true, data }
-  } catch (error: any) {
-    return { success: false, message: error.message }
-  }
-}
-
-export async function deductWalletBalance(userId: string, amount: number, packageId: string) {
-  try {
-    // التحقق من عدم وجود اشتراك مسبق
-    const { data: existing } = await adminClient
-      .from('user_packages')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('package_id', packageId)
-      .eq('is_active', true)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle()
-
-    if (existing) throw new Error('لديك اشتراك فعال بهذه الباقة بالفعل')
-
-    // جلب المحفظة
-    const { data: wallet, error: fetchError } = await adminClient
-      .from('wallets')
-      .select('id, balance')
-      .eq('user_id', userId)
-      .single()
-
-    if (fetchError || !wallet) throw new Error('المحفظة غير موجودة')
-    if (wallet.balance < amount) throw new Error(`رصيد غير كافٍ. رصيدك: ${wallet.balance} جنيه`)
-
-    const newBalance = wallet.balance - amount
-
-    // خصم الرصيد
-    const { error: updateError } = await adminClient
-      .from('wallets')
-      .update({ balance: newBalance, updated_at: new Date().toISOString() })
-      .eq('id', wallet.id)
-
-    if (updateError) throw new Error('فشل خصم المبلغ')
-
-    // تسجيل العملية
-    await adminClient.from('wallet_transactions').insert({
-      user_id: userId,
-      amount: -amount,
-      type: 'purchase',
-      description: `شراء باقة`,
-      previous_balance: wallet.balance,
-      new_balance: newBalance
-    })
-
-    return { success: true, newBalance }
-  } catch (error: any) {
-    return { success: false, message: error.message }
-  }
-}
-
-export async function validateCode(code: string, grade: string, packageId: string) {
-  try {
-    const cleanCode = code.trim().toUpperCase()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     
-    const { data: codeData, error } = await adminClient
-      .from('codes')
-      .select('*')
-      .eq('code', cleanCode)
-      .single()
-
-    if (error || !codeData) throw new Error('الكود غير موجود')
-    if (codeData.is_used) throw new Error('الكود مستخدم بالفعل')
-    if (codeData.grade !== grade) throw new Error('الكود ليس لهذا الصف')
-    if (codeData.package_id && codeData.package_id !== packageId) throw new Error('الكود لباقة أخرى')
-    if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) throw new Error('الكود منتهي الصلاحية')
-
-    return { success: true, data: codeData }
-  } catch (error: any) {
-    return { success: false, message: error.message }
-  }
-}
-
-export async function markCodeAsUsed(codeId: string, userId: string) {
-  try {
-    const { error } = await adminClient
-      .from('codes')
-      .update({ 
-        is_used: true, 
-        used_by: userId, 
-        used_at: new Date().toISOString() 
-      })
-      .eq('id', codeId)
-      .eq('is_used', false)
-
-    if (error) throw new Error('فشل في استخدام الكود')
-    return { success: true }
-  } catch (error: any) {
-    return { success: false, message: error.message }
-  }
-}
-
-export async function createUserPackage(
-  userId: string, 
-  packageId: string, 
-  durationDays: number, 
-  source: 'wallet' | 'code'
-) {
-  try {
-    // التحقق مرة أخرى من عدم وجود اشتراك (للأمان)
-    const { data: existing } = await adminClient
-      .from('user_packages')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('package_id', packageId)
-      .eq('is_active', true)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle()
-
-    if (existing) throw new Error('لديك اشتراك فعال بهذه الباقة')
-
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + (durationDays || 30))
-
-    const { data, error } = await adminClient
-      .from('user_packages')
-      .insert({ 
-        user_id: userId, 
-        package_id: packageId, 
-        expires_at: expiresAt.toISOString(), 
-        is_active: true, 
-        source 
-      })
-      .select()
-
-    if (error) throw new Error('فشل في انشاء الاشتراك')
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('بيانات الاتصال بـ Supabase غير متوفرة');
+    }
     
-    return { success: true, data }
+    return createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+  } catch (error) {
+    console.error('خطأ في إنشاء عميل Supabase:', error);
+    throw error;
+  }
+}
+
+export async function getUserNotifications(userId: string, page: number = 1, limit: number = 15) {
+  try {
+    const supabase = await getSupabase();
+    
+    const start = (page - 1) * limit;
+    const end = start + limit - 1;
+
+    const { data, error, count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact' })
+      .or(`user_id.eq.${userId},target_grade.is.null,target_section.is.null`)
+      .order('created_at', { ascending: false })
+      .range(start, end);
+
+    if (error) throw error;
+
+    // جلب إشعارات الصف إذا كان المستخدم لديه صف
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('grade, section')
+      .eq('id', userId)
+      .single();
+
+    if (userProfile?.grade) {
+      const { data: gradeNotifications } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('target_grade', userProfile.grade)
+        .is('target_section', null)
+        .order('created_at', { ascending: false })
+        .range(start, end);
+
+      const { data: sectionNotifications } = userProfile?.section ? 
+        await supabase
+          .from('notifications')
+          .select('*')
+          .eq('target_section', userProfile.section)
+          .order('created_at', { ascending: false })
+          .range(start, end) : { data: null };
+
+      const allNotifications = [
+        ...(data || []),
+        ...(gradeNotifications || []),
+        ...(sectionNotifications || [])
+      ];
+
+      // إزالة التكرارات
+      const uniqueNotifications = allNotifications.filter((notification, index, self) =>
+        index === self.findIndex(n => n.id === notification.id)
+      );
+
+      // ترتيب حسب التاريخ
+      uniqueNotifications.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      return {
+        data: uniqueNotifications.slice(start, end + 1),
+        total: count || 0 + (gradeNotifications?.length || 0) + (sectionNotifications?.length || 0),
+        totalPages: Math.ceil((count || 0 + (gradeNotifications?.length || 0) + (sectionNotifications?.length || 0)) / limit),
+        error: null
+      };
+    }
+
+    return {
+      data: data || [],
+      total: count || 0,
+      totalPages: Math.ceil((count || 0) / limit),
+      error: null
+    };
   } catch (error: any) {
-    return { success: false, message: error.message }
+    console.error('Error in getUserNotifications:', error);
+    return {
+      data: null,
+      total: 0,
+      totalPages: 0,
+      error: error.message || 'حدث خطأ أثناء جلب الإشعارات'
+    };
+  }
+}
+
+export async function getUnreadCount(userId: string) {
+  try {
+    const supabase = await getSupabase();
+    
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .or(`user_id.eq.${userId},target_grade.is.null,target_section.is.null`)
+      .eq('is_read', false);
+
+    if (error) throw error;
+
+    return { count: count || 0, error: null };
+  } catch (error: any) {
+    console.error('Error in getUnreadCount:', error);
+    return { count: 0, error: error.message || 'حدث خطأ أثناء جلب عدد الإشعارات غير المقروءة' };
+  }
+}
+
+export async function markAsRead(userId: string, notificationId: string) {
+  try {
+    const supabase = await getSupabase();
+    
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+
+    revalidatePath('/notifications');
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error in markAsRead:', error);
+    return { success: false, error: error.message || 'حدث خطأ أثناء تحديث الإشعار' };
+  }
+}
+
+export async function markAllAsRead(userId: string) {
+  try {
+    const supabase = await getSupabase();
+    
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', userId)
+      .eq('is_read', false);
+
+    if (error) throw error;
+
+    revalidatePath('/notifications');
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error in markAllAsRead:', error);
+    return { success: false, error: error.message || 'حدث خطأ أثناء تحديث جميع الإشعارات' };
+  }
+}
+
+export async function deleteNotification(userId: string, notificationId: string) {
+  try {
+    const supabase = await getSupabase();
+    
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', notificationId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+
+    revalidatePath('/notifications');
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error in deleteNotification:', error);
+    return { success: false, error: error.message || 'حدث خطأ أثناء حذف الإشعار' };
   }
 }

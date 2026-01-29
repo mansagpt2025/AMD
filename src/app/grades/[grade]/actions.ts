@@ -25,7 +25,7 @@ export async function getWalletBalance(userId: string) {
 export async function deductWalletBalance(userId: string, amount: number, packageId: string) {
   try {
     // التحقق من عدم وجود اشتراك مسبق
-    const { data: existing, error: existingError } = await adminClient
+    const { data: existing } = await adminClient
       .from('user_packages')
       .select('id')
       .eq('user_id', userId)
