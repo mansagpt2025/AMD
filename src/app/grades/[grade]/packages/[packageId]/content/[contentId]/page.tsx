@@ -198,7 +198,7 @@ const getSupabaseClient = (): SupabaseClient | null => {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false, // تغيير من true إلى false لمنع الحلقة
+      detectSessionInUrl: false, // هذا هو الحل الرئيسي
       storageKey: 'sb-auth-token',
       storage: window.localStorage,
       flowType: 'pkce'
@@ -212,6 +212,55 @@ const getSupabaseClient = (): SupabaseClient | null => {
   })
   
   return supabaseInstance
+}
+
+// ==========================================
+// وظيفة التحقق من المصادقة
+// ==========================================
+const checkAuth = async (): Promise<{ user: any; session: any } | null> => {
+  try {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      console.error('Supabase client not available')
+      return null
+    }
+
+    // الحصول على الجلسة الحالية
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError) {
+      console.error('Session error:', sessionError)
+      // تنظيف الجلسة التالفة
+      localStorage.removeItem('sb-auth-token')
+      return null
+    }
+    
+    if (!session) {
+      console.log('No session found')
+      return null
+    }
+    
+    // التحقق من صلاحية التوكين
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError) {
+      console.error('User error:', userError)
+      localStorage.removeItem('sb-auth-token')
+      return null
+    }
+    
+    if (!user) {
+      console.log('No user found')
+      return null
+    }
+    
+    console.log('Auth check successful for user:', user.id)
+    return { user, session }
+  } catch (error) {
+    console.error('Auth check error:', error)
+    localStorage.removeItem('sb-auth-token')
+    return null
+  }
 }
 
 // ==========================================
@@ -702,7 +751,7 @@ function getGradeTheme(gradeSlug: string): Theme {
 }
 
 // ==========================================
-// MAIN PAGE - مع إصلاح كامل للحلقة
+// MAIN PAGE - مع إصلاح نهائي للحلقة
 // ==========================================
 function LoadingState() {
   return (
@@ -734,89 +783,45 @@ function ContentViewer() {
   const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
   const [videoProgress, setVideoProgress] = useState(0)
   
-  const authInitialized = useRef(false)
-  const authCheckCount = useRef(0)
+  const isInitialized = useRef(false)
 
   useEffect(() => {
-    // تجنب التهيئة المتعددة
-    if (authInitialized.current) return
-    authInitialized.current = true
+    if (isInitialized.current) return
+    isInitialized.current = true
 
-    const initializeApp = async () => {
+    const initializePage = async () => {
       try {
-        const supabase = getSupabaseClient()
-        if (!supabase) {
-          setError('فشل الاتصال بالخادم')
-          setLoading(false)
-          return
-        }
-
-        // التحقق من وجود جلسة
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        setLoading(true)
         
-        if (sessionError) {
-          console.error('Session error:', sessionError)
-          // تنظيف الجلسة التالفة
+        // التحقق من المصادقة أولاً
+        const authResult = await checkAuth()
+        
+        if (!authResult?.user) {
+          // تنظيف الجلسة القديمة
           localStorage.removeItem('sb-auth-token')
-          await supabase.auth.signOut()
-          redirectToLogin()
+          
+          // توجيه إلى تسجيل الدخول
+          const returnUrl = `/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`
+          const loginUrl = `/login?returnUrl=${encodeURIComponent(returnUrl)}`
+          
+          console.log('Redirecting to login:', loginUrl)
+          router.replace(loginUrl)
           return
         }
-
-        if (!session) {
-          console.log('No session found, redirecting to login')
-          redirectToLogin()
-          return
-        }
-
-        // التحقق من صحة الجلسة
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
         
-        if (userError || !user) {
-          console.error('Invalid session:', userError)
-          localStorage.removeItem('sb-auth-token')
-          await supabase.auth.signOut()
-          redirectToLogin()
-          return
-        }
-
-        console.log('User authenticated:', user.id)
-        setCurrentUser(user)
+        setCurrentUser(authResult.user)
         
-        // تحميل محتوى الصفحة
-        await loadContentData(user.id)
-
+        // تحميل البيانات
+        await loadContentData(authResult.user.id)
+        
       } catch (err: any) {
-        console.error('Initialization error:', err)
-        setError('حدث خطأ أثناء التحميل')
+        console.error('Page initialization error:', err)
+        setError('حدث خطأ أثناء تحميل الصفحة')
         setLoading(false)
       }
     }
 
-    const redirectToLogin = () => {
-      authCheckCount.current++
-      
-      // منع الحلقات - إذا فشل التحقق أكثر من 3 مرات، أظهر خطأ
-      if (authCheckCount.current > 3) {
-        setError('فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.')
-        setLoading(false)
-        return
-      }
-
-      const returnUrl = `/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`
-      const loginUrl = `/login?returnUrl=${encodeURIComponent(returnUrl)}`
-      
-      // تنظيف الجلسة قبل التوجيه
-      const supabase = getSupabaseClient()
-      if (supabase) {
-        supabase.auth.signOut()
-      }
-      localStorage.removeItem('sb-auth-token')
-      
-      router.replace(loginUrl)
-    }
-
-    initializeApp()
+    initializePage()
   }, [gradeSlug, packageId, contentId, router])
 
   const loadContentData = async (userId: string) => {
@@ -841,7 +846,7 @@ function ContentViewer() {
       
       setContent(contentData)
       
-      // تحميل البيانات الأخرى بشكل متوازي
+      // تحميل البيانات الأخرى
       const [
         lectureRes,
         packageRes,
