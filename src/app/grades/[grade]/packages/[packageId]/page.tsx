@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense, useRef } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { createClientBrowser } from '@/lib/supabase/sf-client'
@@ -104,6 +104,16 @@ function ErrorState({ message, onBack }: { message: string; onBack: () => void }
   )
 }
 
+// FIX: Singleton Supabase client to prevent multiple instances
+let supabaseClient: ReturnType<typeof createClientBrowser> | null = null
+
+const getSupabaseClient = () => {
+  if (!supabaseClient) {
+    supabaseClient = createClientBrowser()
+  }
+  return supabaseClient
+}
+
 // Main Component wrapped with proper checks
 function PackageContent() {
   const router = useRouter()
@@ -125,146 +135,175 @@ function PackageContent() {
   const [completion, setCompletion] = useState(0)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   
-  // Fix: Prevent multiple fetch calls and redirect loops
-  const isFetchingRef = useRef(false)
-  const hasRedirected = useRef(false)
+  // FIX: Refs to prevent loops and multiple fetches
+  const isCheckingRef = useRef(false)
+  const hasCheckedRef = useRef(false)
+  const isRedirectingRef = useRef(false)
 
   // Ensure client-side only execution
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const calculateCompletion = useCallback((progress: UserProgress[], allContents: LectureContent[]) => {
+  const calculateCompletion = (progress: UserProgress[], allContents: LectureContent[]) => {
     if (!allContents || allContents.length === 0) {
       setCompletion(0)
       return
     }
     const completed = progress.filter(p => p.status === 'completed' || p.status === 'passed').length
     setCompletion(Math.round((completed / allContents.length) * 100))
-  }, [])
+  }
 
-  const checkAccessAndLoadData = useCallback(async () => {
-    // Prevent concurrent fetches
-    if (isFetchingRef.current || hasRedirected.current) return
-    if (!packageId || !gradeSlug) return
+  // FIX: Main auth and data check - runs only once
+  useEffect(() => {
+    if (!mounted || !packageId || !gradeSlug) return
+    if (isCheckingRef.current || hasCheckedRef.current) return
     
-    isFetchingRef.current = true
-    
-    try {
-      setLoading(true)
-      setError(null)
+    const checkAuthAndLoad = async () => {
+      isCheckingRef.current = true
       
-      const supabase = createClientBrowser()
-      
-      // 1. Check authentication
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      if (authError || !user) {
-        hasRedirected.current = true
-        router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}`)
-        return
-      }
-
-      // 2. Check user package access
-      const { data: userPackageData, error: accessError } = await supabase
-        .from('user_packages')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('package_id', packageId)
-        .eq('is_active', true)
-        .gt('expires_at', new Date().toISOString())
-        .maybeSingle()
-
-      if (!userPackageData && !accessError) {
-        hasRedirected.current = true
-        router.push(`/grades/${gradeSlug}?error=not_subscribed&package=${packageId}`)
-        return
-      }
-      
-      setUserPackage(userPackageData)
-
-      // 3. Fetch package data
-      const { data: pkgData, error: pkgError } = await supabase
-        .from('packages')
-        .select('*')
-        .eq('id', packageId)
-        .single()
-
-      if (pkgError || !pkgData) {
-        setError('الباقة غير موجودة أو تم حذفها')
-        return
-      }
-      
-      // Verify grade matches
-      if (pkgData.grade !== gradeSlug) {
-        hasRedirected.current = true
-        router.push(`/grades/${pkgData.grade}/packages/${packageId}`)
-        return
-      }
-      
-      setPackageData(pkgData)
-
-      // 4. Fetch lectures
-      const { data: lecturesData, error: lecturesError } = await supabase
-        .from('lectures')
-        .select('*')
-        .eq('package_id', packageId)
-        .eq('is_active', true)
-        .order('order_number', { ascending: true })
-
-      if (lecturesError) throw lecturesError
-      setLectures(lecturesData || [])
-
-      // 5. Fetch contents if lectures exist
-      if (lecturesData && lecturesData.length > 0) {
-        const lectureIds = lecturesData.map(l => l.id)
-        const { data: contentsData, error: contentsError } = await supabase
-          .from('lecture_contents')
-          .select('*')
-          .in('lecture_id', lectureIds)
-          .eq('is_active', true)
-          .order('order_number', { ascending: true })
-
-        if (contentsError) throw contentsError
-        setContents(contentsData || [])
+      try {
+        setLoading(true)
+        const supabase = getSupabaseClient()
         
-        // 6. Fetch user progress
-        const { data: progressData, error: progressError } = await supabase
-          .from('user_progress')
+        // FIX: Wait a moment for auth to initialize from storage
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // FIX: Use getSession first (more reliable), then getUser
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError)
+        }
+
+        if (!session) {
+          console.log('No session found, redirecting to login...')
+          isRedirectingRef.current = true
+          router.replace(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}`)
+          return
+        }
+
+        const user = session.user
+
+        if (!user) {
+          isRedirectingRef.current = true
+          router.replace(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}`)
+          return
+        }
+
+        // 2. Check user package access
+        const { data: userPackageData, error: accessError } = await supabase
+          .from('user_packages')
           .select('*')
           .eq('user_id', user.id)
           .eq('package_id', packageId)
+          .eq('is_active', true)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle()
 
-        if (progressError) throw progressError
-        setUserProgress(progressData || [])
-        calculateCompletion(progressData || [], contentsData || [])
+        if (!userPackageData || accessError) {
+          console.log('No package access, redirecting...')
+          isRedirectingRef.current = true
+          router.replace(`/grades/${gradeSlug}?error=not_subscribed&package=${packageId}`)
+          return
+        }
+        
+        setUserPackage(userPackageData)
+
+        // 3. Fetch package data
+        const { data: pkgData, error: pkgError } = await supabase
+          .from('packages')
+          .select('*')
+          .eq('id', packageId)
+          .single()
+
+        if (pkgError || !pkgData) {
+          setError('الباقة غير موجودة أو تم حذفها')
+          setLoading(false)
+          return
+        }
+        
+        // Verify grade matches
+        if (pkgData.grade !== gradeSlug) {
+          isRedirectingRef.current = true
+          router.replace(`/grades/${pkgData.grade}/packages/${packageId}`)
+          return
+        }
+        
+        setPackageData(pkgData)
+
+        // 4. Fetch lectures
+        const { data: lecturesData, error: lecturesError } = await supabase
+          .from('lectures')
+          .select('*')
+          .eq('package_id', packageId)
+          .eq('is_active', true)
+          .order('order_number', { ascending: true })
+
+        if (lecturesError) throw lecturesError
+        setLectures(lecturesData || [])
+
+        // 5. Fetch contents if lectures exist
+        if (lecturesData && lecturesData.length > 0) {
+          const lectureIds = lecturesData.map(l => l.id)
+          const { data: contentsData, error: contentsError } = await supabase
+            .from('lecture_contents')
+            .select('*')
+            .in('lecture_id', lectureIds)
+            .eq('is_active', true)
+            .order('order_number', { ascending: true })
+
+          if (contentsError) throw contentsError
+          setContents(contentsData || [])
+          
+          // 6. Fetch user progress
+          const { data: progressData, error: progressError } = await supabase
+            .from('user_progress')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('package_id', packageId)
+
+          if (progressError) throw progressError
+          setUserProgress(progressData || [])
+          calculateCompletion(progressData || [], contentsData || [])
+        }
+
+        setLoading(false)
+        hasCheckedRef.current = true
+
+      } catch (err: any) {
+        console.error('Error loading package:', err)
+        setError(err?.message || 'حدث خطأ في تحميل البيانات')
+        setLoading(false)
+      } finally {
+        isCheckingRef.current = false
       }
-
-    } catch (err: any) {
-      console.error('Error loading package:', err)
-      setError(err?.message || 'حدث خطأ في تحميل البيانات')
-    } finally {
-      setLoading(false)
-      isFetchingRef.current = false
     }
-  }, [packageId, gradeSlug, router, calculateCompletion])
 
-  // Load data on mount
-  useEffect(() => {
-    if (mounted && packageId && gradeSlug && !isFetchingRef.current) {
-      checkAccessAndLoadData()
+    checkAuthAndLoad()
+
+    // FIX: Listen for auth state changes to prevent loops
+    const supabase = getSupabaseClient()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' && !isRedirectingRef.current) {
+        isRedirectingRef.current = true
+        router.replace(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}`)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
     }
-  }, [mounted, packageId, gradeSlug]) // Removed checkAccessAndLoadData from deps to prevent loop
+  }, [mounted, packageId, gradeSlug, router])
 
   // Helper functions
-  const isContentAccessible = useCallback((lectureIndex: number, contentIndex: number, content: LectureContent) => {
+  const isContentAccessible = (lectureIndex: number, contentIndex: number, content: LectureContent) => {
     if (!packageData) return false
     if (packageData.type === 'weekly') return true
     
     if (packageData.type === 'monthly' || packageData.type === 'term') {
       if (lectureIndex === 0 && contentIndex === 0) return true
       
-      // Get previous contents
       const previousContents: LectureContent[] = []
       for (let i = 0; i < lectureIndex; i++) {
         const lecture = lectures[i]
@@ -280,7 +319,6 @@ function PackageContent() {
         previousContents.push(...currentContents.slice(0, contentIndex))
       }
       
-      // Check if all previous are completed
       for (const prevContent of previousContents) {
         const progress = userProgress.find(p => p.lecture_content_id === prevContent.id)
         if (!progress || (progress.status !== 'completed' && progress.status !== 'passed')) {
@@ -292,7 +330,7 @@ function PackageContent() {
       }
     }
     return true
-  }, [packageData, lectures, contents, userProgress])
+  }
 
   const getContentIcon = (type: string) => {
     switch (type) {
@@ -321,7 +359,6 @@ function PackageContent() {
     setActiveSection(prev => prev === sectionId ? null : sectionId)
   }
 
-  // Don't render until mounted (client-side)
   if (!mounted) {
     return <LoadingState />
   }
