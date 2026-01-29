@@ -306,8 +306,17 @@ export default function GradePage() {
 
       <AnimatePresence>
         {showPurchaseModal && selectedPackage && (
-          <PurchaseModal pkg={selectedPackage} user={user} walletBalance={walletBalance} theme={theme} onClose={() => setShowPurchaseModal(false)} onSuccess={() => { fetchData(); setShowPurchaseModal(false); }} gradeSlug={gradeSlug} />
-        )}
+// في page.tsx - مرر الـ supabase للـ Modal
+<PurchaseModal 
+  pkg={selectedPackage} 
+  user={user} 
+  walletBalance={walletBalance} 
+  theme={theme}
+  onClose={() => setShowPurchaseModal(false)}
+  onSuccess={fetchData}
+  gradeSlug={gradeSlug}
+  supabase={supabase}  // <-- ضيف السطر ده
+/>        )}
       </AnimatePresence>
     </div>
   )
@@ -385,8 +394,16 @@ interface CodeData {
   discount_percentage?: number
 }
 
-function PurchaseModal({ pkg, user, walletBalance, theme, onClose, onSuccess, gradeSlug }: any) {
-  const supabase = createClientBrowser()
+function PurchaseModal({ 
+  pkg, 
+  user, 
+  walletBalance, 
+  theme, 
+  onClose, 
+  onSuccess, 
+  gradeSlug,
+  supabase   // <-- ضيف دي
+}: any) {
   const [method, setMethod] = useState<'wallet' | 'code'>('wallet')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
