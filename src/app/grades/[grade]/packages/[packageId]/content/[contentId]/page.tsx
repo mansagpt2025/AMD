@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 
 // ==========================================
-// STYLES (نفس الكود السابق)
+// STYLES
 // ==========================================
 const styles: Record<string, React.CSSProperties> = {
   pageContainer: { minHeight: '100vh', background: '#f8fafc' },
@@ -103,7 +103,6 @@ const styles: Record<string, React.CSSProperties> = {
   unsupportedIcon: { width: 48, height: 48, marginBottom: '1rem', color: '#cbd5e1' },
   unsupportedText: { fontSize: '1.125rem' },
   
-  // Video Player
   videoPlayerContainer: { position: 'relative', background: '#000', borderRadius: '0.75rem', overflow: 'hidden', aspectRatio: '16/9' },
   videoElement: { width: '100%', height: '100%', objectFit: 'contain' },
   loadingOverlayVideo: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', color: 'white', zIndex: 10 },
@@ -122,7 +121,6 @@ const styles: Record<string, React.CSSProperties> = {
   errorContainerVideo: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', color: 'white', textAlign: 'center' },
   videoErrorHint: { fontSize: '0.875rem', marginTop: '0.5rem', opacity: 0.8 },
   
-  // PDF Viewer
   pdfViewerContainer: { background: 'white', borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid #e2e8f0' },
   pdfHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '1rem' },
   headerLeft: { display: 'flex', alignItems: 'center', gap: '1rem' },
@@ -143,7 +141,6 @@ const styles: Record<string, React.CSSProperties> = {
   driveNotice: { fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' },
   watermark: { textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', marginTop: '1rem' },
   
-  // Exam Viewer
   examContainer: { background: 'white', borderRadius: '0.75rem', padding: '2rem', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' },
   examHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '2px solid #e2e8f0' },
   examInfo: { display: 'flex', alignItems: 'center', gap: '1rem' },
@@ -187,7 +184,6 @@ let supabaseInstance: SupabaseClient | null = null
 
 const getSupabaseClient = (): SupabaseClient | null => {
   if (typeof window === 'undefined') return null
-  
   if (supabaseInstance) return supabaseInstance
   
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -385,7 +381,7 @@ function ProtectedVideoPlayer({
         <div style={styles.controlsOverlay}>
           <div style={styles.progressSection}>
             <input type="range" min="0" max={duration || 0} value={currentTime} onChange={handleSeek} style={styles.progressBarVideo} />
-            <div style={{...styles.timeDisplay, direction: 'ltr'}}>
+            <div style={styles.timeDisplay}>
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
@@ -732,171 +728,143 @@ function ContentViewer() {
   const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
   const [videoProgress, setVideoProgress] = useState(0)
   
-  // CRITICAL: Prevent multiple auth checks and race conditions
-  const authInitialized = useRef(false)
-  const hasRedirected = useRef(false)
+  const authCheckStarted = useRef(false)
+  const authCheckCompleted = useRef(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // ==========================================
-  // CRITICAL FIX: Robust Auth Check
-  // ==========================================
   useEffect(() => {
-    if (!mounted || authInitialized.current || hasRedirected.current) return
+    if (!mounted || authCheckStarted.current) return
+    
+    authCheckStarted.current = true
     
     const supabase = getSupabaseClient()
     if (!supabase) {
-      setError('فشل الاتصال بقاعدة البيانات')
+      setError('فشل الاتصال بالخادم')
       setLoading(false)
       return
     }
 
-    authInitialized.current = true
+    let timeoutId: NodeJS.Timeout
+    let subscription: { unsubscribe: () => void } | null = null
     
-    // Check if we have a token in localStorage first (quick check)
-    const hasExistingSession = typeof window !== 'undefined' && 
-      localStorage.getItem('sb-auth-token') !== null
+    const hasToken = typeof window !== 'undefined' && localStorage.getItem('sb-auth-token') !== null
+    
+    if (!hasToken) {
+      redirectToLogin()
+      return
+    }
 
-    let authSubscription: { unsubscribe: () => void } | null = null
-    
-    const redirectToLogin = () => {
-      if (hasRedirected.current) return
-      hasRedirected.current = true
+    function redirectToLogin() {
+      if (authCheckCompleted.current) return
+      authCheckCompleted.current = true
       
       const returnUrl = `/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`
       router.replace(`/login?returnUrl=${encodeURIComponent(returnUrl)}`)
     }
 
-    // Set up auth listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth State Change:', event, session?.user?.id ? 'User exists' : 'No user')
+    async function handleAuthSuccess(user: any) {
+      if (authCheckCompleted.current) return
+      authCheckCompleted.current = true
+      
+      setCurrentUser(user)
+      
+      try {
+        const { data: contentData, error: contentError } = await supabase!.from('lecture_contents').select('*').eq('id', contentId).single()
+        
+        if (contentError || !contentData) {
+          setError('المحتوى غير موجود')
+          setLoading(false)
+          return
+        }
+        
+        setContent(contentData)
+        
+        const [lectureRes, packageRes, userPackageRes] = await Promise.all([
+          supabase!.from('lectures').select('*').eq('id', contentData.lecture_id).single(),
+          supabase!.from('packages').select('*').eq('id', packageId).single(),
+          supabase!.from('user_packages').select('*').eq('user_id', user.id).eq('package_id', packageId).eq('is_active', true).gt('expires_at', new Date().toISOString()).maybeSingle()
+        ])
+        
+        setLecture(lectureRes.data)
+        setPackageData(packageRes.data)
+        
+        if (!userPackageRes.data) {
+          router.push(`/grades/${gradeSlug}/packages/${packageId}?error=no_access`)
+          return
+        }
+        
+        setUserPackage(userPackageRes.data)
+        
+        const { data: progressData } = await supabase!.from('user_progress').select('*').eq('user_id', user.id).eq('lecture_content_id', contentId).maybeSingle()
+        
+        const now = new Date().toISOString()
+        
+        if (!progressData) {
+          const { data: newProgress } = await supabase!.from('user_progress').insert({
+            user_id: user.id, lecture_content_id: contentId, package_id: packageId,
+            status: 'in_progress', last_accessed_at: now, created_at: now
+          }).select().single()
+          setUserProgress(newProgress)
+        } else {
+          if (progressData.status === 'not_started') {
+            await supabase!.from('user_progress').update({ status: 'in_progress', last_accessed_at: now }).eq('id', progressData.id)
+            setUserProgress({ ...progressData, status: 'in_progress', last_accessed_at: now })
+          } else {
+            await supabase!.from('user_progress').update({ last_accessed_at: now }).eq('id', progressData.id)
+            setUserProgress(progressData)
+          }
+        }
+        
+        setLoading(false)
+      } catch (err: any) {
+        console.error('Load error:', err)
+        setError(err?.message || 'حدث خطأ')
+        setLoading(false)
+      }
+    }
+
+    const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event, session?.user?.id)
       
       if (event === 'INITIAL_SESSION') {
         if (session?.user) {
-          // Auth confirmed, load content
-          setCurrentUser(session.user)
-          loadContentData(session.user, supabase)
+          clearTimeout(timeoutId)
+          handleAuthSuccess(session.user)
         } else {
-          // Only redirect if we're sure there's no session
-          // Wait a bit to be sure (race condition protection)
-          setTimeout(() => {
-            if (!hasRedirected.current) {
-              redirectToLogin()
-            }
-          }, 500)
+          clearTimeout(timeoutId)
+          timeoutId = setTimeout(() => {
+            redirectToLogin()
+          }, 2000)
         }
       } else if (event === 'SIGNED_IN' && session?.user) {
-        setCurrentUser(session.user)
-        loadContentData(session.user, supabase)
-      } else if (event === 'SIGNED_OUT') {
-        redirectToLogin()
+        clearTimeout(timeoutId)
+        handleAuthSuccess(session.user)
       }
     })
     
-    authSubscription = subscription
+    subscription = sub
 
-    // Fallback: If we know there's no token in localStorage, redirect faster
-    if (!hasExistingSession) {
-      setTimeout(() => {
-        if (!hasRedirected.current && !currentUser) {
-          redirectToLogin()
-        }
-      }, 3000)
-    }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        clearTimeout(timeoutId)
+        handleAuthSuccess(session.user)
+      }
+    })
+
+    timeoutId = setTimeout(() => {
+      if (!authCheckCompleted.current) {
+        redirectToLogin()
+      }
+    }, 5000)
 
     return () => {
-      authSubscription?.unsubscribe()
+      clearTimeout(timeoutId)
+      if (subscription) subscription.unsubscribe()
     }
-  }, [mounted]) // Empty deps except mounted to prevent re-runs
-
-  const loadContentData = async (user: any, supabase: SupabaseClient) => {
-    try {
-      // Fetch content
-      const { data: contentData, error: contentError } = await supabase
-        .from('lecture_contents')
-        .select('*')
-        .eq('id', contentId)
-        .single()
-      
-      if (contentError || !contentData) {
-        setError('المحتوى غير موجود')
-        setLoading(false)
-        return
-      }
-      
-      setContent(contentData)
-      
-      // Parallel fetching for better performance
-      const [lectureRes, packageRes, userPackageRes] = await Promise.all([
-        supabase.from('lectures').select('*').eq('id', contentData.lecture_id).single(),
-        supabase.from('packages').select('*').eq('id', packageId).single(),
-        supabase
-          .from('user_packages')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('package_id', packageId)
-          .eq('is_active', true)
-          .gt('expires_at', new Date().toISOString())
-          .maybeSingle()
-      ])
-      
-      setLecture(lectureRes.data)
-      setPackageData(packageRes.data)
-      
-      if (!userPackageRes.data) {
-        router.push(`/grades/${gradeSlug}/packages/${packageId}?error=no_access`)
-        return
-      }
-      setUserPackage(userPackageRes.data)
-      
-      // Get or create progress
-      const { data: progressData } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('lecture_content_id', contentId)
-        .maybeSingle()
-      
-      const now = new Date().toISOString()
-      
-      if (!progressData) {
-        const { data: newProgress } = await supabase
-          .from('user_progress')
-          .insert({
-            user_id: user.id,
-            lecture_content_id: contentId,
-            package_id: packageId,
-            status: 'in_progress',
-            last_accessed_at: now,
-            created_at: now
-          })
-          .select()
-          .single()
-        setUserProgress(newProgress)
-      } else {
-        if (progressData.status === 'not_started') {
-          await supabase
-            .from('user_progress')
-            .update({ status: 'in_progress', last_accessed_at: now })
-            .eq('id', progressData.id)
-          setUserProgress({ ...progressData, status: 'in_progress', last_accessed_at: now })
-        } else {
-          await supabase
-            .from('user_progress')
-            .update({ last_accessed_at: now })
-            .eq('id', progressData.id)
-          setUserProgress(progressData)
-        }
-      }
-    } catch (err: any) {
-      console.error('Load content error:', err)
-      setError(err?.message || 'حدث خطأ')
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [mounted, gradeSlug, packageId, contentId, router])
 
   const handleVideoProgress = (progress: number) => {
     setVideoProgress(progress)
@@ -943,32 +911,27 @@ function ContentViewer() {
     }
   }
 
-  if (!mounted) return <LoadingState />
-  if (loading) return <LoadingState />
-  if (error) {
-    return (
-      <div style={styles.errorContainer}>
-        <div style={styles.errorContent}>
-          <AlertCircle style={styles.errorIcon} />
-          <h2 style={styles.errorTitle}>حدث خطأ</h2>
-          <p style={styles.errorMessage}>{error}</p>
-          <button onClick={handleBack} style={styles.backBtn}>العودة للباقة</button>
-        </div>
+  if (!mounted || loading) return <LoadingState />
+  if (error) return (
+    <div style={styles.errorContainer}>
+      <div style={styles.errorContent}>
+        <AlertCircle style={styles.errorIcon} />
+        <h2 style={styles.errorTitle}>حدث خطأ</h2>
+        <p style={styles.errorMessage}>{error}</p>
+        <button onClick={handleBack} style={styles.backBtn}>العودة للباقة</button>
       </div>
-    )
-  }
-  if (!content) {
-    return (
-      <div style={styles.errorContainer}>
-        <div style={styles.errorContent}>
-          <AlertCircle style={styles.errorIcon} />
-          <h2 style={styles.errorTitle}>حدث خطأ</h2>
-          <p style={styles.errorMessage}>المحتوى غير موجود</p>
-          <button onClick={handleBack} style={styles.backBtn}>العودة للباقة</button>
-        </div>
+    </div>
+  )
+  if (!content) return (
+    <div style={styles.errorContainer}>
+      <div style={styles.errorContent}>
+        <AlertCircle style={styles.errorIcon} />
+        <h2 style={styles.errorTitle}>حدث خطأ</h2>
+        <p style={styles.errorMessage}>المحتوى غير موجود</p>
+        <button onClick={handleBack} style={styles.backBtn}>العودة للباقة</button>
       </div>
-    )
-  }
+    </div>
+  )
 
   return (
     <div style={styles.pageContainer}>
