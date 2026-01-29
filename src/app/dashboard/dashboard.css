@@ -102,23 +102,7 @@
   --z-tooltip: 400;
 }
 
-/* Import Google Font - Tajawal */
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
-
-/* ============================================
-   Base & Reset
-   ============================================ */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
+.container {
   font-family: var(--font-sans);
   background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f0f9ff 100%);
   background-attachment: fixed;
