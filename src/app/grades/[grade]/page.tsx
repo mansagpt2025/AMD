@@ -7,8 +7,8 @@ import { createBrowserClient } from '@supabase/ssr'
 import { 
   Wallet, BookOpen, GraduationCap, Loader2, AlertCircle,
   Crown, Sparkles, Clock, Calendar, Medal, PlayCircle,
-  CheckCircle2, ArrowRight, ShoppingCart, RefreshCw, Zap,
-  Target, Ticket, CreditCard, X, Shield, Gift
+  CheckCircle2, ArrowRight, ShoppingCart, RefreshCw, 
+  Ticket, CreditCard, X, Shield, Gift
 } from 'lucide-react'
 import styles from './GradePage.module.css'
 import { 
@@ -47,7 +47,6 @@ interface ThemeType {
   accent: string
   bg: string
   wave: string
-  gradient: string
 }
 
 // الألوان الخاصة بكل صف
@@ -57,34 +56,31 @@ const themes: Record<string, ThemeType> = {
     secondary: '#1d4ed8',
     accent: '#06b6d4',
     bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    wave: '#dbeafe',
-    gradient: 'from-blue-600 to-blue-800'
+    wave: '#dbeafe'
   },
   second: {
     primary: '#8b5cf6',
     secondary: '#6d28d9',
     accent: '#ec4899',
     bg: 'linear-gradient(135deg, #8b5cf6 0%, #5b21b6 100%)',
-    wave: '#ede9fe',
-    gradient: 'from-purple-600 to-purple-800'
+    wave: '#ede9fe'
   },
   third: {
     primary: '#f59e0b',
     secondary: '#d97706',
     accent: '#ef4444',
     bg: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
-    wave: '#fef3c7',
-    gradient: 'from-amber-500 to-orange-600'
+    wave: '#fef3c7'
   }
 }
 
 export default function GradePage() {
   const router = useRouter()
   const params = useParams()
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   const gradeSlug = params?.grade as 'first' | 'second' | 'third'
   const theme = themes[gradeSlug] || themes.first
 
@@ -103,7 +99,6 @@ const supabase = createBrowserClient(
       setLoading(true)
       setError(null)
       
-      // جلب المستخدم
       const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
       
       if (userError || !currentUser) {
@@ -114,32 +109,27 @@ const supabase = createBrowserClient(
       
       setUser(currentUser)
 
-      // جلب الباقات
-      const { data: packagesData, error: pkgError } = await supabase
+      const { data: packagesData } = await supabase
         .from('packages')
         .select('*')
         .eq('grade', gradeSlug)
         .eq('is_active', true)
         .order('price', { ascending: true })
 
-      if (pkgError) throw pkgError
       setPackages(packagesData || [])
 
-      // جلب الرصيد
       const walletResult = await getWalletBalance(currentUser.id)
       if (walletResult.success && walletResult.data) {
         setWalletBalance(walletResult.data.balance || 0)
       }
 
-      // جلب اشتراكات المستخدم
-      const { data: userPkgs, error: userPkgError } = await supabase
+      const { data: userPkgs } = await supabase
         .from('user_packages')
         .select(`*, packages:package_id(*)`)
         .eq('user_id', currentUser.id)
         .eq('is_active', true)
         .gt('expires_at', new Date().toISOString())
 
-      if (userPkgError) throw userPkgError
       setUserPackages(userPkgs as UserPackage[] || [])
       
     } catch (err: any) {
@@ -559,10 +549,11 @@ function PurchaseModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [codeValid, setCodeValid] = useState<any>(null)
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { 
       if (e.key === 'Escape') onClose() 
@@ -616,11 +607,9 @@ const supabase = createBrowserClient(
       } else {
         if (!codeValid) throw new Error('تحقق من الكود أولاً')
         
-        // استخدام الكود
         const markResult = await markCodeAsUsed(codeValid.id, user.id)
         if (!markResult.success) throw new Error(markResult.message)
         
-        // إنشاء الاشتراك
         const pkgResult = await createUserPackage(
           user.id, 
           pkg.id, 
@@ -629,7 +618,6 @@ const supabase = createBrowserClient(
         )
         
         if (!pkgResult.success) {
-          // إرجاع الكود لو فشل الاشتراك
           await supabase
             .from('codes')
             .update({ is_used: false, used_by: null, used_at: null })
@@ -638,7 +626,6 @@ const supabase = createBrowserClient(
         }
       }
 
-      // إشعار النجاح
       await supabase.from('notifications').insert({
         user_id: user.id,
         title: 'تم الشراء بنجاح! 🎉',
