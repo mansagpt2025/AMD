@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 
 // ==========================================
-// STYLES (CSS-in-JS)
+// STYLES
 // ==========================================
 const styles: Record<string, React.CSSProperties> = {
   pageContainer: { minHeight: '100vh', background: '#f8fafc' },
@@ -102,7 +102,7 @@ const styles: Record<string, React.CSSProperties> = {
   unsupportedIcon: { width: 48, height: 48, marginBottom: '1rem', color: '#cbd5e1' },
   unsupportedText: { fontSize: '1.125rem' },
   
-  // Video Player Styles
+  // Video Player
   videoPlayerContainer: { position: 'relative', background: '#000', borderRadius: '0.75rem', overflow: 'hidden', aspectRatio: '16/9' },
   videoElement: { width: '100%', height: '100%', objectFit: 'contain' },
   loadingOverlayVideo: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', color: 'white', zIndex: 10 },
@@ -121,7 +121,7 @@ const styles: Record<string, React.CSSProperties> = {
   errorContainerVideo: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', color: 'white', textAlign: 'center' },
   videoErrorHint: { fontSize: '0.875rem', marginTop: '0.5rem', opacity: 0.8 },
   
-  // PDF Viewer Styles
+  // PDF Viewer
   pdfViewerContainer: { background: 'white', borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid #e2e8f0' },
   pdfHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '1rem' },
   headerLeft: { display: 'flex', alignItems: 'center', gap: '1rem' },
@@ -131,7 +131,7 @@ const styles: Record<string, React.CSSProperties> = {
   headerActionsPdf: { display: 'flex', gap: '0.5rem' },
   openButton: { display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: '1px solid', background: 'white', cursor: 'pointer', fontSize: '0.875rem' },
   downloadButton: { display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: 'none', color: 'white', cursor: 'pointer', fontSize: '0.875rem' },
-  viewerContainer: { position: 'relative', height: '600px',  background: '#f8fafc' },
+  viewerContainer: { position: 'relative', height: '600px', background: '#f8fafc' },
   iframeContainer: { position: 'relative', width: '100%', height: '100%' },
   pdfFrame: { width: '100%', height: '100%', border: 'none' },
   protectionOverlay: { position: 'absolute', inset: 0, zIndex: 10, cursor: 'default' },
@@ -142,7 +142,7 @@ const styles: Record<string, React.CSSProperties> = {
   driveNotice: { fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' },
   watermark: { textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', marginTop: '1rem' },
   
-  // Exam Viewer Styles
+  // Exam Viewer
   examContainer: { background: 'white', borderRadius: '0.75rem', padding: '2rem', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' },
   examHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '2px solid #e2e8f0' },
   examInfo: { display: 'flex', alignItems: 'center', gap: '1rem' },
@@ -180,15 +180,23 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 // ==========================================
-// SUPABASE SINGLETON
+// SUPABASE CLIENT - GLOBAL SINGLETON
 // ==========================================
-let supabaseInstance: any = null
+declare global {
+  interface Window {
+    __supabaseClient?: any;
+  }
+}
 
 const getSupabaseClient = () => {
-  if (supabaseInstance) return supabaseInstance
-  
   if (typeof window === 'undefined') return null
   
+  // Return existing instance if available
+  if (window.__supabaseClient) {
+    return window.__supabaseClient
+  }
+  
+  // Create new instance
   const { createClient } = require('@supabase/supabase-js')
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -198,15 +206,17 @@ const getSupabaseClient = () => {
     return null
   }
   
-  supabaseInstance = createClient(supabaseUrl, supabaseKey, {
+  window.__supabaseClient = createClient(supabaseUrl, supabaseKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: false, // Disable to prevent conflicts
+      storageKey: 'sb-auth-token',
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined
     }
   })
   
-  return supabaseInstance
+  return window.__supabaseClient
 }
 
 // ==========================================
@@ -225,22 +235,13 @@ interface Theme {
 }
 
 // ==========================================
-// PROTECTED VIDEO PLAYER COMPONENT
+// VIDEO PLAYER
 // ==========================================
 function ProtectedVideoPlayer({ 
-  videoUrl, 
-  contentId, 
-  userId, 
-  packageId, 
-  onProgress, 
-  theme 
+  videoUrl, contentId, userId, packageId, onProgress, theme 
 }: { 
-  videoUrl: string
-  contentId: string
-  userId: string
-  packageId: string
-  onProgress: (progress: number) => void
-  theme: Theme
+  videoUrl: string; contentId: string; userId: string; packageId: string
+  onProgress: (progress: number) => void; theme: Theme
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -265,28 +266,21 @@ function ProtectedVideoPlayer({
 
   const saveProgress = useCallback(async (currentTime: number, totalDuration: number) => {
     if (!userId || !contentId) return
-    
     try {
       const supabase = getSupabaseClient()
       if (!supabase) return
-
       const progress = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0
-      
       if (Math.abs(currentTime - lastSavedTime) < 10 && progress < 95) return
       
-      await supabase
-        .from('user_progress')
-        .upsert({
-          user_id: userId,
-          lecture_content_id: contentId,
-          package_id: packageId,
-          status: progress >= 90 ? 'completed' : 'in_progress',
-          score: Math.round(progress),
-          last_accessed_at: new Date().toISOString(),
-          ...(progress >= 90 && { completed_at: new Date().toISOString() })
-        }, {
-          onConflict: 'user_id,lecture_content_id'
-        })
+      await supabase.from('user_progress').upsert({
+        user_id: userId,
+        lecture_content_id: contentId,
+        package_id: packageId,
+        status: progress >= 90 ? 'completed' : 'in_progress',
+        score: Math.round(progress),
+        last_accessed_at: new Date().toISOString(),
+        ...(progress >= 90 && { completed_at: new Date().toISOString() })
+      }, { onConflict: 'user_id,lecture_content_id' })
 
       setLastSavedTime(currentTime)
       onProgress(Math.round(progress))
@@ -297,37 +291,20 @@ function ProtectedVideoPlayer({
 
   useEffect(() => {
     if (isYouTube || !videoRef.current) return
-
     const video = videoRef.current
     
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime)
-      if (Math.floor(video.currentTime) % 10 === 0) {
-        saveProgress(video.currentTime, video.duration)
-      }
+      if (Math.floor(video.currentTime) % 10 === 0) saveProgress(video.currentTime, video.duration)
     }
-
-    const handleLoadedMetadata = () => {
-      setDuration(video.duration)
-      setIsLoading(false)
-    }
-
-    const handleEnded = () => {
-      setIsPlaying(false)
-      saveProgress(video.duration, video.duration)
-      onProgress(100)
-    }
-
-    const handleError = () => {
-      setError('حدث خطأ في تحميل الفيديو. قد يكون الرابط غير صالح.')
-      setIsLoading(false)
-    }
+    const handleLoadedMetadata = () => { setDuration(video.duration); setIsLoading(false) }
+    const handleEnded = () => { setIsPlaying(false); saveProgress(video.duration, video.duration); onProgress(100) }
+    const handleError = () => { setError('حدث خطأ في تحميل الفيديو'); setIsLoading(false) }
 
     video.addEventListener('timeupdate', handleTimeUpdate)
     video.addEventListener('loadedmetadata', handleLoadedMetadata)
     video.addEventListener('ended', handleEnded)
     video.addEventListener('error', handleError)
-
     const handleContextMenu = (e: MouseEvent) => e.preventDefault()
     document.addEventListener('contextmenu', handleContextMenu)
 
@@ -343,11 +320,8 @@ function ProtectedVideoPlayer({
 
   const togglePlay = () => {
     if (!videoRef.current) return
-    if (isPlaying) {
-      videoRef.current.pause()
-    } else {
-      videoRef.current.play()
-    }
+    if (isPlaying) videoRef.current.pause()
+    else videoRef.current.play()
     setIsPlaying(!isPlaying)
   }
 
@@ -388,7 +362,7 @@ function ProtectedVideoPlayer({
       <div style={{...styles.videoPlayerContainer, ...styles.errorContainerVideo}}>
         <AlertCircle size={48} color="#ef4444" />
         <p>{error}</p>
-        <p style={styles.videoErrorHint}>تأكد من أن رابط الفيديو صحيح ومتاح</p>
+        <p style={styles.videoErrorHint}>تأكد من أن رابط الفيديو صحيح</p>
       </div>
     )
   }
@@ -406,7 +380,6 @@ function ProtectedVideoPlayer({
           <p>جاري تحميل الفيديو...</p>
         </div>
       )}
-
       <video
         ref={videoRef}
         src={videoUrl}
@@ -416,55 +389,27 @@ function ProtectedVideoPlayer({
         preload="metadata"
         playsInline
       />
-
       {showControls && !isLoading && (
         <div style={styles.controlsOverlay}>
           <div style={styles.progressSection}>
-            <input
-              type="range"
-              min="0"
-              max={duration || 0}
-              value={currentTime}
-              onChange={handleSeek}
-              style={styles.progressBarVideo}
-            />
+            <input type="range" min="0" max={duration || 0} value={currentTime} onChange={handleSeek} style={styles.progressBarVideo} />
             <div style={styles.timeDisplay}>
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
           </div>
-
           <div style={styles.controlsBar}>
             <button onClick={togglePlay} style={styles.controlButton}>
               {isPlaying ? <Pause size={24} /> : <Play size={24} />}
             </button>
-
             <div style={styles.volumeControl}>
               <Volume2 size={20} />
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={volume}
-                onChange={(e) => {
-                  const vol = parseFloat(e.target.value)
-                  setVolume(vol)
-                  if (videoRef.current) videoRef.current.volume = vol
-                }}
-                style={styles.volumeSlider}
-              />
+              <input type="range" min="0" max="1" step="0.1" value={volume} 
+                onChange={(e) => { const vol = parseFloat(e.target.value); setVolume(vol); if (videoRef.current) videoRef.current.volume = vol }}
+                style={styles.volumeSlider} />
             </div>
-
-            <div style={styles.protectionIndicator}>
-              <Lock size={16} />
-              <span>محمي</span>
-            </div>
-
-            <button 
-              onClick={() => containerRef.current?.requestFullscreen()} 
-              style={styles.controlButton}
-            >
+            <div style={styles.protectionIndicator}><Lock size={16} /><span>محمي</span></div>
+            <button onClick={() => containerRef.current?.requestFullscreen()} style={styles.controlButton}>
               <Maximize size={20} />
             </button>
           </div>
@@ -475,22 +420,11 @@ function ProtectedVideoPlayer({
 }
 
 // ==========================================
-// PDF VIEWER COMPONENT
+// PDF VIEWER
 // ==========================================
-function PDFViewer({ 
-  pdfUrl, 
-  contentId, 
-  userId, 
-  packageId,
-  theme,
-  onProgress
-}: { 
-  pdfUrl: string
-  contentId: string
-  userId: string
-  packageId: string
-  theme: Theme
-  onProgress?: (progress: number) => void
+function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: { 
+  pdfUrl: string; contentId: string; userId: string; packageId: string
+  theme: Theme; onProgress?: (progress: number) => void
 }) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -498,59 +432,34 @@ function PDFViewer({
   const [progressSaved, setProgressSaved] = useState(false)
 
   const isGoogleDrive = pdfUrl?.includes('drive.google.com') || pdfUrl?.includes('docs.google.com')
-  const isDropbox = pdfUrl?.includes('dropbox.com')
-  
   const getGoogleDriveId = (url: string) => {
     const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/)
     return match ? match[1] : null
   }
-
   const driveId = isGoogleDrive ? getGoogleDriveId(pdfUrl) : null
   
   const getViewerUrl = () => {
     if (!pdfUrl) return ''
-    
-    if (isGoogleDrive && driveId) {
-      return `https://drive.google.com/file/d/${driveId}/preview`
-    }
-    
-    if (isDropbox) {
-      return pdfUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '?dl=1')
-    }
-    
-    if (!pdfUrl.endsWith('.pdf')) {
-      return pdfUrl
-    }
-    
+    if (isGoogleDrive && driveId) return `https://drive.google.com/file/d/${driveId}/preview`
+    if (pdfUrl.includes('dropbox.com')) return pdfUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '?dl=1')
+    if (!pdfUrl.endsWith('.pdf')) return pdfUrl
     return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(pdfUrl)}`
   }
 
-  const viewerUrl = getViewerUrl()
-  const directDownloadUrl = isGoogleDrive && driveId 
-    ? `https://drive.google.com/uc?export=download&id=${driveId}` 
-    : pdfUrl
-
   const saveProgress = useCallback(async () => {
     if (!userId || !contentId || progressSaved) return
-    
     try {
       const supabase = getSupabaseClient()
       if (!supabase) return
-
-      await supabase
-        .from('user_progress')
-        .upsert({
-          user_id: userId,
-          lecture_content_id: contentId,
-          package_id: packageId,
-          status: 'completed',
-          score: 100,
-          last_accessed_at: new Date().toISOString(),
-          completed_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,lecture_content_id'
-        })
-
+      await supabase.from('user_progress').upsert({
+        user_id: userId,
+        lecture_content_id: contentId,
+        package_id: packageId,
+        status: 'completed',
+        score: 100,
+        last_accessed_at: new Date().toISOString(),
+        completed_at: new Date().toISOString()
+      }, { onConflict: 'user_id,lecture_content_id' })
       setProgressSaved(true)
       if (onProgress) onProgress(100)
     } catch (err) {
@@ -560,59 +469,37 @@ function PDFViewer({
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (pdfUrl) {
-        setIsLoading(false)
-        saveProgress()
-      } else {
-        setError('رابط الملف غير متوفر')
-        setIsLoading(false)
-      }
+      if (pdfUrl) { setIsLoading(false); saveProgress() }
+      else { setError('رابط الملف غير متوفر'); setIsLoading(false) }
     }, 1000)
-
-    const interval = setInterval(() => {
-      if (document.hasFocus()) {
-        setTimeSpent(prev => prev + 1)
-      }
-    }, 1000)
-
-    return () => {
-      clearTimeout(timer)
-      clearInterval(interval)
-    }
+    const interval = setInterval(() => { if (document.hasFocus()) setTimeSpent(prev => prev + 1) }, 1000)
+    return () => { clearTimeout(timer); clearInterval(interval) }
   }, [pdfUrl, saveProgress])
 
   const handleDownload = () => {
-    if (!directDownloadUrl) return
-    
-    if (isGoogleDrive && driveId) {
-      window.open(directDownloadUrl, '_blank')
-    } else {
+    if (!pdfUrl) return
+    if (isGoogleDrive && driveId) window.open(`https://drive.google.com/uc?export=download&id=${driveId}`, '_blank')
+    else {
       const link = document.createElement('a')
-      link.href = directDownloadUrl
-      link.download = `document-${contentId}.pdf`
-      link.target = '_blank'
-      link.click()
+      link.href = pdfUrl; link.download = `document-${contentId}.pdf`; link.target = '_blank'; link.click()
     }
     saveProgress()
   }
 
-  const handleOpenOriginal = () => {
-    window.open(pdfUrl, '_blank')
-  }
+  const handleOpenOriginal = () => window.open(pdfUrl, '_blank')
 
   if (error) {
     return (
       <div style={{...styles.pdfViewerContainer, padding: '2rem', textAlign: 'center'}}>
         <AlertCircle size={48} color="#ef4444" />
         <h3>حدث خطأ في تحميل الملف</h3>
-        <p>{error}</p>
         <div style={{display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem'}}>
           <button onClick={handleOpenOriginal} style={{...styles.openButton, borderColor: theme.primary, color: theme.primary}}>
             <ExternalLink size={18} /> فتح الرابط الأصلي
           </button>
           {isGoogleDrive && (
             <button onClick={handleDownload} style={{...styles.downloadButton, background: theme.primary}}>
-              <Download size={18} /> تحميل الملف
+              <Download size={18} /> تحميل
             </button>
           )}
         </div>
@@ -630,71 +517,38 @@ function PDFViewer({
           <div>
             <h3 style={styles.title}>ملف PDF</h3>
             <p style={styles.subtitle}>
-              {isGoogleDrive ? 'ملف Google Drive' : 'ملف PDF'}
-              {timeSpent > 0 && ` | وقت القراءة: ${Math.floor(timeSpent / 60)}:${(timeSpent % 60).toString().padStart(2, '0')}`}
+              {isGoogleDrive ? 'Google Drive' : 'PDF'}
+              {timeSpent > 0 && ` | ${Math.floor(timeSpent / 60)}:${(timeSpent % 60).toString().padStart(2, '0')}`}
             </p>
           </div>
         </div>
-        
         <div style={styles.headerActionsPdf}>
-          <button
-            onClick={handleOpenOriginal}
-            style={{...styles.openButton, borderColor: theme.primary, color: theme.primary}}
-          >
-            <ExternalLink size={18} />
-            <span>فتح في Drive</span>
+          <button onClick={handleOpenOriginal} style={{...styles.openButton, borderColor: theme.primary, color: theme.primary}}>
+            <ExternalLink size={18} /><span>فتح في Drive</span>
           </button>
-          
-          <button
-            onClick={handleDownload}
-            style={{...styles.downloadButton, background: theme.primary}}
-          >
-            <Download size={18} />
-            <span>تحميل الملف</span>
+          <button onClick={handleDownload} style={{...styles.downloadButton, background: theme.primary}}>
+            <Download size={18} /><span>تحميل</span>
           </button>
         </div>
       </div>
-
       <div style={styles.viewerContainer}>
         {isLoading ? (
-          <div style={{...styles.loadingOverlayVideo, position: 'relative', background: '#f8fafc', color: '#64748b'}}>
+          <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%'}}>
             <Loader2 style={{...styles.loadingSpinner, color: theme.primary}} />
-            <p>جاري تحميل الملف...</p>
           </div>
         ) : (
           <div style={styles.iframeContainer}>
-            <iframe
-              src={viewerUrl}
-              style={styles.pdfFrame}
-              title="PDF Viewer"
-              sandbox="allow-scripts allow-same-origin allow-popups"
-            />
-            
-            <div 
-              style={styles.protectionOverlay}
-              onContextMenu={(e) => e.preventDefault()}
-            />
+            <iframe src={getViewerUrl()} style={styles.pdfFrame} title="PDF Viewer" sandbox="allow-scripts allow-same-origin allow-popups" />
+            <div style={styles.protectionOverlay} onContextMenu={(e) => e.preventDefault()} />
           </div>
         )}
       </div>
-
       <div style={styles.pdfFooter}>
         <div style={styles.progressBarContainer}>
-          <div 
-            style={{...styles.progressBarFill, width: '100%', background: theme.success}}
-          />
+          <div style={{...styles.progressBarFill, width: '100%', background: theme.success}} />
         </div>
-        <div style={styles.progressText}>
-          {progressSaved ? '✓ تم تحميل الملف بنجاح' : 'جاري تحميل الملف...'}
-        </div>
-        
-        {isGoogleDrive && (
-          <p style={styles.driveNotice}>
-            <AlertCircle size={14} /> 
-            إذا لم يظهر الملف، قد تحتاج إلى تسجيل الدخول في Google أو النقر على "فتح في Drive"
-          </p>
-        )}
-        
+        <div style={styles.progressText}>{progressSaved ? '✓ تم التحميل' : 'جاري التحميل...'}</div>
+        {isGoogleDrive && <p style={styles.driveNotice}><AlertCircle size={14} /> قد تحتاج لتسجيل الدخول في Google</p>}
         <p style={styles.watermark}>الأبــارع محمود الـديــب © 2024</p>
       </div>
     </div>
@@ -702,22 +556,11 @@ function PDFViewer({
 }
 
 // ==========================================
-// EXAM VIEWER COMPONENT
+// EXAM VIEWER
 // ==========================================
-function ExamViewer({
-  examContent,
-  contentId,
-  packageId,
-  userId,
-  theme,
-  onComplete
-}: {
-  examContent: any
-  contentId: string
-  packageId: string
-  userId: string
-  theme: Theme
-  onComplete: () => void
+function ExamViewer({ examContent, contentId, packageId, userId, theme, onComplete }: {
+  examContent: any; contentId: string; packageId: string; userId: string
+  theme: Theme; onComplete: () => void
 }) {
   const router = useRouter()
   const [questions, setQuestions] = useState<Question[]>([])
@@ -733,23 +576,21 @@ function ExamViewer({
     const generateQuestions = () => {
       const qs: Question[] = []
       const count = examContent?.total_questions || 5
-      
       for (let i = 1; i <= count; i++) {
         qs.push({
           id: i,
-          text: examContent?.questions?.[i-1] || `السؤال ${i}: ما هو الإجابة الصحيحة لهذا السؤال الرياضي؟`,
+          text: examContent?.questions?.[i-1] || `السؤال ${i}: ما الإجابة الصحيحة؟`,
           options: [
-            { id: 'A', text: 'الإجابة أ - هذا النص هو مثال للإجابة الأولى' },
-            { id: 'B', text: 'الإجابة ب - هذا النص هو مثال للإجابة الثانية' },
-            { id: 'C', text: 'الإجابة ج - هذا النص هو مثال للإجابة الثالثة' },
-            { id: 'D', text: 'الإجابة د - هذا النجابة هو مثال للإجابة الرابعة' }
+            { id: 'A', text: 'الإجابة أ' },
+            { id: 'B', text: 'الإجابة ب' },
+            { id: 'C', text: 'الإجابة ج' },
+            { id: 'D', text: 'الإجابة د' }
           ],
           correctAnswer: ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)]
         })
       }
       return qs
     }
-
     setQuestions(generateQuestions())
     setTimeLeft((examContent?.duration_minutes || 10) * 60)
     setLoading(false)
@@ -757,57 +598,31 @@ function ExamViewer({
 
   useEffect(() => {
     if (showResults || loading) return
-    
     const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          handleSubmit()
-          return 0
-        }
-        return prev - 1
-      })
+      setTimeLeft(prev => { if (prev <= 1) { clearInterval(timer); handleSubmit(); return 0 } return prev - 1 })
     }, 1000)
-
     return () => clearInterval(timer)
   }, [showResults, loading])
 
-  const handleAnswer = (questionId: number, answerId: string) => {
-    setAnswers(prev => ({ ...prev, [questionId]: answerId }))
-  }
+  const handleAnswer = (questionId: number, answerId: string) => setAnswers(prev => ({ ...prev, [questionId]: answerId }))
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-    
     let correctCount = 0
-    questions.forEach(q => {
-      if (answers[q.id] === q.correctAnswer) correctCount++
-    })
-    
+    questions.forEach(q => { if (answers[q.id] === q.correctAnswer) correctCount++ })
     const finalScore = Math.round((correctCount / questions.length) * 100)
     setScore(finalScore)
     setShowResults(true)
     setIsSubmitting(false)
-    
-    if (finalScore >= (examContent?.pass_score || 50)) {
-      onComplete()
-    }
+    if (finalScore >= (examContent?.pass_score || 50)) onComplete()
 
     try {
       const supabase = getSupabaseClient()
-      if (supabase) {
-        await supabase.from('exam_results').insert({
-          user_id: userId,
-          content_id: contentId,
-          score: finalScore,
-          total_questions: questions.length,
-          correct_answers: correctCount,
-          wrong_answers: questions.length - correctCount
-        })
-      }
-    } catch (err) {
-      console.error('Error saving exam results:', err)
-    }
+      if (supabase) await supabase.from('exam_results').insert({
+        user_id: userId, content_id: contentId, score: finalScore,
+        total_questions: questions.length, correct_answers: correctCount, wrong_answers: questions.length - correctCount
+      })
+    } catch (err) { console.error('Error saving exam results:', err) }
   }
 
   const formatTime = (seconds: number) => {
@@ -816,59 +631,24 @@ function ExamViewer({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  if (loading) {
-    return (
-      <div style={{...styles.loadingContainer, minHeight: '400px'}}>
-        <Loader2 style={{...styles.loadingSpinner, color: theme.primary}} />
-        <p>جاري تحميل الامتحان...</p>
-      </div>
-    )
-  }
+  if (loading) return <div style={{...styles.loadingContainer, minHeight: '400px'}}><Loader2 style={{...styles.loadingSpinner, color: theme.primary}} /><p>جاري التحميل...</p></div>
 
   if (showResults) {
     const passed = score >= (examContent?.pass_score || 50)
     return (
       <div style={styles.resultsContainer}>
         <div style={{...styles.resultCard, ...(passed ? styles.passed : styles.failed)}}>
-          <div style={styles.resultIcon}>
-            {passed ? <Trophy size={64} color="#10b981" /> : <AlertCircle size={64} color="#ef4444" />}
-          </div>
-          
+          <div style={styles.resultIcon}>{passed ? <Trophy size={64} color="#10b981" /> : <AlertCircle size={64} color="#ef4444" />}</div>
           <h2>{passed ? 'مبروك! لقد نجحت' : 'للأسف، لم تنجح'}</h2>
-          <p style={styles.scoreText}>درجتك: {score}%</p>
-          <p style={styles.passScoreText}>درجة النجاح المطلوبة: {examContent?.pass_score || 50}%</p>
-          
+          <p style={styles.scoreText}>{score}%</p>
+          <p style={styles.passScoreText}>درجة النجاح: {examContent?.pass_score || 50}%</p>
           <div style={styles.stats}>
-            <div style={styles.stat}>
-              <CheckCircle color="#10b981" />
-              <span>صحيحة: {Object.keys(answers).filter(id => answers[parseInt(id)] === questions.find(q => q.id === parseInt(id))?.correctAnswer).length}</span>
-            </div>
-            <div style={styles.stat}>
-              <XCircle color="#ef4444" />
-              <span>خاطئة: {questions.length - Object.keys(answers).filter(id => answers[parseInt(id)] === questions.find(q => q.id === parseInt(id))?.correctAnswer).length}</span>
-            </div>
+            <div style={styles.stat}><CheckCircle color="#10b981" /><span>صحيحة: {Object.keys(answers).filter(id => answers[parseInt(id)] === questions.find(q => q.id === parseInt(id))?.correctAnswer).length}</span></div>
+            <div style={styles.stat}><XCircle color="#ef4444" /><span>خاطئة: {questions.length - Object.keys(answers).filter(id => answers[parseInt(id)] === questions.find(q => q.id === parseInt(id))?.correctAnswer).length}</span></div>
           </div>
-
           <div style={styles.resultButtons}>
-            <button 
-              onClick={() => router.back()} 
-              style={{...styles.backButtonExam, background: theme.primary}}
-            >
-              العودة للباقة
-            </button>
-            {!passed && (
-              <button 
-                onClick={() => {
-                  setShowResults(false)
-                  setAnswers({})
-                  setCurrentQuestion(0)
-                  setTimeLeft((examContent?.duration_minutes || 10) * 60)
-                }} 
-                style={styles.retryButton}
-              >
-                <RefreshCw size={18} /> إعادة المحاولة
-              </button>
-            )}
+            <button onClick={() => router.back()} style={{...styles.backButtonExam, background: theme.primary}}>العودة للباقة</button>
+            {!passed && <button onClick={() => { setShowResults(false); setAnswers({}); setCurrentQuestion(0); setTimeLeft((examContent?.duration_minutes || 10) * 60) }} style={styles.retryButton}><RefreshCw size={18} /> إعادة المحاولة</button>}
           </div>
         </div>
       </div>
@@ -881,87 +661,33 @@ function ExamViewer({
   return (
     <div style={styles.examContainer}>
       <div style={styles.examHeader}>
-        <div style={styles.examInfo}>
-          <Target style={{ color: theme.primary }} />
-          <div>
-            <h3>{examContent?.title || 'امتحان تقييمي'}</h3>
-            <p>سؤال {currentQuestion + 1} من {questions.length}</p>
-          </div>
-        </div>
-        
-        <div style={{...styles.timer, 
-          background: timeLeft < 60 ? '#fee2e2' : timeLeft < 300 ? '#fef3c7' : '#d1fae5',
-          color: timeLeft < 60 ? '#dc2626' : timeLeft < 300 ? '#d97706' : '#059669'
-        }}>
-          <Clock size={20} />
-          <span>{formatTime(timeLeft)}</span>
+        <div style={styles.examInfo}><Target style={{ color: theme.primary }} /><div><h3>{examContent?.title || 'امتحان'}</h3><p>سؤال {currentQuestion + 1} من {questions.length}</p></div></div>
+        <div style={{...styles.timer, background: timeLeft < 60 ? '#fee2e2' : timeLeft < 300 ? '#fef3c7' : '#d1fae5', color: timeLeft < 60 ? '#dc2626' : timeLeft < 300 ? '#d97706' : '#059669'}}>
+          <Clock size={20} /><span>{formatTime(timeLeft)}</span>
         </div>
       </div>
-
       <div style={styles.questionCard}>
-        <div style={styles.questionHeader}>
-          <span style={styles.questionNumber}>سؤال {currentQuestion + 1}</span>
-        </div>
-        
+        <div style={styles.questionHeader}><span style={styles.questionNumber}>سؤال {currentQuestion + 1}</span></div>
         <h4 style={styles.questionText}>{currentQ?.text}</h4>
-        
         <div style={styles.options}>
           {currentQ?.options.map(option => (
-            <button
-              key={option.id}
-              onClick={() => handleAnswer(currentQ.id, option.id)}
-              style={{
-                ...styles.option,
-                ...(answers[currentQ.id] === option.id ? styles.selected : {})
-              }}
-            >
+            <button key={option.id} onClick={() => handleAnswer(currentQ.id, option.id)} style={{...styles.option, ...(answers[currentQ.id] === option.id ? styles.selected : {})}}>
               <span style={styles.optionLabel}>{option.id}</span>
               <span style={styles.optionText}>{option.text}</span>
-              <div style={styles.radio}>
-                {answers[currentQ.id] === option.id && <div style={styles.radioInner} />}
-              </div>
+              <div style={styles.radio}>{answers[currentQ.id] === option.id && <div style={styles.radioInner} />}</div>
             </button>
           ))}
         </div>
       </div>
-
       <div style={styles.navigation}>
-        <button 
-          onClick={() => setCurrentQuestion(prev => prev - 1)} 
-          disabled={currentQuestion === 0}
-          style={{...styles.navButton, opacity: currentQuestion === 0 ? 0.5 : 1}}
-        >
-          <ArrowRight size={20} /> السابق
-        </button>
-
+        <button onClick={() => setCurrentQuestion(prev => prev - 1)} disabled={currentQuestion === 0} style={{...styles.navButton, opacity: currentQuestion === 0 ? 0.5 : 1}}><ArrowRight size={20} /> السابق</button>
         <div style={styles.progressDots}>
-          {questions.map((_, idx) => (
-            <div 
-              key={idx} 
-              style={{
-                ...styles.dot,
-                ...(idx === currentQuestion ? styles.active : {}),
-                ...(answers[questions[idx].id] ? styles.answered : {})
-              }}
-            />
-          ))}
+          {questions.map((_, idx) => <div key={idx} style={{...styles.dot, ...(idx === currentQuestion ? styles.active : {}), ...(answers[questions[idx].id] ? styles.answered : {})}} />)}
         </div>
-
         {isLastQuestion ? (
-          <button 
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            style={{...styles.submitButton, background: theme.success}}
-          >
-            {isSubmitting ? <Loader2 style={styles.spinning} /> : 'تسليم الإجابات'}
-          </button>
+          <button onClick={handleSubmit} disabled={isSubmitting} style={{...styles.submitButton, background: theme.success}}>{isSubmitting ? <Loader2 style={styles.spinning} /> : 'تسليم'}</button>
         ) : (
-          <button 
-            onClick={() => setCurrentQuestion(prev => prev + 1)}
-            style={{...styles.navButton, background: theme.primary, color: 'white', border: 'none'}}
-          >
-            التالي <ArrowLeft size={20} />
-          </button>
+          <button onClick={() => setCurrentQuestion(prev => prev + 1)} style={{...styles.navButton, background: theme.primary, color: 'white', border: 'none'}}>التالي <ArrowLeft size={20} /></button>
         )}
       </div>
     </div>
@@ -981,7 +707,7 @@ function getGradeTheme(gradeSlug: string): Theme {
 }
 
 // ==========================================
-// MAIN CONTENT VIEWER
+// MAIN PAGE
 // ==========================================
 function LoadingState() {
   return (
@@ -999,9 +725,7 @@ function ErrorState({ message, onBack }: { message: string; onBack: () => void }
         <AlertCircle style={styles.errorIcon} />
         <h2 style={styles.errorTitle}>حدث خطأ</h2>
         <p style={styles.errorMessage}>{message}</p>
-        <button onClick={onBack} style={styles.backBtn}>
-          العودة للباقة
-        </button>
+        <button onClick={onBack} style={styles.backBtn}>العودة للباقة</button>
       </div>
     </div>
   )
@@ -1011,6 +735,8 @@ function ContentViewer() {
   const router = useRouter()
   const params = useParams()
   const [mounted, setMounted] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
+  const authCheckDone = useRef(false)
   
   const gradeSlug = params?.grade as string
   const packageId = params?.packageId as string
@@ -1028,100 +754,109 @@ function ContentViewer() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
   const [videoProgress, setVideoProgress] = useState(0)
-  const [authChecking, setAuthChecking] = useState(true)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  // Auth check with protection against multiple executions
   useEffect(() => {
-    if (!mounted) return
-
-    const supabase = getSupabaseClient()
-    if (!supabase) return
-
+    if (!mounted || authCheckDone.current) return
+    
     const checkAuth = async () => {
+      authCheckDone.current = true
+      console.log('Checking auth...')
+      
       try {
-        setAuthChecking(true)
-        await new Promise(resolve => setTimeout(resolve, 500))
+        // Wait for session to be ready
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
-        if (sessionError || !session) {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+          console.error('No supabase client')
           router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
           return
         }
 
+        // Get session first
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        console.log('Session:', session ? 'found' : 'not found', 'Error:', sessionError)
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError)
+          router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
+          return
+        }
+
+        if (!session) {
+          console.log('No session, redirecting to login')
+          router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
+          return
+        }
+
+        // Now get user
         const { data: { user }, error: userError } = await supabase.auth.getUser()
+        console.log('User:', user ? 'found' : 'not found', 'Error:', userError)
         
         if (userError || !user) {
+          console.error('User error or no user')
           router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
           return
         }
 
+        console.log('Auth success, user:', user.id)
         setCurrentUser(user)
-        setAuthChecking(false)
-        loadContent(user)
+        setAuthChecked(true)
+        await loadContent(user)
         
       } catch (err) {
-        console.error('Auth check error:', err)
+        console.error('Auth check failed:', err)
         router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
       }
     }
 
     checkAuth()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
-      }
-    })
-
-    return () => {
-      subscription.unsubscribe()
+    // Set up auth state listener
+    const supabase = getSupabaseClient()
+    if (supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+        console.log('Auth state changed:', event, session ? 'has session' : 'no session')
+        if (event === 'SIGNED_OUT' || !session) {
+          router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
+        }
+      })
+      return () => { subscription.unsubscribe() }
     }
-  }, [mounted, contentId, packageId, gradeSlug])
+  }, [mounted]) // Only run once when mounted
 
   const loadContent = async (user: any) => {
     if (!user) return
     
     try {
       setLoading(true)
-      setError(null)
-      
       const supabase = getSupabaseClient()
-      if (!supabase) throw new Error('Supabase client not initialized')
+      if (!supabase) throw new Error('No supabase')
 
+      // Fetch content
       const { data: contentData, error: contentError } = await supabase
-        .from('lecture_contents')
-        .select('*')
-        .eq('id', contentId)
-        .single()
+        .from('lecture_contents').select('*').eq('id', contentId).single()
       
       if (contentError || !contentData) {
-        setError('المحتوى غير موجود أو تم حذفه')
+        setError('المحتوى غير موجود')
         return
       }
       setContent(contentData)
 
-      const { data: lectureData, error: lectureError } = await supabase
-        .from('lectures')
-        .select('*')
-        .eq('id', contentData.lecture_id)
-        .single()
-      
-      if (lectureError) throw lectureError
+      // Fetch lecture
+      const { data: lectureData } = await supabase.from('lectures').select('*').eq('id', contentData.lecture_id).single()
       setLecture(lectureData)
 
-      const { data: pkgData, error: pkgError } = await supabase
-        .from('packages')
-        .select('*')
-        .eq('id', packageId)
-        .single()
-      
-      if (pkgError) throw pkgError
+      // Fetch package
+      const { data: pkgData } = await supabase.from('packages').select('*').eq('id', packageId).single()
       setPackageData(pkgData)
 
+      // Check access
       const { data: userPackageData } = await supabase
         .from('user_packages')
         .select('*')
@@ -1137,6 +872,7 @@ function ContentViewer() {
       }
       setUserPackage(userPackageData)
 
+      // Get/create progress
       const { data: progressData } = await supabase
         .from('user_progress')
         .select('*')
@@ -1145,41 +881,24 @@ function ContentViewer() {
         .maybeSingle()
 
       const now = new Date().toISOString()
-      
       if (!progressData) {
-        const { data: newProgress, error: insertError } = await supabase
-          .from('user_progress')
-          .insert({
-            user_id: user.id,
-            lecture_content_id: contentId,
-            package_id: packageId,
-            status: 'in_progress',
-            last_accessed_at: now,
-            created_at: now
-          })
-          .select()
-          .single()
-
-        if (insertError) throw insertError
+        const { data: newProgress } = await supabase.from('user_progress').insert({
+          user_id: user.id, lecture_content_id: contentId, package_id: packageId,
+          status: 'in_progress', last_accessed_at: now, created_at: now
+        }).select().single()
         setUserProgress(newProgress)
       } else {
         if (progressData.status === 'not_started') {
-          await supabase.from('user_progress').update({ 
-            status: 'in_progress', 
-            last_accessed_at: now 
-          }).eq('id', progressData.id)
+          await supabase.from('user_progress').update({ status: 'in_progress', last_accessed_at: now }).eq('id', progressData.id)
           setUserProgress({ ...progressData, status: 'in_progress', last_accessed_at: now })
         } else {
-          await supabase.from('user_progress').update({ 
-            last_accessed_at: now 
-          }).eq('id', progressData.id)
+          await supabase.from('user_progress').update({ last_accessed_at: now }).eq('id', progressData.id)
           setUserProgress(progressData)
         }
       }
-
     } catch (err: any) {
-      console.error('Error loading content:', err)
-      setError(err?.message || 'حدث خطأ في تحميل المحتوى')
+      console.error('Load content error:', err)
+      setError(err?.message || 'حدث خطأ')
     } finally {
       setLoading(false)
     }
@@ -1187,9 +906,7 @@ function ContentViewer() {
 
   const handleVideoProgress = (progress: number) => {
     setVideoProgress(progress)
-    if (progress >= 80 && content?.type === 'video') {
-      markAsCompleted()
-    }
+    if (progress >= 80 && content?.type === 'video') markAsCompleted()
   }
 
   const markAsCompleted = async () => {
@@ -1202,124 +919,49 @@ function ContentViewer() {
     try {
       const supabase = getSupabaseClient()
       if (!supabase) return
-      
-      const { error } = await supabase
-        .from('user_progress')
-        .update({ status, completed_at: now })
-        .eq('id', userProgress.id)
-
-      if (!error) {
-        setUserProgress({ ...userProgress, status, completed_at: now })
-      }
+      await supabase.from('user_progress').update({ status, completed_at: now }).eq('id', userProgress.id)
+      setUserProgress({ ...userProgress, status, completed_at: now })
     } catch (err) {
-      console.error('Error marking complete:', err)
+      console.error('Mark complete error:', err)
     }
   }
 
-  const handleBack = () => {
-    router.push(`/grades/${gradeSlug}/packages/${packageId}`)
-  }
+  const handleBack = () => router.push(`/grades/${gradeSlug}/packages/${packageId}`)
 
   const renderContent = () => {
     if (!content) return null
-
     switch (content.type) {
-      case 'video':
-        return (
-          <ProtectedVideoPlayer
-            videoUrl={content.content_url || ''}
-            contentId={contentId}
-            userId={currentUser?.id}
-            packageId={packageId}
-            onProgress={handleVideoProgress}
-            theme={theme}
-          />
-        )
-      case 'pdf':
-        return (
-          <PDFViewer
-            pdfUrl={content.content_url || ''}
-            contentId={contentId}
-            packageId={packageId}
-            userId={currentUser?.id}
-            theme={theme}
-          />
-        )
-      case 'exam':
-        return (
-          <ExamViewer
-            examContent={content}
-            contentId={contentId}
-            packageId={packageId}
-            userId={currentUser?.id}
-            theme={theme}
-            onComplete={markAsCompleted}
-          />
-        )
-      case 'text':
-        return (
-          <div style={styles.textContent}>
-            <div style={styles.textContentInner}>
-              {content.content_url ? (
-                <div dangerouslySetInnerHTML={{ __html: content.content_url }} />
-              ) : (
-                'لا يوجد محتوى نصي'
-              )}
-            </div>
-          </div>
-        )
-      default:
-        return (
-          <div style={styles.unsupportedContent}>
-            <AlertCircle style={styles.unsupportedIcon} />
-            <p style={styles.unsupportedText}>نوع المحتوى غير مدعوم</p>
-          </div>
-        )
+      case 'video': return <ProtectedVideoPlayer videoUrl={content.content_url || ''} contentId={contentId} userId={currentUser?.id} packageId={packageId} onProgress={handleVideoProgress} theme={theme} />
+      case 'pdf': return <PDFViewer pdfUrl={content.content_url || ''} contentId={contentId} packageId={packageId} userId={currentUser?.id} theme={theme} />
+      case 'exam': return <ExamViewer examContent={content} contentId={contentId} packageId={packageId} userId={currentUser?.id} theme={theme} onComplete={markAsCompleted} />
+      case 'text': return <div style={styles.textContent}><div style={styles.textContentInner} dangerouslySetInnerHTML={{ __html: content.content_url || 'لا يوجد محتوى' }} /></div>
+      default: return <div style={styles.unsupportedContent}><AlertCircle style={styles.unsupportedIcon} /><p>نوع المحتوى غير مدعوم</p></div>
     }
   }
 
   const getContentTypeLabel = () => {
-    switch (content?.type) {
-      case 'video': return 'فيديو تعليمي'
-      case 'pdf': return 'ملف PDF'
-      case 'exam': return 'امتحان تقييمي'
-      case 'text': return 'نص تعليمي'
-      default: return 'محتوى'
-    }
+    switch (content?.type) { case 'video': return 'فيديو'; case 'pdf': return 'PDF'; case 'exam': return 'امتحان'; case 'text': return 'نص'; default: return 'محتوى' }
   }
 
-  if (!mounted || authChecking) return <LoadingState />
+  if (!mounted || !authChecked) return <LoadingState />
   if (loading) return <LoadingState />
   if (error) return <ErrorState message={error} onBack={handleBack} />
   if (!content) return <ErrorState message="المحتوى غير موجود" onBack={handleBack} />
 
   return (
     <div style={styles.pageContainer}>
-      <style jsx global>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-      
+      <style jsx global>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       <div style={styles.header}>
         <div style={styles.headerContent}>
           <div style={styles.breadcrumb}>
-            <button onClick={() => router.push('/')} style={styles.breadcrumbItem}>
-              <Home size={16} />الرئيسية
-            </button>
+            <button onClick={() => router.push('/')} style={styles.breadcrumbItem}><Home size={16} />الرئيسية</button>
             <ChevronRight size={16} style={styles.breadcrumbSeparator} />
-            <button onClick={() => router.push(`/grades/${gradeSlug}`)} style={styles.breadcrumbItem}>
-              {gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}
-            </button>
+            <button onClick={() => router.push(`/grades/${gradeSlug}`)} style={styles.breadcrumbItem}>{gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}</button>
             <ChevronRight size={16} style={styles.breadcrumbSeparator} />
-            <button onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)} style={styles.breadcrumbItem}>
-              {packageData?.name || 'الباقة'}
-            </button>
+            <button onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)} style={styles.breadcrumbItem}>{packageData?.name || 'الباقة'}</button>
             <ChevronRight size={16} style={styles.breadcrumbSeparator} />
             <span style={styles.currentPage}>{content.title}</span>
           </div>
-
           <div style={styles.contentHeader}>
             <div style={styles.contentInfo}>
               <h1 style={styles.contentTitle}>{content.title}</h1>
@@ -1331,14 +973,8 @@ function ContentViewer() {
                 <span>{packageData?.name}</span>
               </div>
             </div>
-
             <div style={styles.headerActions}>
-              <button 
-                onClick={handleBack} 
-                style={{...styles.backActionBtn, borderColor: theme.primary, color: theme.primary}}
-              >
-                <ArrowRight size={18} />العودة
-              </button>
+              <button onClick={handleBack} style={{...styles.backActionBtn, borderColor: theme.primary, color: theme.primary}}><ArrowRight size={18} />العودة</button>
             </div>
           </div>
         </div>
@@ -1348,95 +984,20 @@ function ContentViewer() {
         <div style={styles.contentLayout}>
           <div style={styles.leftColumn}>
             <div style={styles.tabs}>
-              <button 
-                onClick={() => setActiveTab('viewer')} 
-                style={{
-                  ...styles.tabButton,
-                  ...(activeTab === 'viewer' ? {...styles.activeTab, borderColor: theme.primary, color: theme.primary} : {})
-                }}
-              >
-                <Eye size={18} /><span>عارض المحتوى</span>
-              </button>
-              <button 
-                onClick={() => setActiveTab('info')} 
-                style={{
-                  ...styles.tabButton,
-                  ...(activeTab === 'info' ? {...styles.activeTab, borderColor: theme.primary, color: theme.primary} : {})
-                }}
-              >
-                <BookOpen size={18} /><span>معلومات المحتوى</span>
-              </button>
+              <button onClick={() => setActiveTab('viewer')} style={{...styles.tabButton, ...(activeTab === 'viewer' ? {...styles.activeTab, borderColor: theme.primary, color: theme.primary} : {})}}><Eye size={18} /><span>العرض</span></button>
+              <button onClick={() => setActiveTab('info')} style={{...styles.tabButton, ...(activeTab === 'info' ? {...styles.activeTab, borderColor: theme.primary, color: theme.primary} : {})}}><BookOpen size={18} /><span>المعلومات</span></button>
             </div>
-
             <div style={styles.contentArea}>
-              {activeTab === 'viewer' ? (
-                <div style={styles.viewerContainer}>{renderContent()}</div>
-              ) : (
+              {activeTab === 'viewer' ? <div style={styles.viewerContainer}>{renderContent()}</div> : (
                 <div style={styles.infoContainer}>
-                  <div style={styles.infoContent}>
-                    <h3 style={styles.infoTitle}>معلومات المحتوى</h3>
-                    <div style={styles.infoGrid}>
-                      <div style={styles.infoSection}>
-                        <h4 style={styles.infoSectionTitle}>الوصف</h4>
-                        <p style={styles.infoDescription}>{content.description || 'لا يوجد وصف متاح'}</p>
-                      </div>
-                      <div style={styles.infoDetails}>
-                        <div style={styles.detailItem}>
-                          <div style={styles.detailLabel}>نوع المحتوى</div>
-                          <div style={styles.detailValue}>
-                            <span style={styles.detailBadge}>
-                              {content.type === 'video' ? (<><Video size={16} />فيديو</>) : 
-                               content.type === 'pdf' ? (<><FileText size={16} />ملف PDF</>) : 
-                               content.type === 'exam' ? (<><Target size={16} />امتحان</>) : 
-                               (<><BookOpen size={16} />نص</>)}
-                            </span>
-                          </div>
-                        </div>
-                        {content.duration_minutes > 0 && (
-                          <div style={styles.detailItem}>
-                            <div style={styles.detailLabel}>المدة الزمنية</div>
-                            <div style={styles.detailValue}>
-                              <span style={styles.detailBadge}><Clock size={14} />{content.duration_minutes} دقيقة</span>
-                            </div>
-                          </div>
-                        )}
-                        {content.type === 'exam' && (
-                          <>
-                            <div style={styles.detailItem}>
-                              <div style={styles.detailLabel}>درجة النجاح</div>
-                              <div style={styles.detailValue}>
-                                <span style={styles.detailBadge}><Target size={14} />{content.pass_score}%</span>
-                              </div>
-                            </div>
-                            <div style={styles.detailItem}>
-                              <div style={styles.detailLabel}>عدد المحاولات</div>
-                              <div style={styles.detailValue}>
-                                <span style={styles.detailBadge}><Clock size={14} />{content.max_attempts} محاولة</span>
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <h3 style={styles.infoTitle}>معلومات المحتوى</h3>
+                  <p>{content.description || 'لا يوجد وصف'}</p>
                 </div>
               )}
-
               {content.type === 'video' && (
                 <div style={styles.progressTracking}>
-                  <div style={styles.progressHeader}>
-                    <h4 style={styles.progressTitle}>تقدم المشاهدة</h4>
-                    <span style={styles.progressPercentage}>{videoProgress}%</span>
-                  </div>
-                  <div style={styles.progressBar}>
-                    <div 
-                      style={{...styles.progressFill, width: `${videoProgress}%`, background: theme.primary}} 
-                    />
-                  </div>
-                  <div style={styles.progressLabels}>
-                    <span style={styles.progressLabel}>لم يشاهد</span>
-                    <span style={styles.progressLabel}>مشاهدة كاملة</span>
-                  </div>
+                  <div style={styles.progressHeader}><h4>تقدم المشاهدة</h4><span>{videoProgress}%</span></div>
+                  <div style={styles.progressBar}><div style={{...styles.progressFill, width: `${videoProgress}%`, background: theme.primary}} /></div>
                 </div>
               )}
             </div>
@@ -1444,129 +1005,18 @@ function ContentViewer() {
 
           <div style={styles.rightColumn}>
             <div style={styles.statusCard}>
-              <h4 style={styles.cardTitle}>حالة المحتوى</h4>
-              <div 
-                style={{
-                  ...styles.statusContent,
-                  ...(userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.statusCompleted :
-                     userProgress?.status === 'failed' ? styles.statusFailed :
-                     userProgress?.status === 'in_progress' ? styles.statusInProgress : styles.statusNotStarted)
-                }}
-              >
-                {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? (
-                  <CheckCircle size={24} />
-                ) : userProgress?.status === 'failed' ? (
-                  <X size={24} />
-                ) : userProgress?.status === 'in_progress' ? (
-                  <Loader2 style={styles.spinning} size={24} />
-                ) : (
-                  <BookOpen size={24} />
-                )}
+              <h4 style={styles.cardTitle}>الحالة</h4>
+              <div style={{...styles.statusContent, ...(userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.statusCompleted : userProgress?.status === 'failed' ? styles.statusFailed : userProgress?.status === 'in_progress' ? styles.statusInProgress : styles.statusNotStarted)}}>
+                {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? <CheckCircle size={24} /> : userProgress?.status === 'failed' ? <X size={24} /> : userProgress?.status === 'in_progress' ? <Loader2 style={styles.spinning} size={24} /> : <BookOpen size={24} />}
                 <div style={styles.statusInfo}>
-                  <div style={styles.statusText}>
-                    {userProgress?.status === 'completed' ? 'مكتمل' :
-                     userProgress?.status === 'passed' ? 'ناجح' :
-                     userProgress?.status === 'failed' ? 'فاشل' :
-                     userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}
-                  </div>
-                  {userProgress?.completed_at && (
-                    <div style={styles.statusDate}>
-                      تم الإكمال: {new Date(userProgress.completed_at).toLocaleDateString('ar-EG')}
-                    </div>
-                  )}
+                  <div>{userProgress?.status === 'completed' ? 'مكتمل' : userProgress?.status === 'passed' ? 'ناجح' : userProgress?.status === 'failed' ? 'فاشل' : userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}</div>
                 </div>
               </div>
-
               {content.type !== 'exam' && (
-                <button 
-                  onClick={markAsCompleted} 
-                  disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'}
-                  style={{
-                    ...styles.completeButton,
-                    ...(userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.completeButtonDisabled : {background: theme.success})
-                  }}
-                >
-                  {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? (
-                    <><CheckCircle size={18} />تم الإكمال</>
-                  ) : (
-                    <><CheckCircle size={18} />تمييز كمكتمل</>
-                  )}
+                <button onClick={markAsCompleted} disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'} style={{...styles.completeButton, ...(userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.completeButtonDisabled : {background: theme.success})}}>
+                  {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? <><CheckCircle size={18} />تم</> : <><CheckCircle size={18} />تمييز كمكتمل</>}
                 </button>
               )}
-            </div>
-
-            <div style={styles.actionsCard}>
-              <h4 style={styles.cardTitle}>إجراءات سريعة</h4>
-              <div style={styles.actionsList}>
-                {content.type === 'pdf' && content.content_url && (
-                  <a 
-                    href={content.content_url} 
-                    download 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    style={styles.actionItem}
-                  >
-                    <span style={styles.actionText}>تحميل الملف</span>
-                    <Download size={18} />
-                  </a>
-                )}
-                <button 
-                  onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)} 
-                  style={styles.actionItem}
-                >
-                  <span style={styles.actionText}>العودة للباقة</span>
-                  <ArrowRight size={18} />
-                </button>
-                <button 
-                  onClick={() => router.push(`/grades/${gradeSlug}`)} 
-                  style={styles.actionItem}
-                >
-                  <span style={styles.actionText}>جميع باقات الصف</span>
-                  <BookOpen size={18} />
-                </button>
-              </div>
-            </div>
-
-            <div style={styles.packageCard}>
-              <h4 style={styles.cardTitle}>معلومات الباقة</h4>
-              <div style={styles.packageInfo}>
-                <div style={styles.packageItem}>
-                  <div style={{...styles.packageIcon, background: theme.primary}}>
-                    <Award size={20} />
-                  </div>
-                  <div style={styles.packageDetails}>
-                    <div style={styles.packageName}>{packageData?.name}</div>
-                    <div style={styles.packageType}>
-                      {packageData?.type === 'weekly' ? 'أسبوعي' : packageData?.type === 'monthly' ? 'شهري' : 'ترم كامل'}
-                    </div>
-                  </div>
-                </div>
-                <div style={styles.packageItem}>
-                  <div style={{...styles.packageIcon, background: theme.success}}>
-                    <Shield size={20} />
-                  </div>
-                  <div style={styles.packageDetails}>
-                    <div style={styles.packageName}>حالة الاشتراك</div>
-                    <div style={styles.packageStatus}>
-                      {userPackage?.expires_at 
-                        ? `نشط حتى ${new Date(userPackage.expires_at).toLocaleDateString('ar-EG')}` 
-                        : 'غير متاح'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.tipsCard}>
-              <div style={styles.tipsHeader}>
-                <Zap style={{...styles.tipsIcon, color: '#f59e0b'}} />
-                <h5 style={styles.tipsTitle}>نصائح للتعلم</h5>
-              </div>
-              <ul style={styles.tipsList}>
-                <li style={styles.tipItem}>• خذ ملاحظات أثناء المشاهدة</li>
-                <li style={styles.tipItem}>• كرر الأجزاء المهمة</li>
-                <li style={styles.tipItem}>• اختبر فهمك بعد كل محتوى</li>
-              </ul>
             </div>
           </div>
         </div>
@@ -1575,9 +1025,6 @@ function ContentViewer() {
   )
 }
 
-// ==========================================
-// PAGE EXPORT WITH SUSPENSE
-// ==========================================
 export default function ContentPage() {
   return (
     <Suspense fallback={<LoadingState />}>
