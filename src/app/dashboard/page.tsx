@@ -242,7 +242,7 @@ export default async function DashboardPage() {
         <div className="header-content">
           <div className="header-left">
             <div className="logo-container">
-              <span className="logo-text">م</span>
+              <span className="logo-text">MD</span>
             </div>
             <div className="header-text">
               <h1 className="platform-name">محمود الديب</h1>
@@ -284,7 +284,7 @@ export default async function DashboardPage() {
           <div className="welcome-content">
             <div className="welcome-text">
               <h2 className="welcome-title">
-                مرحباً بك، {profile.full_name}!
+                 مرحبًا بك،  {profile.full_name}!
               </h2>
               <p className="welcome-subtitle">
                 استمر في رحلتك التعليمية وحقق أهدافك
@@ -298,12 +298,7 @@ export default async function DashboardPage() {
                   </span>
                 </div>
 
-                <Link
-                  href={`/grades/${profile.grade}`}
-                  className="primary-button"
-                >
-                  استكشاف الباقات →
-                </Link>
+
               </div>
             </div>
 
@@ -348,37 +343,16 @@ export default async function DashboardPage() {
                 <p className="stat-label">إجمالي المشتريات</p>
               </div>
             </div>
-
-            <div className="stat-card">
-              <div className="stat-icon-wrapper bg-warning-500/10 text-warning-500">
-                <Clock size={24} />
-              </div>
-              <div className="stat-content">
-                <h4 className="stat-value">
-                  {userPackages && userPackages.length > 0 
-                    ? calculateDaysRemaining(userPackages[0].expires_at)
-                    : 'لا يوجد'
-                  }
-                </h4>
-                <p className="stat-label">ينتهي أقرب باقة</p>
-              </div>
-            </div>
           </div>
         </div>
 
         {/* Grade Section */}
         <div className="grade-section">
-          <div className="section-header">
-            <h3 className="section-title">الصف الدراسي</h3>
-            <Link href={`/grades/${profile.grade}`} className="view-all-link">
-              عرض جميع المواد →
-            </Link>
-          </div>
           <div className="grade-card">
             <div className="grade-content">
               <div className="grade-info">
                 <h4>الصف {getGradeText(profile.grade)}</h4>
-                <p>ابدأ رحلتك التعليمية مع باقات الصف {getGradeText(profile.grade)}</p>
+                <p>ابدأ رحلتك التعليمية مع باقات مميزة </p>
               </div>
               <Link 
                 href={`/grades/${profile.grade}`}

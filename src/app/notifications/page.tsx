@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   getUserNotifications, 
@@ -38,62 +38,33 @@ export default function StudentNotificationsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [unreadCount, setUnreadCount] = useState(0);
   const [filter, setFilter] = useState<FilterType>('all');
-  const [userId, setUserId] = useState<string | null>(null);
 
-  // جلب ID المستخدم من localStorage أو session
+  // تحميل البيانات مباشرة (Server Actions تتحقق من المستخدم)
   useEffect(() => {
-    const fetchUserId = () => {
-      // هنا يمكنك استخدام طريقة مناسبة لجلب ID المستخدم
-      // مثلاً من context أو localStorage أو session
-      const storedUserId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-      if (storedUserId) {
-        setUserId(storedUserId);
-      } else {
-        // إذا لم يكن هناك ID، نقوم بإعادة التوجيه إلى صفحة تسجيل الدخول
-        router.push('/login');
-      }
-    };
+    loadData();
+  }, [currentPage]);
 
-    fetchUserId();
-  }, [router]);
-
-  // تحميل الإشعارات والإحصائيات
-  useEffect(() => {
-    if (userId) {
-      loadNotifications();
-      loadUnreadCount();
-    }
-  }, [userId, currentPage]);
-
-  // تطبيق الفلتر
-  useEffect(() => {
-    let filtered = [...notifications];
-    
-    switch (filter) {
-      case 'unread':
-        filtered = filtered.filter(notification => !notification.is_read);
-        break;
-      case 'read':
-        filtered = filtered.filter(notification => notification.is_read);
-        break;
-      default:
-        // 'all' - لا يتم تصفية أي شيء
-        break;
-    }
-    
-    setFilteredNotifications(filtered);
-  }, [notifications, filter]);
-
-  const loadNotifications = async () => {
-    if (!userId) return;
-    
+  const loadData = async () => {
     setLoading(true);
+    setError('');
+    
     try {
-      const result = await getUserNotifications(userId, currentPage, 15);
-      if (result.error) throw new Error(result.error);
+      const [notificationsResult, countResult] = await Promise.all([
+        getUserNotifications(currentPage, 15),
+        getUnreadCount()
+      ]);
+
+      if (notificationsResult.error) {
+        if (notificationsResult.error.includes('غير مصرح')) {
+          router.replace('/login?redirect=/notifications');
+          return;
+        }
+        throw new Error(notificationsResult.error);
+      }
       
-      setNotifications(result.data || []);
-      setTotalPages(result.totalPages || 1);
+      setNotifications(notificationsResult.data);
+      setTotalPages(notificationsResult.totalPages);
+      setUnreadCount(countResult.count);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -101,62 +72,43 @@ export default function StudentNotificationsPage() {
     }
   };
 
-  const loadUnreadCount = async () => {
-    if (!userId) return;
-    
-    try {
-      const result = await getUnreadCount(userId);
-      if (result.error) throw new Error(result.error);
-      
-      setUnreadCount(result.count);
-    } catch (err: any) {
-      console.error('Error loading unread count:', err);
+  useEffect(() => {
+    let filtered = [...notifications];
+    switch (filter) {
+      case 'unread':
+        filtered = filtered.filter(n => !n.is_read);
+        break;
+      case 'read':
+        filtered = filtered.filter(n => n.is_read);
+        break;
     }
-  };
+    setFilteredNotifications(filtered);
+  }, [notifications, filter]);
 
   const handleMarkAsRead = async (notificationId: string) => {
-    if (!userId) return;
-    
     try {
-      const result = await markAsRead(userId, notificationId);
+      const result = await markAsRead(notificationId);
       if (result.error) throw new Error(result.error);
       
-      // تحديث القائمة المحلية
-      setNotifications(prev => prev.map(notification =>
-        notification.id === notificationId 
-          ? { ...notification, is_read: true }
-          : notification
+      setNotifications(prev => prev.map(n =>
+        n.id === notificationId ? { ...n, is_read: true } : n
       ));
-      
-      // تحديث العداد
       setUnreadCount(prev => Math.max(0, prev - 1));
-      
-      setSuccess('تم تحديد الإشعار كمقروء');
-      setTimeout(() => setSuccess(''), 3000);
+      showSuccess('تم التحديد كمقروء');
     } catch (err: any) {
       setError(err.message);
     }
   };
 
   const handleMarkAllAsRead = async () => {
-    if (!userId) return;
-    
     setMarkingAll(true);
     try {
-      const result = await markAllAsRead(userId);
+      const result = await markAllAsRead();
       if (result.error) throw new Error(result.error);
       
-      // تحديث جميع الإشعارات المحلية
-      setNotifications(prev => prev.map(notification => ({
-        ...notification,
-        is_read: true
-      })));
-      
-      // إعادة تعيين العداد
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
-      
-      setSuccess('تم تحديد جميع الإشعارات كمقروءة');
-      setTimeout(() => setSuccess(''), 3000);
+      showSuccess('تم تحديد الكل كمقروء');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -165,45 +117,35 @@ export default function StudentNotificationsPage() {
   };
 
   const handleDelete = async (notificationId: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا الإشعار؟')) return;
-    
-    if (!userId) return;
+    if (!confirm('هل أنت متأكد من الحذف؟')) return;
     
     try {
-      const result = await deleteNotification(userId, notificationId);
+      const result = await deleteNotification(notificationId);
       if (result.error) throw new Error(result.error);
       
-      // إزالة الإشعار من القائمة المحلية
-      const deletedNotification = notifications.find(n => n.id === notificationId);
-      setNotifications(prev => prev.filter(notification => notification.id !== notificationId));
-      
-      // تحديث العداد إذا كان الإشعار غير مقروء
-      if (deletedNotification && !deletedNotification.is_read) {
+      const deleted = notifications.find(n => n.id === notificationId);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      if (deleted && !deleted.is_read) {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
-      
-      setSuccess('تم حذف الإشعار بنجاح');
-      setTimeout(() => setSuccess(''), 3000);
+      showSuccess('تم الحذف بنجاح');
     } catch (err: any) {
       setError(err.message);
     }
   };
 
-  const handleRefresh = () => {
-    setCurrentPage(1);
-    loadNotifications();
-    loadUnreadCount();
-    setSuccess('تم تحديث الإشعارات');
-    setTimeout(() => setSuccess(''), 2000);
+  const showSuccess = (msg: string) => {
+    setSuccess(msg);
+    setTimeout(() => setSuccess(''), 3000);
   };
 
   const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'info': return 'معلومات';
-      case 'success': return 'نجاح';
-      case 'warning': return 'تحذير';
-      default: return type;
-    }
+    const labels: Record<string, string> = {
+      info: 'معلومات',
+      success: 'نجاح',
+      warning: 'تحذير'
+    };
+    return labels[type] || type;
   };
 
   const getTimeAgo = (dateString: string) => {
@@ -214,24 +156,30 @@ export default function StudentNotificationsPage() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 60) {
-      return `منذ ${diffMins} دقيقة`;
-    } else if (diffHours < 24) {
-      return `منذ ${diffHours} ساعة`;
-    } else if (diffDays === 1) {
-      return 'أمس';
-    } else if (diffDays < 7) {
-      return `منذ ${diffDays} أيام`;
-    } else {
-      return date.toLocaleDateString('ar-SA');
+    if (diffMins < 1) return 'الآن';
+    if (diffMins < 60) return `منذ ${diffMins} دقيقة`;
+    if (diffHours < 24) return `منذ ${diffHours} ساعة`;
+    if (diffDays === 1) return 'أمس';
+    if (diffDays < 7) return `منذ ${diffDays} أيام`;
+    return date.toLocaleDateString('ar-SA');
+  };
+
+  const getTypeStyles = (type: string) => {
+    switch (type) {
+      case 'success': return 'type-success';
+      case 'warning': return 'type-warning';
+      default: return 'type-info';
     }
   };
 
   if (loading && notifications.length === 0) {
     return (
-      <div className="loading">
-        <div className="loading-spinner"></div>
-        <p>جاري تحميل الإشعارات...</p>
+      <div className="notifications-skeleton">
+        <div className="skeleton-header"></div>
+        <div className="skeleton-filters"></div>
+        {[1,2,3].map(i => (
+          <div key={i} className="skeleton-card"></div>
+        ))}
       </div>
     );
   }
@@ -239,208 +187,175 @@ export default function StudentNotificationsPage() {
   return (
     <div className="notifications-page">
       <div className="notifications-container">
-        {/* رسائل النجاح والخطأ */}
-        {error && (
-          <div className="error-message">
-            <i className="fas fa-exclamation-circle"></i>
-            <span>{error}</span>
-          </div>
-        )}
-        
-        {success && (
-          <div className="success-message">
-            <i className="fas fa-check-circle"></i>
-            <span>{success}</span>
-          </div>
-        )}
+        {/* Toast Notifications */}
+        <div className="toast-container">
+          {error && (
+            <div className="toast toast-error">
+              <i className="icon-error">⚠️</i>
+              <span>{error}</span>
+            </div>
+          )}
+          {success && (
+            <div className="toast toast-success">
+              <i className="icon-success">✓</i>
+              <span>{success}</span>
+            </div>
+          )}
+        </div>
 
-        {/* الهيدر والإحصائيات */}
-        <div className="header-section">
-          <h1>إشعاراتي</h1>
+        {/* Header */}
+        <header className="page-header">
+          <div className="header-content">
+            <h1 className="page-title">
+              <span className="title-icon">🔔</span>
+              إشعاراتي
+            </h1>
+            <div className="header-stats">
+              <div className="stat-badge">
+                <span className="stat-number">{notifications.length}</span>
+                <span className="stat-label">الكل</span>
+              </div>
+              <div className="stat-badge unread-badge">
+                <span className="stat-number">{unreadCount}</span>
+                <span className="stat-label">غير مقروء</span>
+              </div>
+            </div>
+          </div>
           
-          <div className="stats-card">
-            <div className={`bell-icon ${unreadCount === 0 ? 'empty' : ''}`}>
-              <i className="fas fa-bell"></i>
-              {unreadCount > 0 && (
-                <span className="unread-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
-              )}
-            </div>
-            
-            <div className="stats-info">
-              <span className="stats-count">{notifications.length}</span>
-              <span className="stats-label">إجمالي الإشعارات</span>
-            </div>
-            
+          <button
+            onClick={handleMarkAllAsRead}
+            className={`btn-mark-all ${markingAll ? 'loading' : ''}`}
+            disabled={unreadCount === 0 || markingAll}
+          >
+            {markingAll ? (
+              <span className="spinner"></span>
+            ) : (
+              <>
+                <span className="btn-icon">✓✓</span>
+                تحديد الكل كمقروء
+              </>
+            )}
+          </button>
+        </header>
+
+        {/* Filters */}
+        <div className="filters-bar">
+          {(['all', 'unread', 'read'] as FilterType[]).map((f) => (
             <button
-              onClick={handleMarkAllAsRead}
-              className="mark-all-btn"
-              disabled={unreadCount === 0 || markingAll}
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`filter-chip ${filter === f ? 'active' : ''}`}
             >
-              {markingAll ? (
-                <>
-                  <i className="fas fa-spinner fa-spin"></i>
-                  جاري التحديث...
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-check-double"></i>
-                  تحديد الكل كمقروء
-                </>
-              )}
+              <span className="chip-label">
+                {f === 'all' ? 'الكل' : f === 'unread' ? 'غير مقروء' : 'مقروء'}
+              </span>
+              <span className="chip-count">
+                {f === 'all' ? notifications.length : 
+                 f === 'unread' ? unreadCount : 
+                 notifications.length - unreadCount}
+              </span>
             </button>
-          </div>
+          ))}
         </div>
 
-        {/* فلاتر التصفية */}
-        <div className="filters-section">
-          <button
-            className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
-            onClick={() => setFilter('all')}
-          >
-            <span className="count">{notifications.length}</span>
-            جميع الإشعارات
-          </button>
-          
-          <button
-            className={`filter-btn ${filter === 'unread' ? 'active' : ''}`}
-            onClick={() => setFilter('unread')}
-          >
-            <span className="count">{unreadCount}</span>
-            غير مقروء
-            {unreadCount > 0 && <i className="fas fa-circle" style={{ color: '#fc8181', fontSize: '0.6rem' }}></i>}
-          </button>
-          
-          <button
-            className={`filter-btn ${filter === 'read' ? 'active' : ''}`}
-            onClick={() => setFilter('read')}
-          >
-            <span className="count">{notifications.length - unreadCount}</span>
-            مقروء
-          </button>
-        </div>
-
-        {/* قائمة الإشعارات */}
+        {/* Notifications List */}
         <div className="notifications-list">
           {filteredNotifications.length === 0 ? (
-            <div className="no-notifications">
-              <div className="no-notifications-icon">
-                <i className="fas fa-bell-slash"></i>
-              </div>
+            <div className="empty-state">
+              <div className="empty-icon">📭</div>
               <h3>لا توجد إشعارات</h3>
-              <p>{filter === 'unread' 
-                ? 'لا توجد إشعارات غير مقروءة' 
-                : filter === 'read' 
-                ? 'لا توجد إشعارات مقروءة' 
-                : 'لم تصلك أي إشعارات حتى الآن'}</p>
+              <p>
+                {filter === 'unread' ? 'لا توجد إشعارات جديدة غير مقروءة' :
+                 filter === 'read' ? 'لم تقرأ أي إشعارات بعد' :
+                 'سيتم إشعارك هنا عند وجود مستجدات'}
+              </p>
             </div>
           ) : (
             filteredNotifications.map((notification, index) => (
-              <div 
+              <article 
                 key={notification.id} 
-                className={`notification-card ${notification.type} ${!notification.is_read ? 'unread' : ''}`}
-                style={{ animationDelay: `${index * 0.05}s` }}
+                className={`notification-card ${!notification.is_read ? 'unread' : ''} ${getTypeStyles(notification.type)}`}
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div className="notification-header">
-                  <h3 className="notification-title">
-                    {notification.title}
-                    {!notification.is_read && (
-                      <span className="notification-badge badge-new">
-                        <i className="fas fa-star"></i> جديد
-                      </span>
-                    )}
-                    <span className={`notification-badge badge-${notification.type}`}>
-                      {getTypeLabel(notification.type)}
-                    </span>
-                  </h3>
+                {!notification.is_read && <div className="unread-indicator"></div>}
+                
+                <div className="card-header">
+                  <div className="type-badge">
+                    {getTypeLabel(notification.type)}
+                  </div>
+                  {!notification.is_read && (
+                    <span className="new-badge">جديد</span>
+                  )}
                 </div>
 
-                <div className="notification-content">
-                  {notification.message}
-                </div>
+                <h3 className="card-title">{notification.title}</h3>
+                <p className="card-message">{notification.message}</p>
 
-                <div className="notification-footer">
-                  <div className="notification-meta">
-                    <span className="meta-item">
-                      <i className="fas fa-clock"></i>
+                <footer className="card-footer">
+                  <div className="meta-info">
+                    <time className="time-badge">
+                      <span className="meta-icon">🕐</span>
                       {getTimeAgo(notification.created_at)}
-                    </span>
-                    
+                    </time>
                     {notification.target_grade && (
-                      <span className="meta-item">
-                        <i className="fas fa-graduation-cap"></i>
-                        للصف {notification.target_grade}
-                      </span>
-                    )}
-                    
-                    {notification.target_section && (
-                      <span className="meta-item">
-                        <i className="fas fa-layer-group"></i>
-                        قسم {notification.target_section}
+                      <span className="target-badge">
+                        <span className="meta-icon">🎓</span>
+                        الصف {notification.target_grade}
                       </span>
                     )}
                   </div>
 
-                  <div className="notification-actions">
+                  <div className="card-actions">
                     {!notification.is_read && (
                       <button
                         onClick={() => handleMarkAsRead(notification.id)}
-                        className="action-btn read"
+                        className="btn-action btn-read"
                         title="تحديد كمقروء"
                       >
-                        <i className="fas fa-check"></i>
+                        <span>✓</span>
                         مقروء
                       </button>
                     )}
-                    
                     <button
                       onClick={() => handleDelete(notification.id)}
-                      className="action-btn delete"
+                      className="btn-action btn-delete"
                       title="حذف"
                     >
-                      <i className="fas fa-trash"></i>
-                      حذف
+                      <span>🗑</span>
                     </button>
                   </div>
-                </div>
-              </div>
+                </footer>
+              </article>
             ))
           )}
         </div>
 
-        {/* الترقيم */}
+        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="pagination">
+          <nav className="pagination">
             <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              onClick={() => setCurrentPage(p => p - 1)}
               disabled={currentPage === 1}
-              className="pagination-btn"
+              className="page-btn"
             >
-              <i className="fas fa-chevron-right"></i>
               السابق
             </button>
-            
             <span className="page-info">
-              الصفحة {currentPage} من {totalPages}
+              {currentPage} / {totalPages}
             </span>
-            
             <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              onClick={() => setCurrentPage(p => p + 1)}
               disabled={currentPage === totalPages}
-              className="pagination-btn"
+              className="page-btn"
             >
               التالي
-              <i className="fas fa-chevron-left"></i>
             </button>
-          </div>
+          </nav>
         )}
 
-        {/* زر التحديث */}
-        <button
-          onClick={handleRefresh}
-          className="refresh-btn"
-          title="تحديث الإشعارات"
-        >
-          <i className="fas fa-sync-alt"></i>
+        {/* Refresh Button */}
+        <button onClick={loadData} className="btn-refresh" title="تحديث">
+          <span className={`refresh-icon ${loading ? 'spin' : ''}`}>↻</span>
         </button>
       </div>
     </div>

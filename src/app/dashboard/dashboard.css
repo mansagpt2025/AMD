@@ -418,7 +418,7 @@
 
 .welcome-title {
   font-size: var(--text-2xl);
-  font-weight: 900;
+  font-weight: 300;
   line-height: 1.2;
   letter-spacing: -0.02em;
 }
