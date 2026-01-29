@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 
 // ==========================================
-// STYLES
+// STYLES (نفس ما هو)
 // ==========================================
 const styles: Record<string, React.CSSProperties> = {
   pageContainer: { minHeight: '100vh', background: '#f8fafc' },
@@ -180,24 +180,19 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 // ==========================================
-// SUPABASE CLIENT - GLOBAL SINGLETON
+// SUPABASE CLIENT - محسن ومثبت
 // ==========================================
-declare global {
-  interface Window {
-    __supabaseClient?: any;
-  }
-}
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const getSupabaseClient = () => {
+let supabaseInstance: SupabaseClient | null = null
+
+const getSupabaseClient = (): SupabaseClient | null => {
   if (typeof window === 'undefined') return null
   
-  // Return existing instance if available
-  if (window.__supabaseClient) {
-    return window.__supabaseClient
+  if (supabaseInstance) {
+    return supabaseInstance
   }
   
-  // Create new instance
-  const { createClient } = require('@supabase/supabase-js')
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   
@@ -206,21 +201,21 @@ const getSupabaseClient = () => {
     return null
   }
   
-  window.__supabaseClient = createClient(supabaseUrl, supabaseKey, {
+  supabaseInstance = createClient(supabaseUrl, supabaseKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false, // Disable to prevent conflicts
+      detectSessionInUrl: true,
       storageKey: 'sb-auth-token',
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined
+      storage: window.localStorage
     }
   })
   
-  return window.__supabaseClient
+  return supabaseInstance
 }
 
 // ==========================================
-// TYPES
+// TYPES (نفس ما هو)
 // ==========================================
 interface Question {
   id: number
@@ -235,7 +230,7 @@ interface Theme {
 }
 
 // ==========================================
-// VIDEO PLAYER
+// VIDEO PLAYER (نفس ما هو مع تعديلات بسيطة)
 // ==========================================
 function ProtectedVideoPlayer({ 
   videoUrl, contentId, userId, packageId, onProgress, theme 
@@ -252,7 +247,7 @@ function ProtectedVideoPlayer({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showControls, setShowControls] = useState(true)
-  const [lastSavedTime, setLastSavedTime] = useState(0)
+  const lastSavedTimeRef = useRef(0)
 
   const isYouTube = videoUrl?.includes('youtube.com') || videoUrl?.includes('youtu.be')
   
@@ -264,13 +259,13 @@ function ProtectedVideoPlayer({
 
   const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null
 
-  const saveProgress = useCallback(async (currentTime: number, totalDuration: number) => {
+  const saveProgress = useCallback(async (currentTimeValue: number, totalDuration: number) => {
     if (!userId || !contentId) return
     try {
       const supabase = getSupabaseClient()
       if (!supabase) return
-      const progress = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0
-      if (Math.abs(currentTime - lastSavedTime) < 10 && progress < 95) return
+      const progress = totalDuration > 0 ? (currentTimeValue / totalDuration) * 100 : 0
+      if (Math.abs(currentTimeValue - lastSavedTimeRef.current) < 10 && progress < 95) return
       
       await supabase.from('user_progress').upsert({
         user_id: userId,
@@ -282,12 +277,12 @@ function ProtectedVideoPlayer({
         ...(progress >= 90 && { completed_at: new Date().toISOString() })
       }, { onConflict: 'user_id,lecture_content_id' })
 
-      setLastSavedTime(currentTime)
+      lastSavedTimeRef.current = currentTimeValue
       onProgress(Math.round(progress))
     } catch (err) {
       console.error('Error saving progress:', err)
     }
-  }, [userId, contentId, packageId, onProgress, lastSavedTime])
+  }, [userId, contentId, packageId, onProgress])
 
   useEffect(() => {
     if (isYouTube || !videoRef.current) return
@@ -420,7 +415,7 @@ function ProtectedVideoPlayer({
 }
 
 // ==========================================
-// PDF VIEWER
+// PDF VIEWER (نفس ما هو)
 // ==========================================
 function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: { 
   pdfUrl: string; contentId: string; userId: string; packageId: string
@@ -556,7 +551,7 @@ function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: 
 }
 
 // ==========================================
-// EXAM VIEWER
+// EXAM VIEWER (نفس ما هو)
 // ==========================================
 function ExamViewer({ examContent, contentId, packageId, userId, theme, onComplete }: {
   examContent: any; contentId: string; packageId: string; userId: string
@@ -695,7 +690,7 @@ function ExamViewer({ examContent, contentId, packageId, userId, theme, onComple
 }
 
 // ==========================================
-// UTILS
+// UTILS (نفس ما هو)
 // ==========================================
 function getGradeTheme(gradeSlug: string): Theme {
   const themes: Record<string, Theme> = {
@@ -707,7 +702,7 @@ function getGradeTheme(gradeSlug: string): Theme {
 }
 
 // ==========================================
-// MAIN PAGE
+// MAIN PAGE - محسن ومثبت نهائياً
 // ==========================================
 function LoadingState() {
   return (
@@ -735,8 +730,6 @@ function ContentViewer() {
   const router = useRouter()
   const params = useParams()
   const [mounted, setMounted] = useState(false)
-  const [authChecked, setAuthChecked] = useState(false)
-  const authCheckDone = useRef(false)
   
   const gradeSlug = params?.grade as string
   const packageId = params?.packageId as string
@@ -754,110 +747,106 @@ function ContentViewer() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
   const [videoProgress, setVideoProgress] = useState(0)
+  
+  // مهم: state للتحكم في التحقق من الـ Auth
+  const [authState, setAuthState] = useState<'checking' | 'authenticated' | 'unauthenticated'>('checking')
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Auth check with protection against multiple executions
+  // ==========================================
+  // FIX: منع الـ Loop باستخدام onAuthStateChange كمصدر أساسي
+  // ==========================================
   useEffect(() => {
-    if (!mounted || authCheckDone.current) return
+    if (!mounted) return
     
-    const checkAuth = async () => {
-      authCheckDone.current = true
-      console.log('Checking auth...')
-      
-      try {
-        // Wait for session to be ready
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        const supabase = getSupabaseClient()
-        if (!supabase) {
-          console.error('No supabase client')
-          router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
-          return
-        }
-
-        // Get session first
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        console.log('Session:', session ? 'found' : 'not found', 'Error:', sessionError)
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError)
-          router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
-          return
-        }
-
-        if (!session) {
-          console.log('No session, redirecting to login')
-          router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
-          return
-        }
-
-        // Now get user
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        console.log('User:', user ? 'found' : 'not found', 'Error:', userError)
-        
-        if (userError || !user) {
-          console.error('User error or no user')
-          router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
-          return
-        }
-
-        console.log('Auth success, user:', user.id)
-        setCurrentUser(user)
-        setAuthChecked(true)
-        await loadContent(user)
-        
-      } catch (err) {
-        console.error('Auth check failed:', err)
-        router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
-      }
-    }
-
-    checkAuth()
-
-    // Set up auth state listener
     const supabase = getSupabaseClient()
-    if (supabase) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
-        console.log('Auth state changed:', event, session ? 'has session' : 'no session')
-        if (event === 'SIGNED_OUT' || !session) {
-          router.push(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
-        }
-      })
-      return () => { subscription.unsubscribe() }
+    if (!supabase) {
+      setError('فشل الاتصال بقاعدة البيانات')
+      setLoading(false)
+      return
     }
-  }, [mounted]) // Only run once when mounted
 
-  const loadContent = async (user: any) => {
-    if (!user) return
+    let authSubscription: { unsubscribe: () => void } | null = null
+    
+    // الاستماع لتغييرات الـ Auth أولاً (قبل ما نفحص الـ session)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session?.user?.id)
+      
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+        if (session?.user) {
+          setCurrentUser(session.user)
+          setAuthState('authenticated')
+          loadContent(session.user, supabase)
+        } else {
+          setAuthState('unauthenticated')
+          redirectToLogin()
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setAuthState('unauthenticated')
+        redirectToLogin()
+      }
+    })
+    
+    authSubscription = subscription
+
+    // فحص أولي (في حالة كان الـ session موجود بالفعل)
+    supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
+      if (sessionError) {
+        console.error('Session error:', sessionError)
+        redirectToLogin()
+        return
+      }
+      
+      if (!session) {
+        // مهم: لا تعمل redirect فوراً، انتظر لحظة عشان onAuthStateChange يشتغل
+        // لو بعد 2 ثانية مفيش session، اعمل redirect
+        setTimeout(() => {
+          if (authState === 'checking') {
+            redirectToLogin()
+          }
+        }, 2000)
+      }
+    })
+
+    return () => {
+      authSubscription?.unsubscribe()
+    }
+  }, [mounted, gradeSlug, packageId, contentId])
+
+  const redirectToLogin = () => {
+    const returnUrl = `/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`
+    router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`)
+  }
+
+  const loadContent = async (user: any, supabaseClient: any) => {
+    if (!user || !supabaseClient) return
     
     try {
       setLoading(true)
-      const supabase = getSupabaseClient()
-      if (!supabase) throw new Error('No supabase')
-
+      
       // Fetch content
-      const { data: contentData, error: contentError } = await supabase
+      const { data: contentData, error: contentError } = await supabaseClient
         .from('lecture_contents').select('*').eq('id', contentId).single()
       
       if (contentError || !contentData) {
         setError('المحتوى غير موجود')
+        setLoading(false)
         return
       }
       setContent(contentData)
 
       // Fetch lecture
-      const { data: lectureData } = await supabase.from('lectures').select('*').eq('id', contentData.lecture_id).single()
+      const { data: lectureData } = await supabaseClient.from('lectures').select('*').eq('id', contentData.lecture_id).single()
       setLecture(lectureData)
 
       // Fetch package
-      const { data: pkgData } = await supabase.from('packages').select('*').eq('id', packageId).single()
+      const { data: pkgData } = await supabaseClient.from('packages').select('*').eq('id', packageId).single()
       setPackageData(pkgData)
 
       // Check access
-      const { data: userPackageData } = await supabase
+      const { data: userPackageData, error: accessError } = await supabaseClient
         .from('user_packages')
         .select('*')
         .eq('user_id', user.id)
@@ -873,7 +862,7 @@ function ContentViewer() {
       setUserPackage(userPackageData)
 
       // Get/create progress
-      const { data: progressData } = await supabase
+      const { data: progressData } = await supabaseClient
         .from('user_progress')
         .select('*')
         .eq('user_id', user.id)
@@ -882,17 +871,17 @@ function ContentViewer() {
 
       const now = new Date().toISOString()
       if (!progressData) {
-        const { data: newProgress } = await supabase.from('user_progress').insert({
+        const { data: newProgress } = await supabaseClient.from('user_progress').insert({
           user_id: user.id, lecture_content_id: contentId, package_id: packageId,
           status: 'in_progress', last_accessed_at: now, created_at: now
         }).select().single()
         setUserProgress(newProgress)
       } else {
         if (progressData.status === 'not_started') {
-          await supabase.from('user_progress').update({ status: 'in_progress', last_accessed_at: now }).eq('id', progressData.id)
+          await supabaseClient.from('user_progress').update({ status: 'in_progress', last_accessed_at: now }).eq('id', progressData.id)
           setUserProgress({ ...progressData, status: 'in_progress', last_accessed_at: now })
         } else {
-          await supabase.from('user_progress').update({ last_accessed_at: now }).eq('id', progressData.id)
+          await supabaseClient.from('user_progress').update({ last_accessed_at: now }).eq('id', progressData.id)
           setUserProgress(progressData)
         }
       }
@@ -943,7 +932,9 @@ function ContentViewer() {
     switch (content?.type) { case 'video': return 'فيديو'; case 'pdf': return 'PDF'; case 'exam': return 'امتحان'; case 'text': return 'نص'; default: return 'محتوى' }
   }
 
-  if (!mounted || !authChecked) return <LoadingState />
+  // FIX: انتظر لحد ما يتحقق من الـ Auth بشكل كامل
+  if (!mounted || authState === 'checking') return <LoadingState />
+  if (authState === 'unauthenticated') return <LoadingState /> // هيشتغل redirect في الـ effect
   if (loading) return <LoadingState />
   if (error) return <ErrorState message={error} onBack={handleBack} />
   if (!content) return <ErrorState message="المحتوى غير موجود" onBack={handleBack} />
