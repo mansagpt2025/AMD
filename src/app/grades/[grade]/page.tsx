@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClientBrowser } from '@/lib/supabase/sf-client'
+import { createBrowserClient } from '@supabase/ssr'
 import { 
   Wallet, BookOpen, GraduationCap, Loader2, AlertCircle,
   Crown, Sparkles, Clock, Calendar, Medal, PlayCircle,
@@ -11,9 +11,15 @@ import {
   Target, Ticket, CreditCard, X, Shield, Gift
 } from 'lucide-react'
 import styles from './GradePage.module.css'
-import { deductWalletBalance, markCodeAsUsed, createUserPackage } from './actions'
+import { 
+  deductWalletBalance, 
+  markCodeAsUsed, 
+  createUserPackage, 
+  validateCode,
+  getWalletBalance 
+} from './actions'
 
-// ================ Types ================
+// أنواع البيانات
 interface Package {
   id: string
   name: string
@@ -35,50 +41,51 @@ interface UserPackage {
   packages: Package
 }
 
-interface WalletData {
-  balance: number
-  id: string
-}
-
 interface ThemeType {
   primary: string
   secondary: string
   accent: string
   bg: string
   wave: string
+  gradient: string
 }
 
-// ================ Main Page ================
+// الألوان الخاصة بكل صف
+const themes: Record<string, ThemeType> = {
+  first: {
+    primary: '#3b82f6',
+    secondary: '#1d4ed8',
+    accent: '#06b6d4',
+    bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    wave: '#dbeafe',
+    gradient: 'from-blue-600 to-blue-800'
+  },
+  second: {
+    primary: '#8b5cf6',
+    secondary: '#6d28d9',
+    accent: '#ec4899',
+    bg: 'linear-gradient(135deg, #8b5cf6 0%, #5b21b6 100%)',
+    wave: '#ede9fe',
+    gradient: 'from-purple-600 to-purple-800'
+  },
+  third: {
+    primary: '#f59e0b',
+    secondary: '#d97706',
+    accent: '#ef4444',
+    bg: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
+    wave: '#fef3c7',
+    gradient: 'from-amber-500 to-orange-600'
+  }
+}
+
 export default function GradePage() {
   const router = useRouter()
   const params = useParams()
-  const supabase = createClientBrowser()
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
   const gradeSlug = params?.grade as 'first' | 'second' | 'third'
-
-  const themes: Record<string, ThemeType> = {
-    first: {
-      primary: '#3b82f6',
-      secondary: '#1d4ed8',
-      accent: '#06b6d4',
-      bg: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)',
-      wave: '#dbeafe'
-    },
-    second: {
-      primary: '#8b5cf6',
-      secondary: '#6d28d9',
-      accent: '#ec4899',
-      bg: 'linear-gradient(135deg, #8b5cf6 0%, #5b21b6 100%)',
-      wave: '#ede9fe'
-    },
-    third: {
-      primary: '#f59e0b',
-      secondary: '#d97706',
-      accent: '#ef4444',
-      bg: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
-      wave: '#fef3c7'
-    }
-  }
-
   const theme = themes[gradeSlug] || themes.first
 
   const [packages, setPackages] = useState<Package[]>([])
@@ -90,40 +97,51 @@ export default function GradePage() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
 
+  // جلب البيانات
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
+      setError(null)
       
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      // جلب المستخدم
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !currentUser) {
+        setUser(null)
+        setLoading(false)
+        return
+      }
+      
       setUser(currentUser)
 
-      const { data: packagesData } = await supabase
+      // جلب الباقات
+      const { data: packagesData, error: pkgError } = await supabase
         .from('packages')
         .select('*')
         .eq('grade', gradeSlug)
         .eq('is_active', true)
         .order('price', { ascending: true })
 
+      if (pkgError) throw pkgError
       setPackages(packagesData || [])
 
-      if (currentUser) {
-        const { data: walletData } = await supabase
-          .from('wallets')
-          .select('balance, id')
-          .eq('user_id', currentUser.id)
-          .single() as { data: WalletData | null }
-
-        setWalletBalance(walletData?.balance || 0)
-
-        const { data: userPkgs } = await supabase
-          .from('user_packages')
-          .select(`*, packages:package_id(*)`)
-          .eq('user_id', currentUser.id)
-          .eq('is_active', true)
-          .gt('expires_at', new Date().toISOString())
-
-        setUserPackages(userPkgs as UserPackage[] || [])
+      // جلب الرصيد
+      const walletResult = await getWalletBalance(currentUser.id)
+      if (walletResult.success && walletResult.data) {
+        setWalletBalance(walletResult.data.balance || 0)
       }
+
+      // جلب اشتراكات المستخدم
+      const { data: userPkgs, error: userPkgError } = await supabase
+        .from('user_packages')
+        .select(`*, packages:package_id(*)`)
+        .eq('user_id', currentUser.id)
+        .eq('is_active', true)
+        .gt('expires_at', new Date().toISOString())
+
+      if (userPkgError) throw userPkgError
+      setUserPackages(userPkgs as UserPackage[] || [])
+      
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -135,6 +153,7 @@ export default function GradePage() {
     fetchData()
   }, [fetchData])
 
+  // Real-time updates للمحفظة
   useEffect(() => {
     if (!user?.id) return
     
@@ -153,15 +172,25 @@ export default function GradePage() {
     return () => { supabase.removeChannel(channel) }
   }, [user?.id, supabase])
 
+  // تصنيف الباقات
   const { purchased, available, offers } = useMemo(() => {
     const purchasedIds = userPackages.map(up => up.package_id)
     
     const purchased = userPackages
       .filter(up => up.packages)
-      .map(up => ({ ...up.packages, userPackageId: up.id, expires_at: up.expires_at }))
+      .map(up => ({ 
+        ...up.packages, 
+        userPackageId: up.id, 
+        expires_at: up.expires_at 
+      }))
     
-    const available = packages.filter(p => !purchasedIds.includes(p.id) && p.type !== 'offer')
-    const offers = packages.filter(p => !purchasedIds.includes(p.id) && p.type === 'offer')
+    const available = packages.filter(p => 
+      !purchasedIds.includes(p.id) && p.type !== 'offer'
+    )
+    
+    const offers = packages.filter(p => 
+      !purchasedIds.includes(p.id) && p.type === 'offer'
+    )
     
     return { purchased, available, offers }
   }, [packages, userPackages])
@@ -182,7 +211,10 @@ export default function GradePage() {
   if (loading) {
     return (
       <div className={styles.loading} style={{ background: theme.bg }}>
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
+        <motion.div 
+          animate={{ rotate: 360 }} 
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        >
           <Loader2 size={64} color="white" />
         </motion.div>
         <p>جاري تحميل البيانات...</p>
@@ -190,19 +222,9 @@ export default function GradePage() {
     )
   }
 
-  if (error) {
-    return (
-      <div className={styles.error}>
-        <AlertCircle size={64} color={theme.primary} />
-        <h3>حدث خطأ</h3>
-        <p>{error}</p>
-        <button onClick={fetchData}>إعادة المحاولة</button>
-      </div>
-    )
-  }
-
   return (
-    <div className={styles.container} style={{ '--primary': theme.primary, '--secondary': theme.secondary, '--accent': theme.accent } as any}>
+    <div className={styles.container}>
+      {/* موجات الخلفية */}
       <div className={styles.waveContainer}>
         <svg className={styles.waves} viewBox="0 24 150 28" preserveAspectRatio="none">
           <defs>
@@ -217,32 +239,67 @@ export default function GradePage() {
         </svg>
       </div>
 
+      {/* الهيدر */}
       <header className={styles.header} style={{ background: theme.bg }}>
-        <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className={styles.headerContent}>
+        <motion.div 
+          initial={{ y: -50, opacity: 0 }} 
+          animate={{ y: 0, opacity: 1 }} 
+          className={styles.headerContent}
+        >
           <div className={styles.logoSection}>
-            <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 4, repeat: Infinity }}>
+            <motion.div 
+              animate={{ rotate: [0, 10, -10, 0] }} 
+              transition={{ duration: 4, repeat: Infinity }}
+            >
               <Crown size={48} color="white" />
             </motion.div>
-            <div>
+            <div className={styles.logoText}>
               <h1>البارع محمود الديب</h1>
               <p>منارة العلم والتميز</p>
             </div>
           </div>
 
-          {user && (
-            <motion.div className={styles.walletCard} whileHover={{ scale: 1.05 }}>
-              <div className={styles.walletIcon}><Wallet size={24} /></div>
+          {user ? (
+            <motion.div 
+              className={styles.walletCard} 
+              whileHover={{ scale: 1.05 }}
+              style={{ borderColor: theme.primary }}
+            >
+              <div className={styles.walletIcon} style={{ background: theme.primary }}>
+                <Wallet size={24} color="white" />
+              </div>
               <div className={styles.walletInfo}>
                 <span className={styles.walletLabel}>رصيدك</span>
-                <span className={styles.walletAmount}>{walletBalance.toLocaleString()} جنيه</span>
+                <span className={styles.walletAmount}>
+                  {walletBalance.toLocaleString()} جنيه
+                </span>
               </div>
-              <button className={styles.refreshBtn} onClick={fetchData}><RefreshCw size={16} /></button>
+              <button 
+                className={styles.refreshBtn} 
+                onClick={fetchData}
+                title="تحديث"
+              >
+                <RefreshCw size={16} />
+              </button>
             </motion.div>
+          ) : (
+            <button 
+              className={styles.loginBtn}
+              onClick={() => router.push(`/login?returnUrl=/grades/${gradeSlug}`)}
+              style={{ background: theme.primary }}
+            >
+              تسجيل الدخول
+            </button>
           )}
         </motion.div>
 
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={styles.gradeBadge}>
-          <GraduationCap size={32} />
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0 }} 
+          animate={{ scale: 1, opacity: 1 }}
+          className={styles.gradeBadge}
+          style={{ background: 'rgba(255,255,255,0.2)' }}
+        >
+          <GraduationCap size={32} color="white" />
           <h2>
             {gradeSlug === 'first' && 'الصف الأول الثانوي'}
             {gradeSlug === 'second' && 'الصف الثاني الثانوي'}
@@ -251,45 +308,95 @@ export default function GradePage() {
         </motion.div>
       </header>
 
+      {/* المحتوى الرئيسي */}
       <main className={styles.main}>
+        {error && (
+          <div className={styles.errorBanner}>
+            <AlertCircle size={20} />
+            <span>{error}</span>
+            <button onClick={fetchData}>إعادة المحاولة</button>
+          </div>
+        )}
+
+        {/* قسم الاشتراكات الحالية */}
         {purchased.length > 0 && (
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
-              <CheckCircle2 size={32} color="#10b981" />
-              <div><h2>اشتراكاتك الحالية</h2><p>الباقات التي قمت بشرائها</p></div>
+              <div className={styles.sectionTitle}>
+                <CheckCircle2 size={32} color="#10b981" />
+                <div>
+                  <h2>اشتراكاتك الحالية</h2>
+                  <p>الباقات التي قمت بشرائها</p>
+                </div>
+              </div>
               <span className={styles.countBadge}>{purchased.length}</span>
             </div>
             <div className={styles.grid}>
               {purchased.map((pkg: any, idx: number) => (
-                <PackageCard key={pkg.id} pkg={pkg} isPurchased={true} theme={theme} index={idx} onEnter={() => handleEnterPackage(pkg.id)} expiresAt={pkg.expires_at} />
+                <PackageCard 
+                  key={pkg.id} 
+                  pkg={pkg} 
+                  isPurchased={true} 
+                  theme={theme} 
+                  index={idx} 
+                  onEnter={() => handleEnterPackage(pkg.id)} 
+                  expiresAt={pkg.expires_at} 
+                />
               ))}
             </div>
           </section>
         )}
 
+        {/* قسم العروض */}
         {offers.length > 0 && (
           <section className={`${styles.section} ${styles.offerSection}`}>
             <div className={styles.sectionHeader}>
-              <Sparkles size={32} color="#f59e0b" />
-              <div><h2>عروض VIP حصرية</h2><p>خصومات لفترة محدودة</p></div>
+              <div className={styles.sectionTitle}>
+                <Sparkles size={32} color="#f59e0b" />
+                <div>
+                  <h2>عروض VIP حصرية</h2>
+                  <p>خصومات لفترة محدودة</p>
+                </div>
+              </div>
             </div>
             <div className={styles.grid}>
               {offers.map((pkg, idx) => (
-                <PackageCard key={pkg.id} pkg={pkg} isPurchased={false} theme={theme} index={idx} isOffer={true} onPurchase={() => handlePurchaseClick(pkg)} />
+                <PackageCard 
+                  key={pkg.id} 
+                  pkg={pkg} 
+                  isPurchased={false} 
+                  theme={theme} 
+                  index={idx} 
+                  isOffer={true} 
+                  onPurchase={() => handlePurchaseClick(pkg)} 
+                />
               ))}
             </div>
           </section>
         )}
 
+        {/* قسم الباقات المتاحة */}
         {available.length > 0 && (
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
-              <BookOpen size={32} color={theme.primary} />
-              <div><h2>الباقات المتاحة</h2><p>اختر الباقة المناسبة لك</p></div>
+              <div className={styles.sectionTitle}>
+                <BookOpen size={32} color={theme.primary} />
+                <div>
+                  <h2>الباقات المتاحة</h2>
+                  <p>اختر الباقة المناسبة لك</p>
+                </div>
+              </div>
             </div>
             <div className={styles.grid}>
               {available.map((pkg, idx) => (
-                <PackageCard key={pkg.id} pkg={pkg} isPurchased={false} theme={theme} index={idx} onPurchase={() => handlePurchaseClick(pkg)} />
+                <PackageCard 
+                  key={pkg.id} 
+                  pkg={pkg} 
+                  isPurchased={false} 
+                  theme={theme} 
+                  index={idx} 
+                  onPurchase={() => handlePurchaseClick(pkg)} 
+                />
               ))}
             </div>
           </section>
@@ -304,25 +411,31 @@ export default function GradePage() {
         )}
       </main>
 
+      {/* مودال الشراء */}
       <AnimatePresence>
-        {showPurchaseModal && selectedPackage && (
-// في page.tsx - مرر الـ supabase للـ Modal
-<PurchaseModal 
-  pkg={selectedPackage} 
-  user={user} 
-  walletBalance={walletBalance} 
-  theme={theme}
-  onClose={() => setShowPurchaseModal(false)}
-  onSuccess={fetchData}
-  gradeSlug={gradeSlug}
-  supabase={supabase}  // <-- ضيف السطر ده
-/>        )}
+        {showPurchaseModal && selectedPackage && user && (
+          <PurchaseModal 
+            pkg={selectedPackage} 
+            user={user} 
+            walletBalance={walletBalance} 
+            theme={theme}
+            onClose={() => {
+              setShowPurchaseModal(false)
+              setSelectedPackage(null)
+            }}
+            onSuccess={() => {
+              fetchData()
+              setShowPurchaseModal(false)
+            }}
+            gradeSlug={gradeSlug}
+          />
+        )}
       </AnimatePresence>
     </div>
   )
 }
 
-// ================ Package Card Component ================
+// مكون بطاقة الباقة
 function PackageCard({ pkg, isPurchased, theme, index, onPurchase, onEnter, isOffer, expiresAt }: any) {
   const getTypeIcon = () => {
     switch (pkg.type) {
@@ -352,12 +465,32 @@ function PackageCard({ pkg, isPurchased, theme, index, onPurchase, onEnter, isOf
       whileHover={{ y: -10 }}
       className={`${styles.card} ${isOffer ? styles.offerCard : ''} ${isPurchased ? styles.purchasedCard : ''}`}
     >
-      {isOffer && <div className={styles.offerBadge}><Sparkles size={16} /><span>عرض حصري</span></div>}
-      {isPurchased && <div className={styles.purchasedBadge}><CheckCircle2 size={16} /><span>مشترك</span></div>}
+      {isOffer && (
+        <div className={styles.offerBadge} style={{ background: theme.accent }}>
+          <Sparkles size={16} />
+          <span>عرض حصري</span>
+        </div>
+      )}
+      
+      {isPurchased && (
+        <div className={styles.purchasedBadge}>
+          <CheckCircle2 size={16} />
+          <span>مشترك</span>
+        </div>
+      )}
 
       <div className={styles.cardImage}>
-        {pkg.image_url ? <img src={pkg.image_url} alt={pkg.name} /> : <div className={styles.placeholder} style={{ background: theme.bg }}>{getTypeIcon()}</div>}
-        <div className={styles.typeTag} style={{ background: theme.primary }}>{getTypeIcon()}<span>{getTypeLabel()}</span></div>
+        {pkg.image_url ? (
+          <img src={pkg.image_url} alt={pkg.name} />
+        ) : (
+          <div className={styles.placeholder} style={{ background: theme.bg }}>
+            {getTypeIcon()}
+          </div>
+        )}
+        <div className={styles.typeTag} style={{ background: theme.primary }}>
+          {getTypeIcon()}
+          <span>{getTypeLabel()}</span>
+        </div>
       </div>
 
       <div className={styles.cardContent}>
@@ -365,18 +498,45 @@ function PackageCard({ pkg, isPurchased, theme, index, onPurchase, onEnter, isOf
         <p>{pkg.description || `باقة ${getTypeLabel()} متكاملة`}</p>
         
         <div className={styles.stats}>
-          <div className={styles.stat}><PlayCircle size={16} /><span>{pkg.lecture_count || 0} محاضرة</span></div>
-          <div className={styles.stat}><Clock size={16} /><span>{pkg.duration_days || 30} يوم</span></div>
+          <div className={styles.stat}>
+            <PlayCircle size={16} />
+            <span>{pkg.lecture_count || 0} محاضرة</span>
+          </div>
+          <div className={styles.stat}>
+            <Clock size={16} />
+            <span>{pkg.duration_days || 30} يوم</span>
+          </div>
         </div>
 
-        {expiresAt && <div className={styles.expiry}><span>ينتهي: {new Date(expiresAt).toLocaleDateString('ar-EG')}</span></div>}
+        {expiresAt && (
+          <div className={styles.expiry}>
+            <span>ينتهي: {new Date(expiresAt).toLocaleDateString('ar-EG')}</span>
+          </div>
+        )}
 
         <div className={styles.priceRow}>
-          <div className={styles.price}><span>{(pkg.price || 0).toLocaleString()}</span><small>جنيه</small></div>
+          <div className={styles.price}>
+            <span>{(pkg.price || 0).toLocaleString()}</span>
+            <small>جنيه</small>
+          </div>
+          
           {isPurchased ? (
-            <button className={styles.enterBtn} onClick={onEnter} style={{ background: '#10b981' }}>دخول<ArrowRight size={18} /></button>
+            <button 
+              className={styles.enterBtn} 
+              onClick={onEnter}
+            >
+              دخول
+              <ArrowRight size={18} />
+            </button>
           ) : (
-            <button className={styles.buyBtn} onClick={onPurchase} style={{ background: theme.primary }}>شراء<ShoppingCart size={18} /></button>
+            <button 
+              className={styles.buyBtn} 
+              onClick={onPurchase}
+              style={{ background: theme.primary }}
+            >
+              شراء
+              <ShoppingCart size={18} />
+            </button>
           )}
         </div>
       </div>
@@ -384,16 +544,7 @@ function PackageCard({ pkg, isPurchased, theme, index, onPurchase, onEnter, isOf
   )
 }
 
-// ================ Purchase Modal Component ================
-interface CodeData {
-  id: string
-  is_used: boolean
-  grade: string
-  package_id: string | null
-  expires_at: string | null
-  discount_percentage?: number
-}
-
+// مكون مودال الشراء
 function PurchaseModal({ 
   pkg, 
   user, 
@@ -401,42 +552,39 @@ function PurchaseModal({
   theme, 
   onClose, 
   onSuccess, 
-  gradeSlug,
-  supabase   // <-- ضيف دي
+  gradeSlug 
 }: any) {
   const [method, setMethod] = useState<'wallet' | 'code'>('wallet')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [codeValid, setCodeValid] = useState<CodeData | null>(null)
-
+  const [codeValid, setCodeValid] = useState<any>(null)
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const handleEsc = (e: KeyboardEvent) => { 
+      if (e.key === 'Escape') onClose() 
+    }
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
   }, [onClose])
 
-  const validateCode = async () => {
-    if (!code.trim()) { setError('أدخل الكود'); return }
-    setLoading(true); setError('')
+  const handleValidateCode = async () => {
+    if (!code.trim()) { 
+      setError('أدخل الكود') 
+      return 
+    }
+    
+    setLoading(true)
+    setError('')
 
     try {
-      const cleanCode = code.trim().toUpperCase()
-      if (!/^[A-Z0-9]{8,16}$/.test(cleanCode)) throw new Error('صيغة الكود غير صحيحة')
-
-      const { data: codeData, error: codeErr } = await supabase
-        .from('codes')
-        .select('*')
-        .eq('code', cleanCode)
-        .single() as { data: CodeData | null, error: any }
-
-      if (codeErr || !codeData) throw new Error('الكود غير موجود')
-      if (codeData.is_used) throw new Error('الكود مستخدم بالفعل')
-      if (codeData.grade !== gradeSlug) throw new Error('الكود ليس لهذا الصف')
-      if (codeData.package_id && codeData.package_id !== pkg.id) throw new Error('الكود لباقة أخرى')
-      if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) throw new Error('الكود منتهي')
-
-      setCodeValid(codeData)
+      const result = await validateCode(code, gradeSlug, pkg.id)
+      
+      if (!result.success) throw new Error(result.message)
+      setCodeValid(result.data)
     } catch (err: any) {
       setError(err.message)
       setCodeValid(null)
@@ -446,25 +594,51 @@ function PurchaseModal({
   }
 
   const handlePurchase = async () => {
-    setLoading(true); setError('')
+    setLoading(true)
+    setError('')
 
     try {
       if (method === 'wallet') {
-        if (walletBalance < pkg.price) throw new Error(`رصيد غير كافٍ`)
+        if (walletBalance < pkg.price) throw new Error('رصيد غير كافٍ')
+        
         const result = await deductWalletBalance(user.id, pkg.price, pkg.id)
         if (!result.success) throw new Error(result.message)
-        await createUserPackage(user.id, pkg.id, pkg.duration_days || 30, 'wallet')
+        
+        const pkgResult = await createUserPackage(
+          user.id, 
+          pkg.id, 
+          pkg.duration_days || 30, 
+          'wallet'
+        )
+        
+        if (!pkgResult.success) throw new Error(pkgResult.message)
+        
       } else {
-        if (!codeValid) throw new Error('تحقق من الكود')
+        if (!codeValid) throw new Error('تحقق من الكود أولاً')
+        
+        // استخدام الكود
         const markResult = await markCodeAsUsed(codeValid.id, user.id)
         if (!markResult.success) throw new Error(markResult.message)
-        const pkgResult = await createUserPackage(user.id, pkg.id, pkg.duration_days || 30, 'code')
+        
+        // إنشاء الاشتراك
+        const pkgResult = await createUserPackage(
+          user.id, 
+          pkg.id, 
+          pkg.duration_days || 30, 
+          'code'
+        )
+        
         if (!pkgResult.success) {
-          await supabase.from('codes').update({ is_used: false, used_by: null }).eq('id', codeValid.id)
+          // إرجاع الكود لو فشل الاشتراك
+          await supabase
+            .from('codes')
+            .update({ is_used: false, used_by: null, used_at: null })
+            .eq('id', codeValid.id)
           throw new Error(pkgResult.message)
         }
       }
 
+      // إشعار النجاح
       await supabase.from('notifications').insert({
         user_id: user.id,
         title: 'تم الشراء بنجاح! 🎉',
@@ -482,8 +656,17 @@ function PurchaseModal({
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className={styles.modal} onClick={e => e.stopPropagation()}>
-        <button className={styles.closeBtn} onClick={onClose}><X size={24} /></button>
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }} 
+        animate={{ scale: 1, opacity: 1 }} 
+        exit={{ scale: 0.9, opacity: 0 }} 
+        className={styles.modal}
+        onClick={e => e.stopPropagation()}
+      >
+        <button className={styles.closeBtn} onClick={onClose}>
+          <X size={24} />
+        </button>
+
         <div className={styles.modalHeader}>
           <Gift size={48} color={theme.primary} />
           <h3>{pkg.name}</h3>
@@ -491,35 +674,95 @@ function PurchaseModal({
         </div>
 
         <div className={styles.paymentMethods}>
-          <button className={`${styles.methodBtn} ${method === 'wallet' ? styles.active : ''}`} onClick={() => setMethod('wallet')}>
-            <CreditCard size={24} />
-            <div><strong>المحفظة</strong><span>رصيد: {walletBalance.toLocaleString()} جنيه</span></div>
+          <button 
+            className={`${styles.methodBtn} ${method === 'wallet' ? styles.active : ''}`} 
+            onClick={() => setMethod('wallet')}
+          >
+            <CreditCard size={24} color={method === 'wallet' ? theme.primary : '#6b7280'} />
+            <div>
+              <strong>المحفظة</strong>
+              <span>رصيد: {walletBalance.toLocaleString()} جنيه</span>
+            </div>
           </button>
-          <button className={`${styles.methodBtn} ${method === 'code' ? styles.active : ''}`} onClick={() => setMethod('code')}>
-            <Ticket size={24} />
-            <div><strong>كود تفعيل</strong><span>ادخل كود الخصم</span></div>
+          
+          <button 
+            className={`${styles.methodBtn} ${method === 'code' ? styles.active : ''}`} 
+            onClick={() => setMethod('code')}
+          >
+            <Ticket size={24} color={method === 'code' ? theme.primary : '#6b7280'} />
+            <div>
+              <strong>كود تفعيل</strong>
+              <span>ادخل كود الخصم</span>
+            </div>
           </button>
         </div>
 
         {method === 'code' && (
           <div className={styles.codeSection}>
             <div className={styles.codeInput}>
-              <input type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="XXXX-XXXX" disabled={!!codeValid} />
-              <button onClick={validateCode} disabled={loading || !code || !!codeValid} style={{ background: theme.primary }}>
+              <input 
+                type="text" 
+                value={code} 
+                onChange={e => setCode(e.target.value.toUpperCase())} 
+                placeholder="XXXX-XXXX"
+                disabled={!!codeValid}
+                maxLength={20}
+              />
+              <button 
+                onClick={handleValidateCode} 
+                disabled={loading || !code || !!codeValid}
+                style={{ background: theme.primary }}
+              >
                 {loading ? <Loader2 className={styles.spinner} size={20} /> : 'تحقق'}
               </button>
             </div>
-            {codeValid && <div className={styles.codeSuccess}><CheckCircle2 size={16} /> كود صالح!</div>}
+            {codeValid && (
+              <div className={styles.codeSuccess}>
+                <CheckCircle2 size={16} /> 
+                كود صالح! 
+                {codeValid.discount_percentage && (
+                  <span> (خصم {codeValid.discount_percentage}%)</span>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {error && <div className={styles.errorMsg}><AlertCircle size={16} />{error}</div>}
+        {method === 'wallet' && walletBalance < pkg.price && (
+          <div className={styles.errorMsg}>
+            <AlertCircle size={16} />
+            رصيد غير كافٍ. رصيدك: {walletBalance} جنيه
+          </div>
+        )}
 
-        <button className={styles.confirmBtn} onClick={handlePurchase} disabled={loading || (method === 'code' && !codeValid) || (method === 'wallet' && walletBalance < pkg.price)} style={{ background: theme.primary }}>
-          {loading ? <><Loader2 className={styles.spinner} size={20} /> جاري...</> : <>تأكيد الشراء <ArrowRight size={20} /></>}
+        {error && (
+          <div className={styles.errorMsg}>
+            <AlertCircle size={16} />
+            {error}
+          </div>
+        )}
+
+        <button 
+          className={styles.confirmBtn}
+          onClick={handlePurchase}
+          disabled={
+            loading || 
+            (method === 'code' && !codeValid) || 
+            (method === 'wallet' && walletBalance < pkg.price)
+          }
+          style={{ background: theme.primary }}
+        >
+          {loading ? (
+            <><Loader2 className={styles.spinner} size={20} /> جاري المعالجة...</>
+          ) : (
+            <>تأكيد الشراء <ArrowRight size={20} /></>
+          )}
         </button>
 
-        <div className={styles.secureNote}><Shield size={16} />معاملة آمنة</div>
+        <div className={styles.secureNote}>
+          <Shield size={16} />
+          معاملة آمنة ومشفرة
+        </div>
       </motion.div>
     </div>
   )
