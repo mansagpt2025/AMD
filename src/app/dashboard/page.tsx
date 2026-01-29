@@ -63,6 +63,13 @@ interface Wallet {
   balance: number;
 }
 
+const DEFAULT_PACKAGE_IMAGES = {
+  weekly: '/images/weekly-package.jpg',
+  monthly: '/images/monthly-package.jpg',
+  term: '/images/term-package.jpg',
+  offer: '/images/offer-package.jpg'
+};
+
 export default async function DashboardPage() {
   const supabase = await createClient()
 
@@ -247,22 +254,22 @@ export default async function DashboardPage() {
             <div className="header-text">
               <h1 className="platform-name">محمود الديب</h1>
               <p className="platform-description">
-                التعليم التفاعلي للثانوية العامة
+                معلم لغة عربية للثانوية العامة
               </p>
             </div>
           </div>
 
           <div className="header-right">
-  <Link 
-    href="/notifications" 
-    className="notification-link"
-    aria-label="الإشعارات"
-  >
-    <Bell size={20} strokeWidth={2.5} />
-    {userNotifications && userNotifications.length > 0 && (
-      <span className="notification-badge">{userNotifications.length}</span>
-    )}
-  </Link>
+            <Link 
+              href="/notifications" 
+              className="notification-link"
+              aria-label="الإشعارات"
+            >
+              <Bell size={20} strokeWidth={2.5} />
+              {userNotifications && userNotifications.length > 0 && (
+                <span className="notification-badge">{userNotifications.length}</span>
+              )}
+            </Link>
             <div className="user-profile-card">
               <div className="user-info">
                 <p className="user-name">{profile.full_name}</p>
@@ -292,7 +299,7 @@ export default async function DashboardPage() {
 
               <div className="welcome-actions">
                 <div className="wallet-balance">
-                  <span className="balance-label">رصيد المحفظة:</span>
+                  <span className="balance-label" > رصيد المحفظة : </span>
                   <span className="balance-amount">
                     {wallet?.balance ?? 0} ج.م
                   </span>
@@ -375,17 +382,31 @@ export default async function DashboardPage() {
         <div className="packages-section">
           <div className="section-header">
             <h3 className="section-title">الباقات المشتركة</h3>
-            {userPackages && userPackages.length > 0 && (
-              <Link href="/my-packages" className="view-all-link">
-                عرض الكل →
-              </Link>
-            )}
           </div>
           
           {userPackages && userPackages.length > 0 ? (
             <div className="packages-grid">
               {userPackages.map((userPackage) => (
                 <div key={userPackage.id} className="package-card">
+                  {/* Package Image */}
+                  {userPackage.packages?.image_url ? (
+                    <div className="package-image-container">
+                      <img 
+                        src={userPackage.packages.image_url} 
+                        alt={userPackage.packages.name}
+                        className="package-image"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/default-package-image.jpg';
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="package-image-default">
+                      <Package size={48} />
+                      <span>{userPackage.packages?.name || 'باقة تعليمية'}</span>
+                    </div>
+                  )}
+                  
                   <div className="package-header">
                     <div className="package-badge">
                       {getPackageTypeText(userPackage.packages?.type || '')}

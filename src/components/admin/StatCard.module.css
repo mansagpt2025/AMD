@@ -1,0 +1,95 @@
+.card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 1.75rem;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.content {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.iconWrapper {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 70%, black) 100%);
+  color: white;
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--card-color) 30%, transparent);
+}
+
+.info {
+  flex: 1;
+}
+
+.title {
+  font-size: 0.95rem;
+  color: #64748b;
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1;
+}
+
+.trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.up {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.down {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.decorativeCircle {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, var(--card-color) 0%, transparent 70%);
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+/* Color Variants */
+.blue { --card-color: #3b82f6; }
+.green { --card-color: #10b981; }
+.purple { --card-color: #8b5cf6; }
+.orange { --card-color: #f59e0b; }
+.red { --card-color: #ef4444; }

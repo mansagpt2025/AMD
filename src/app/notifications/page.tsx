@@ -172,9 +172,16 @@ export default function StudentNotificationsPage() {
     }
   };
 
+  const handleBackToDashboard = () => {
+    router.push('/dashboard');
+  };
+
   if (loading && notifications.length === 0) {
     return (
       <div className="notifications-skeleton">
+        <button onClick={handleBackToDashboard} className="btn-back-dashboard">
+          <span>←</span> العودة للوحة التحكم
+        </button>
         <div className="skeleton-header"></div>
         <div className="skeleton-filters"></div>
         {[1,2,3].map(i => (
@@ -186,6 +193,11 @@ export default function StudentNotificationsPage() {
 
   return (
     <div className="notifications-page">
+      {/* زر العودة للوحة التحكم */}
+      <button onClick={handleBackToDashboard} className="btn-back-dashboard">
+        <span>←</span> العودة للوحة التحكم
+      </button>
+      
       <div className="notifications-container">
         {/* Toast Notifications */}
         <div className="toast-container">

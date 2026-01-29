@@ -1,154 +1,328 @@
-/* ======================= Local Variables Wrapper ========================= */
-.dashboard {
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-  --primary-gradient-light: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  --secondary-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  
-  --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  --info-gradient: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-  --purple-gradient: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 20px 60px rgba(102, 126, 234, 0.3);
-  --shadow-xl: 0 30px 80px rgba(102, 126, 234, 0.35);
-  
-  --text-primary: #1f2937;
-  --text-secondary: #6b7280;
-  --text-light: #9ca3af;
-  --text-white: #ffffff;
-  
-  --border-radius: 1.5rem;
-  --border-radius-sm: 1rem;
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --animation-timing: cubic-bezier(0.4, 0, 0.2, 1);
-
-  animation: fadeIn 0.6s var(--animation-timing) forwards;
-  background: var(--secondary-gradient);
+.dashboardContainer {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
   min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
+  font-family: 'GE SS Two', 'Segoe UI', system-ui, sans-serif;
 }
 
-/* ======================= Animations ======================= */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-/* ======================= Header ======================= */
+/* Header Styles */
 .header {
-  margin-bottom: 3.5rem;
-  background: var(--primary-gradient);
-  border-radius: var(--border-radius);
-  padding: 3.5rem;
-  color: var(--text-white);
-  box-shadow: var(--shadow-lg);
+  margin-bottom: 2rem;
   position: relative;
-  overflow: hidden;
-  z-index: 1;
-  transition: var(--transition);
-}
-
-.header:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-xl);
 }
 
 .headerContent {
-  position: relative;
-  z-index: 2;
-  max-width: 800px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .title {
-  font-size: 3rem;
-  font-weight: 900;
-  margin-bottom: 1rem;
-  color: var(--text-white);
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .subtitle {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 1.3rem;
+  color: #64748b;
+  font-size: 1.1rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
 }
 
-/* ======================= Grids ======================= */
-.statsGrid,
-.actionsGrid {
-  display: grid;
-  gap: 2rem;
+.dateBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  padding: 0.75rem 1.25rem;
+  border-radius: 50px;
+  color: #1e40af;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.2);
+}
+
+/* Section Titles */
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: relative;
+  padding-right: 1rem;
+}
+
+.sectionTitle::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 24px;
+  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 2px;
+}
+
+/* Stats Grid */
+.statsSection {
+  margin-bottom: 3rem;
 }
 
 .statsGrid {
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-}
-
-.actionsGrid {
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-}
-
-/* ======================= Cards ======================= */
-.actionCard {
-  background: var(--text-white);
-  border-radius: var(--border-radius-sm);
-  padding: 2rem;
-  transition: var(--transition);
-  box-shadow: var(--shadow-sm);
-}
-
-.actionCard:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--shadow-lg);
-}
-
-/* ======================= Accessibility (FIXED) ======================= */
-.reducedMotion * {
-  animation-duration: 0.01ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
-}
-
-.quickActions {
-  background: var(--text-white);
-  border-radius: var(--border-radius);
-  padding: 2.5rem;
-  box-shadow: var(--shadow-md);
-  margin-bottom: 3.5rem;
-}
-
-.sectionTitle {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: var(--text-primary);
+  gap: 1.5rem;
   margin-bottom: 2rem;
 }
 
-.actionIcon {
-  margin-bottom: 1rem;
-  display: inline-flex;
+/* Quick Actions Grid */
+.actionsSection {
+  margin-bottom: 3rem;
+}
+
+.actionsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.actionCard {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 1.75rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.actionCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--action-color, #3b82f6);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.actionCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.actionCard:hover::before {
+  transform: scaleX(1);
+}
+
+.actionIconWrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--action-color, #3b82f6) 0%, color-mix(in srgb, var(--action-color, #3b82f6) 70%, black) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--action-color, #3b82f6) 30%, transparent);
+}
+
+.actionIconSvg {
+  width: 28px;
+  height: 28px;
+  color: white;
+}
+
+.actionContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .actionTitle {
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
 }
 
 .actionDescription {
-  font-size: 0.95rem;
-  color: var(--text-secondary);
+  font-size: 0.9rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
 }
+
+.actionStats {
+  font-size: 0.85rem;
+  color: var(--action-color, #3b82f6);
+  font-weight: 700;
+  margin-top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.actionArrow {
+  font-size: 1.5rem;
+  color: #cbd5e1;
+  transition: all 0.3s ease;
+  font-weight: 300;
+}
+
+.actionCard:hover .actionArrow {
+  color: var(--action-color, #3b82f6);
+  transform: translateX(-5px);
+}
+
+/* Activity Section */
+.activitySection {
+  margin-bottom: 2rem;
+}
+
+.activityCard {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.activityItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  transition: background 0.2s ease;
+}
+
+.activityItem:hover {
+  background: #f8fafc;
+}
+
+.activityDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3b82f6;
+  margin-top: 0.5rem;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.activityContent {
+  flex: 1;
+}
+
+.activityText {
+  color: #1e293b;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+}
+
+.activityTime {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.emptyState {
+  text-align: center;
+  color: #94a3b8;
+  padding: 2rem;
+  font-style: italic;
+}
+
+/* CSS Variables for Colors */
+:root {
+  --primary-blue: #3b82f6;
+  --success-green: #10b981;
+  --purple: #8b5cf6;
+  --orange: #f59e0b;
+  --teal: #14b8a6;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dashboardContainer {
+    padding: 1rem;
+  }
+
+  .title {
+    font-size: 1.75rem;
+  }
+
+  .headerContent {
+    padding: 1.5rem;
+  }
+
+  .actionsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .actionCard {
+    padding: 1.25rem;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboardContainer > * {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+.dashboardContainer > *:nth-child(1) { animation-delay: 0.1s; }
+.dashboardContainer > *:nth-child(2) { animation-delay: 0.2s; }
+.dashboardContainer > *:nth-child(3) { animation-delay: 0.3s; }
+.dashboardContainer > *:nth-child(4) { animation-delay: 0.4s; }
