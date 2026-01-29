@@ -6,14 +6,14 @@ import { revalidatePath } from 'next/cache';
 async function getSupabase() {
   try {
     const { createClient } = await import('@supabase/supabase-js');
-    
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    
+
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('بيانات الاتصال بـ Supabase غير متوفرة');
     }
-    
+
     return createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         persistSession: false,
@@ -26,10 +26,18 @@ async function getSupabase() {
   }
 }
 
-export async function getUserNotifications(userId: string, page: number = 1, limit: number = 15) {
+/* =========================
+   الإشعارات Notifications
+========================= */
+
+export async function getUserNotifications(
+  userId: string,
+  page: number = 1,
+  limit: number = 15
+) {
   try {
     const supabase = await getSupabase();
-    
+
     const start = (page - 1) * limit;
     const end = start + limit - 1;
 
@@ -42,7 +50,7 @@ export async function getUserNotifications(userId: string, page: number = 1, lim
 
     if (error) throw error;
 
-    // جلب إشعارات الصف إذا كان المستخدم لديه صف
+    // جلب الصف والشعبة
     const { data: userProfile } = await supabase
       .from('profiles')
       .select('grade, section')
@@ -58,35 +66,42 @@ export async function getUserNotifications(userId: string, page: number = 1, lim
         .order('created_at', { ascending: false })
         .range(start, end);
 
-      const { data: sectionNotifications } = userProfile?.section ? 
-        await supabase
-          .from('notifications')
-          .select('*')
-          .eq('target_section', userProfile.section)
-          .order('created_at', { ascending: false })
-          .range(start, end) : { data: null };
+      const { data: sectionNotifications } = userProfile?.section
+        ? await supabase
+            .from('notifications')
+            .select('*')
+            .eq('target_section', userProfile.section)
+            .order('created_at', { ascending: false })
+            .range(start, end)
+        : { data: null };
 
       const allNotifications = [
         ...(data || []),
         ...(gradeNotifications || []),
-        ...(sectionNotifications || [])
+        ...(sectionNotifications || []),
       ];
 
-      // إزالة التكرارات
-      const uniqueNotifications = allNotifications.filter((notification, index, self) =>
-        index === self.findIndex(n => n.id === notification.id)
+      const uniqueNotifications = allNotifications.filter(
+        (notification, index, self) =>
+          index === self.findIndex((n) => n.id === notification.id)
       );
 
-      // ترتيب حسب التاريخ
-      uniqueNotifications.sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      uniqueNotifications.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() -
+          new Date(a.created_at).getTime()
       );
+
+      const total =
+        (count || 0) +
+        (gradeNotifications?.length || 0) +
+        (sectionNotifications?.length || 0);
 
       return {
-        data: uniqueNotifications.slice(start, end + 1),
-        total: count || 0 + (gradeNotifications?.length || 0) + (sectionNotifications?.length || 0),
-        totalPages: Math.ceil((count || 0 + (gradeNotifications?.length || 0) + (sectionNotifications?.length || 0)) / limit),
-        error: null
+        data: uniqueNotifications.slice(0, limit),
+        total,
+        totalPages: Math.ceil(total / limit),
+        error: null,
       };
     }
 
@@ -94,7 +109,7 @@ export async function getUserNotifications(userId: string, page: number = 1, lim
       data: data || [],
       total: count || 0,
       totalPages: Math.ceil((count || 0) / limit),
-      error: null
+      error: null,
     };
   } catch (error: any) {
     console.error('Error in getUserNotifications:', error);
@@ -102,7 +117,7 @@ export async function getUserNotifications(userId: string, page: number = 1, lim
       data: null,
       total: 0,
       totalPages: 0,
-      error: error.message || 'حدث خطأ أثناء جلب الإشعارات'
+      error: error.message || 'حدث خطأ أثناء جلب الإشعارات',
     };
   }
 }
@@ -110,7 +125,7 @@ export async function getUserNotifications(userId: string, page: number = 1, lim
 export async function getUnreadCount(userId: string) {
   try {
     const supabase = await getSupabase();
-    
+
     const { count, error } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
@@ -122,14 +137,17 @@ export async function getUnreadCount(userId: string) {
     return { count: count || 0, error: null };
   } catch (error: any) {
     console.error('Error in getUnreadCount:', error);
-    return { count: 0, error: error.message || 'حدث خطأ أثناء جلب عدد الإشعارات غير المقروءة' };
+    return {
+      count: 0,
+      error: error.message || 'حدث خطأ أثناء جلب عدد الإشعارات غير المقروءة',
+    };
   }
 }
 
 export async function markAsRead(userId: string, notificationId: string) {
   try {
     const supabase = await getSupabase();
-    
+
     const { error } = await supabase
       .from('notifications')
       .update({ is_read: true })
@@ -142,14 +160,17 @@ export async function markAsRead(userId: string, notificationId: string) {
     return { success: true, error: null };
   } catch (error: any) {
     console.error('Error in markAsRead:', error);
-    return { success: false, error: error.message || 'حدث خطأ أثناء تحديث الإشعار' };
+    return {
+      success: false,
+      error: error.message || 'حدث خطأ أثناء تحديث الإشعار',
+    };
   }
 }
 
 export async function markAllAsRead(userId: string) {
   try {
     const supabase = await getSupabase();
-    
+
     const { error } = await supabase
       .from('notifications')
       .update({ is_read: true })
@@ -162,14 +183,20 @@ export async function markAllAsRead(userId: string) {
     return { success: true, error: null };
   } catch (error: any) {
     console.error('Error in markAllAsRead:', error);
-    return { success: false, error: error.message || 'حدث خطأ أثناء تحديث جميع الإشعارات' };
+    return {
+      success: false,
+      error: error.message || 'حدث خطأ أثناء تحديث جميع الإشعارات',
+    };
   }
 }
 
-export async function deleteNotification(userId: string, notificationId: string) {
+export async function deleteNotification(
+  userId: string,
+  notificationId: string
+) {
   try {
     const supabase = await getSupabase();
-    
+
     const { error } = await supabase
       .from('notifications')
       .delete()
@@ -182,6 +209,9 @@ export async function deleteNotification(userId: string, notificationId: string)
     return { success: true, error: null };
   } catch (error: any) {
     console.error('Error in deleteNotification:', error);
-    return { success: false, error: error.message || 'حدث خطأ أثناء حذف الإشعار' };
+    return {
+      success: false,
+      error: error.message || 'حدث خطأ أثناء حذف الإشعار',
+    };
   }
 }

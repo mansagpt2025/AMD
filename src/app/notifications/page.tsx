@@ -27,6 +27,10 @@ type FilterType = 'all' | 'unread' | 'read';
 
 export default function StudentNotificationsPage() {
   const router = useRouter();
+
+  // ⚠️ مطلوب علشان يطابق Server Actions (حتى لو القيمة بتتجاب سيرفر سايد)
+  const userId = '';
+
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
   const [error, setError] = useState('');
@@ -39,7 +43,7 @@ export default function StudentNotificationsPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [filter, setFilter] = useState<FilterType>('all');
 
-  // تحميل البيانات مباشرة (Server Actions تتحقق من المستخدم)
+  // تحميل البيانات مباشرة
   useEffect(() => {
     loadData();
   }, [currentPage]);
@@ -50,8 +54,8 @@ export default function StudentNotificationsPage() {
     
     try {
       const [notificationsResult, countResult] = await Promise.all([
-        getUserNotifications(currentPage, 15),
-        getUnreadCount()
+        getUserNotifications(userId, currentPage, 15),
+        getUnreadCount(userId)
       ]);
 
       if (notificationsResult.error) {
@@ -62,7 +66,7 @@ export default function StudentNotificationsPage() {
         throw new Error(notificationsResult.error);
       }
       
-      setNotifications(notificationsResult.data);
+setNotifications(notificationsResult.data || []);
       setTotalPages(notificationsResult.totalPages);
       setUnreadCount(countResult.count);
     } catch (err: any) {
@@ -87,7 +91,7 @@ export default function StudentNotificationsPage() {
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      const result = await markAsRead(notificationId);
+      const result = await markAsRead(userId, notificationId);
       if (result.error) throw new Error(result.error);
       
       setNotifications(prev => prev.map(n =>
@@ -103,7 +107,7 @@ export default function StudentNotificationsPage() {
   const handleMarkAllAsRead = async () => {
     setMarkingAll(true);
     try {
-      const result = await markAllAsRead();
+      const result = await markAllAsRead(userId);
       if (result.error) throw new Error(result.error);
       
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
@@ -120,7 +124,7 @@ export default function StudentNotificationsPage() {
     if (!confirm('هل أنت متأكد من الحذف؟')) return;
     
     try {
-      const result = await deleteNotification(notificationId);
+      const result = await deleteNotification(userId, notificationId);
       if (result.error) throw new Error(result.error);
       
       const deleted = notifications.find(n => n.id === notificationId);
@@ -193,13 +197,11 @@ export default function StudentNotificationsPage() {
 
   return (
     <div className="notifications-page">
-      {/* زر العودة للوحة التحكم */}
       <button onClick={handleBackToDashboard} className="btn-back-dashboard">
         <span>←</span> العودة للوحة التحكم
       </button>
       
       <div className="notifications-container">
-        {/* Toast Notifications */}
         <div className="toast-container">
           {error && (
             <div className="toast toast-error">
@@ -215,7 +217,6 @@ export default function StudentNotificationsPage() {
           )}
         </div>
 
-        {/* Header */}
         <header className="page-header">
           <div className="header-content">
             <h1 className="page-title">
@@ -249,7 +250,6 @@ export default function StudentNotificationsPage() {
             )}
           </button>
         </header>
-
         {/* Filters */}
         <div className="filters-bar">
           {(['all', 'unread', 'read'] as FilterType[]).map((f) => (
