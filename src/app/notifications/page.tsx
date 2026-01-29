@@ -223,7 +223,7 @@ export default function StudentNotificationsPage() {
           </div>
         )}
 
-        <button onClick={loadData} className="btn-refresh">↻ تحديث</button>
+        <button onClick={loadData} className="btn-refresh">↻</button>
       </div>
     </div>
   );
