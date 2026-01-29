@@ -25,12 +25,7 @@
   --radius-xl: 24px;
 }
 
-/* Reset & Base */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+
 
 .notifications-page {
   min-height: 100vh;
@@ -814,11 +809,6 @@
 
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
 }
 
 /* Print Styles */
