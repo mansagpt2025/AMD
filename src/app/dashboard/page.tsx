@@ -283,7 +283,7 @@ export default async function DashboardPage() {
           <div className="welcome-content">
             <div className="welcome-text">
               <h2 className="welcome-title">
-                 مرحبًا بك،  {profile.full_name}!
+                 مرحبًا بك ،    {profile.full_name} !
               </h2>
               <p className="welcome-subtitle">
                 استمر في رحلتك التعليمية وحقق أهدافك
@@ -291,9 +291,9 @@ export default async function DashboardPage() {
 
               <div className="welcome-actions">
                 <div className="wallet-balance">
-                  <span className="balance-label">رصيد المحفظة:</span>
+                  <span className="balance-label">رصيد المحفظة : </span>
                   <span className="balance-amount">
-                    {wallet?.balance ?? 0} ج.م
+                       {wallet?.balance ?? 0}  ج.م
                   </span>
                 </div>
 
@@ -374,11 +374,6 @@ export default async function DashboardPage() {
         <div className="packages-section">
           <div className="section-header">
             <h3 className="section-title">الباقات المشتركة</h3>
-            {userPackages && userPackages.length > 0 && (
-              <Link href="/my-packages" className="view-all-link">
-                عرض الكل →
-              </Link>
-            )}
           </div>
           
           {userPackages && userPackages.length > 0 ? (
