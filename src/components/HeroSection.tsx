@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { FiChevronRight, FiPlayCircle, FiUsers, FiAward, FiBookOpen } from 'react-icons/fi';
+import { FiChevronRight, FiPlayCircle, FiUsers, FiAward, FiBookOpen, FiLayout, FiLogOut } from 'react-icons/fi';
 import styles from './HeroSection.module.css';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -11,31 +11,53 @@ interface User {
   isLoggedIn: boolean;
 }
 
-const HeroSection = ({ user }: { user: User }) => {
+const HeroSection = ({ user: initialUser }: { user: User }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [scrollPosition, setScrollPosition] = useState(0);
+  const [user, setUser] = useState<User>(initialUser);
   const sectionRef = useRef<HTMLElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
-const [currentUser, setCurrentUser] = useState(user);
-const router = useRouter();
+  // التحقق من حالة المصادقة من Supabase (localStorage)
+  useEffect(() => {
+    const checkAuth = () => {
+      // Supabase يخزن التوكن في مفتاح يبدأ بـ 'sb-' وينتهي بـ '-auth-token'
+      const keys = Object.keys(localStorage);
+      const hasSupabaseToken = keys.some(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      
+      if (hasSupabaseToken && !user.isLoggedIn) {
+        setUser({ isLoggedIn: true });
+      } else if (!hasSupabaseToken && user.isLoggedIn) {
+        setUser({ isLoggedIn: false });
+      }
+    };
 
-// التحقق كل ثانية من localStorage
-useEffect(() => {
-  const checkAuth = () => {
-    const token = localStorage.getItem('token');
-    if (token && !currentUser.isLoggedIn) {
-      setCurrentUser({ isLoggedIn: true });
-    } else if (!token && currentUser.isLoggedIn) {
-      setCurrentUser({ isLoggedIn: false });
-    }
+    // فحص أولي
+    checkAuth();
+
+    // فحص كل ثانية
+    const interval = setInterval(checkAuth, 1000);
+
+    // فحص لو اتفتح تبويب تاني واتعمل فيه login/logout
+    window.addEventListener('storage', checkAuth);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', checkAuth);
+    };
+  }, [user.isLoggedIn]);
+
+  // تسجيل الخروج
+  const handleLogout = () => {
+    // مسح كل مفاتيح Supabase
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('sb-')) localStorage.removeItem(key);
+    });
+    setUser({ isLoggedIn: false });
+    router.push('/');
   };
-  
-  checkAuth();
-  const interval = setInterval(checkAuth, 1000);
-  return () => clearInterval(interval);
-}, [currentUser.isLoggedIn]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -83,37 +105,33 @@ useEffect(() => {
               <span className={styles.highlight}> و مؤلف سلسلة البارع</span>
             </h2>
 
-<div className={styles.ctaButtons}>
-  {!currentUser.isLoggedIn ? (
-    <>
-      <Link href="/register" className={styles.primaryButton}>
-        <span>ابدأ رحلتك الآن</span>
-      </Link>
-      <Link href="/login" className={styles.secondaryButton}>
-        <span>تسجيل الدخول</span>
-      </Link>
-    </>
-  ) : (
-    <>
-      <Link href="/dashboard" className={styles.primaryButton}>
-        <span>لوحة التحكم</span>
-      </Link>
-      <button 
-        onClick={() => {
-          localStorage.removeItem('token');
-          setCurrentUser({ isLoggedIn: false });
-          router.push('/');
-        }} 
-        className={styles.secondaryButton}
-        style={{ cursor: 'pointer' }}
-      >
-        <span>تسجيل الخروج</span>
-      </button>
-    </>
-  )}
-</div>
-
-
+            <div className={styles.ctaButtons}>
+              {!user.isLoggedIn ? (
+                <>
+                  <Link href="/register" className={styles.primaryButton}>
+                    <span>ابدأ رحلتك الآن</span>
+                  </Link>
+                  <Link href="/login" className={styles.secondaryButton}>
+                    <span>تسجيل الدخول</span>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/dashboard" className={styles.primaryButton}>
+                    <FiLayout style={{ marginLeft: '6px' }} />
+                    <span>لوحة التحكم</span>
+                  </Link>
+                  <button 
+                    onClick={handleLogout}
+                    className={styles.secondaryButton}
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    <FiLogOut style={{ marginLeft: '6px' }} />
+                    <span>تسجيل الخروج</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           <div ref={imageRef} className={styles.heroImage}>
@@ -123,10 +141,10 @@ useEffect(() => {
                 <div className={styles.imageGlow}></div>
                 <div className={styles.imageBorder}></div>
                 <img 
-  src="/images/teacher/main-hero.png" 
-  alt="الأستاذ محمود الديب"
-  className={styles.teacherImage}
-/>
+                  src="/images/teacher/main-hero.png" 
+                  alt="الأستاذ محمود الديب"
+                  className={styles.teacherImage}
+                />
               </div>              
 
               </div>              
