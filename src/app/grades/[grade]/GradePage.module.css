@@ -644,6 +644,23 @@
   overflow: hidden;
 }
 
+.loadingBars {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 2rem;
+  height: 40px;
+  align-items: flex-end;
+}
+
+.loadingBar {
+  width: 4px;
+  background: var(--gray-300);
+  border-radius: var(--radius-full);
+}
+
+
+
 .featuresPro {
   display: flex;
   flex-direction: column;
