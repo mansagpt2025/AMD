@@ -2,21 +2,24 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/supabase-server'
 import type { Metadata } from 'next'
-import { Bell, BookOpen, Clock, Package, TrendingUp, Award, PlayCircle, Sparkles, Zap } from 'lucide-react'
+import { Bell, ArrowLeft, BookOpen, Clock, Package, TrendingUp, Award, AlertTriangle, CheckCircle } from 'lucide-react'
 import './dashboard.css'
 import Image from 'next/image';
 
+// Viewport
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
 }
 
+// Metadata
 export const metadata: Metadata = {
   title: 'لوحة التحكم | محمود الديب',
   description: 'لوحة تحكم الطالب',
 }
 
+// Type Definitions
 interface PackageData {
   id: string;
   name: string;
@@ -36,6 +39,7 @@ interface UserPackage {
   purchased_at: string;
   expires_at: string | null;
   source: string | null;
+    image_url: string | null;
   packages: PackageData;
 }
 
@@ -69,7 +73,9 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  // PROFILE
+  // =========================
+  // PROFILE (SAFE)
+  // =========================
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
@@ -84,7 +90,9 @@ export default async function DashboardPage() {
     redirect('/complete-profile')
   }
 
-  // WALLET
+  // =========================
+  // WALLET (SAFE)
+  // =========================
   const { data: wallet, error: walletError } = await supabase
     .from('wallets')
     .select('balance')
@@ -95,10 +103,13 @@ export default async function DashboardPage() {
     console.error('Wallet error:', walletError)
   }
 
-  // PURCHASED PACKAGES مع الصور
+  // =========================
+  // PURCHASED PACKAGES - الطريقة الصحيحة
+  // =========================
   let userPackages: UserPackage[] | null = null
   
   try {
+    // الطريقة الأولى: جلب user_packages ثم جلب كل package على حدة
     const { data: purchasedPackages, error: packagesError } = await supabase
       .from('user_packages')
       .select('*')
@@ -110,16 +121,18 @@ export default async function DashboardPage() {
     }
 
     if (purchasedPackages && purchasedPackages.length > 0) {
+      // جلب تفاصيل كل package
       const packageIds = purchasedPackages.map(p => p.package_id)
       const { data: packagesData, error: packagesDataError } = await supabase
         .from('packages')
-        .select('id, name, description, image_url, lecture_count, duration_days, type, grade')
+        .select('*')
         .in('id', packageIds)
 
       if (packagesDataError) {
         console.error('Packages data error:', packagesDataError)
       }
 
+      // دمج البيانات
       userPackages = purchasedPackages.map(up => {
         const packageDetails = packagesData?.find(p => p.id === up.package_id)
         return {
@@ -132,7 +145,9 @@ export default async function DashboardPage() {
     console.error('Error fetching packages:', error)
   }
 
+  // =========================
   // STATISTICS
+  // =========================
   const { count: activePackagesCount } = await supabase
     .from('user_packages')
     .select('*', { count: 'exact', head: true })
@@ -145,10 +160,13 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .eq('status', 'completed')
 
+  // =========================
   // NOTIFICATIONS
+  // =========================
   let userNotifications: Notification[] | null = null
   
   try {
+    // جلب الإشعارات العامة والإشعارات المخصصة للصف
     const { data: notifications, error: notificationsError } = await supabase
       .from('notifications')
       .select('*')
@@ -205,7 +223,7 @@ export default async function DashboardPage() {
   }
 
   const calculateDaysRemaining = (expiryDate: string | null): string => {
-    if (!expiryDate) return 'غير محدود'
+    if (!expiryDate) return 'لا يوجد'
     
     const now = new Date()
     const expiry = new Date(expiryDate)
@@ -215,59 +233,61 @@ export default async function DashboardPage() {
     if (diffDays < 0) return 'منتهي'
     if (diffDays === 0) return 'ينتهي اليوم'
     if (diffDays === 1) return 'يوم واحد'
-    if (diffDays <= 7) return `${diffDays} أيام`
     return `${diffDays} يوم`
   }
 
   return (
     <div className="dashboard-container">
-      {/* Animated Background Waves */}
-      <div className="animated-background">
-        <div className="wave wave-1"></div>
-        <div className="wave wave-2"></div>
-        <div className="wave wave-3"></div>
-        <div className="floating-shapes">
-          <div className="shape shape-1"></div>
-          <div className="shape shape-2"></div>
-          <div className="shape shape-3"></div>
-        </div>
-      </div>
-
       {/* Header */}
       <header className="dashboard-header">
         <div className="header-content">
           <div className="header-left">
             <div className="logo-container">
-              <Image
+              <span className="logo-text">              <Image
                 src="/logo.svg"
                 alt="Logo"
-                width={40}
-                height={40}
+                width={52}
+                height={52}
                 priority
-                className="logo-image"
               />
+</span>
             </div>
             <div className="header-text">
               <h1 className="platform-name">محمود الديب</h1>
-              <p className="platform-description">منصة التعليم التفاعلي</p>
+              <p className="platform-description">
+                أستاذ اللغة العربية للثانوية العامة
+              </p>
             </div>
           </div>
 
           <div className="header-right">
-            <Link 
-              href="/notifications" 
-              className="notification-link"
-              aria-label="الإشعارات"
-            >
-              <Bell size={20} strokeWidth={2.5} />
-              {userNotifications && userNotifications.length > 0 && (
-                <span className="notification-badge">{userNotifications.length}</span>
-              )}
-            </Link>
+
+  <Link 
+    href="/" 
+    className="notification-link"
+    aria-label="الإشعارات"
+  >
+    <ArrowLeft  size={20} strokeWidth={2.5} />
+    {userNotifications && userNotifications.length > 0 && (
+      <span className="notification-badge">{userNotifications.length}</span>
+    )}  </Link>
+
+  <Link 
+    href="/notifications" 
+    className="notification-link"
+    aria-label="الإشعارات"
+  >
+    <Bell size={20} strokeWidth={2.5} />
+    {userNotifications && userNotifications.length > 0 && (
+      <span className="notification-badge">{userNotifications.length}</span>
+    )}
+  </Link>
             <div className="user-profile-card">
               <div className="user-info">
                 <p className="user-name">{profile.full_name}</p>
-                <p className="user-grade">الصف {getGradeText(profile.grade)}</p>
+                <p className="user-grade">
+                  الصف {getGradeText(profile.grade)}
+                </p>
               </div>
               <div className="user-avatar">
                 <span>{getInitials(profile.full_name)}</span>
@@ -278,97 +298,59 @@ export default async function DashboardPage() {
       </header>
 
       <main className="main-content">
-        {/* Welcome Card - Light Design */}
+        {/* Welcome Card */}
         <div className="welcome-card">
-          <div className="welcome-pattern"></div>
           <div className="welcome-content">
             <div className="welcome-text">
-              <div className="welcome-badge">
-                <Sparkles size={16} />
-                <span>مرحباً بعودتك</span>
-              </div>
               <h2 className="welcome-title">
-                {profile.full_name} ! 👋
+                 مرحبًا بك ،    {profile.full_name} !
               </h2>
               <p className="welcome-subtitle">
-                استمر في رحلتك التعليمية وحقق أهدافك مع باقاتنا المميزة
+                استمر في رحلتك التعليمية وحقق أهدافك
               </p>
 
               <div className="welcome-actions">
                 <div className="wallet-balance">
-                  <div className="wallet-icon">
-                    <Zap size={20} />
-                  </div>
-                  <div className="wallet-info">
-                    <span className="balance-label">رصيد المحفظة</span>
-                    <span className="balance-amount">
-                      {wallet?.balance ?? 0} ج.م
-                    </span>
-                  </div>
+                  <span className="balance-label">رصيد المحفظة : </span>
+                  <span className="balance-amount">
+                       {wallet?.balance ?? 0}  ج.م
+                  </span>
                 </div>
+
+
               </div>
             </div>
 
-            <div className="welcome-illustration">
-              <div className="floating-card card-1">
-                <PlayCircle size={24} />
-                <span>مشاهدة المحاضرات</span>
-              </div>
-              <div className="floating-card card-2">
-                <Award size={24} />
-                <span>شهادات الإتمام</span>
-              </div>
-              <div className="main-illustration">
-                <Image 
-                  src="/dashboard-illustration.svg" 
-                  alt="Learning" 
-                  width={300} 
-                  height={250}
-                  className="illustration-image"
-                />
-              </div>
+            <div className="welcome-emoji">
+              <Award size={64} />
             </div>
           </div>
         </div>
 
         {/* Stats Cards */}
         <div className="stats-section">
-          <h3 className="section-title">
-            <TrendingUp size={20} />
-            إحصائياتك
-          </h3>
+          <h3 className="section-title">إحصائياتك</h3>
           <div className="stats-grid">
             <div className="stat-card">
-              <div className="stat-icon-wrapper blue">
+              <div className="stat-icon-wrapper bg-primary-50 text-primary-600">
                 <Package size={24} />
               </div>
               <div className="stat-content">
                 <h4 className="stat-value">{activePackagesCount || 0}</h4>
                 <p className="stat-label">الباقات النشطة</p>
               </div>
-              <div className="stat-wave"></div>
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon-wrapper cyan">
-                <BookOpen size={24} />
+              <div className="stat-icon-wrapper bg-success-500/10 text-success-500">
+                <TrendingUp size={24} />
               </div>
               <div className="stat-content">
-                <h4 className="stat-value">{completedLecturesCount || 0}</h4>
-                <p className="stat-label">محاضرات مكتملة</p>
+                <h4 className="stat-value">
+                  {userPackages?.length || 0}
+                </h4>
+                <p className="stat-label"> الباقات المشتريّة</p>
               </div>
-              <div className="stat-wave"></div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon-wrapper purple">
-                <Clock size={24} />
-              </div>
-              <div className="stat-content">
-                <h4 className="stat-value">{userPackages?.length || 0}</h4>
-                <p className="stat-label">إجمالي المشتريات</p>
-              </div>
-              <div className="stat-wave"></div>
             </div>
           </div>
         </div>
@@ -377,71 +359,54 @@ export default async function DashboardPage() {
         <div className="grade-section">
           <div className="grade-card">
             <div className="grade-content">
-              <div className="grade-badge">الصف الدراسي</div>
               <div className="grade-info">
-                <h4>{getGradeText(profile.grade)}</h4>
-                <p>ابدأ رحلتك التعليمية مع باقات مميزة مصممة خصيصاً لك</p>
+                <h4>الصف {getGradeText(profile.grade)}</h4>
+                <p>ابدأ رحلتك التعليمية مع باقات مميزة </p>
               </div>
               <Link 
                 href={`/grades/${profile.grade}`}
                 className="secondary-button"
               >
-                استعراض الباقات المتاحة
-                <span className="button-arrow">←</span>
+                استعراض الباقات
               </Link>
             </div>
-            <div className="grade-decoration">
-              <div className="circle-decoration"></div>
-              <div className="dots-pattern"></div>
+            <div className="grade-illustration">
+              <div className="books-stack">
+                <div className="book book-1"></div>
+                <div className="book book-2"></div>
+                <div className="book book-3"></div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Purchased Packages with Images */}
+        {/* Purchased Packages */}
         <div className="packages-section">
           <div className="section-header">
-            <h3 className="section-title">
-              <Package size={20} />
-              الباقات المشتركة
-            </h3>
-            <Link href="/packages" className="view-all-link">
-              عرض الكل
-            </Link>
+            <h3 className="section-title">الباقات المشتريّة</h3>
           </div>
           
           {userPackages && userPackages.length > 0 ? (
             <div className="packages-grid">
-              {userPackages.map((userPackage, index) => (
-                <div 
-                  key={userPackage.id} 
-                  className="package-card"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  {/* Package Image */}
-                  <div className="package-image-wrapper">
-                    <div className="package-image-container">
-                      {userPackage.packages?.image_url ? (
-                        <Image
-                          src={userPackage.packages.image_url}
-                          alt={userPackage.packages.name}
-                          fill
-                          className="package-image"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
-                      ) : (
-                        <div className="package-image-placeholder">
-                          <BookOpen size={40} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="package-image-overlay"></div>
-                    <div className="package-type-badge">
+              {userPackages.map((userPackage) => (
+                <div key={userPackage.id} className="package-card">
+                  <div className="package-header">
+                    <div className="package-badge">
                       {getPackageTypeText(userPackage.packages?.type || '')}
                     </div>
-                    <div className={`package-status-badge ${userPackage.is_active ? 'active' : 'inactive'}`}>
-                      <span className="status-dot"></span>
+                    <div className="package-status">
+                      <span className={`status-indicator ${userPackage.is_active ? 'active' : 'inactive'}`}></span>
                       {userPackage.is_active ? 'نشط' : 'غير نشط'}
                     </div>
+                          <div className="card-image-wrapper">
+        {userPackage.image_url ? (
+          <img src={userPackage.image_url} alt={Package.name} loading="lazy" />
+        ) : (
+          <div className="placeholderImage" style={{ background: 'var(--slate-100)' }}>
+          </div>
+        )}
+                  </div>
+
                   </div>
                   
                   <div className="package-content">
@@ -450,42 +415,37 @@ export default async function DashboardPage() {
                       {userPackage.packages?.description || 'لا يوجد وصف'}
                     </p>
                     
-                    <div className="package-meta">
-                      <div className="meta-item">
+                    <div className="package-details">
+                      <div className="detail-item">
                         <BookOpen size={16} />
                         <span>{userPackage.packages?.lecture_count || 0} محاضرة</span>
                       </div>
-                      <div className="meta-item">
+                      <div className="detail-item">
                         <Clock size={16} />
-                        <span>{calculateDaysRemaining(userPackage.expires_at)}</span>
+                        <span>{userPackage.packages?.duration_days || 0} يوم</span>
                       </div>
                     </div>
                     
-                    <div className="package-progress">
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{ width: '60%' }}></div>
-                      </div>
-                      <span className="progress-text">تقدم التعلم</span>
+                    <div className="package-footer">
+                      <span className="purchase-date">
+                        مشترك منذ {formatDate(userPackage.purchased_at)}
+                      </span>
+                      <Link
+                        href={`/grades/${userPackage.packages?.grade || profile.grade}/packages/${userPackage.packages?.id}`}
+                        className="access-button"
+                      >
+                        دخول الباقة
+                      </Link>
                     </div>
-                    
-                    <Link
-                      href={`/grades/${userPackage.packages?.grade || profile.grade}/packages/${userPackage.packages?.id}`}
-                      className="access-button"
-                    >
-                      <PlayCircle size={18} />
-                      <span>مشاهدة المحتوى</span>
-                    </Link>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="empty-state">
-              <div className="empty-icon">
-                <Package size={48} />
-              </div>
+              <Package size={48} />
               <h4>لا توجد باقات مشتركة</h4>
-              <p>ابدأ رحلتك التعليمية بالاشتراك في إحدى باقاتنا المميزة</p>
+              <p>ابدأ رحلتك التعليمية بالاشتراك في إحدى باقاتنا</p>
               <Link href={`/grades/${profile.grade}`} className="primary-button">
                 استعراض الباقات
               </Link>
@@ -496,3 +456,10 @@ export default async function DashboardPage() {
     </div>
   )
 }
+
+// Helper components for icons
+const Info = ({ size }: { size: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+  </svg>
+)
