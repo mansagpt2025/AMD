@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/supabase-server'
 import type { Metadata } from 'next'
 import { Bell, BookOpen, Clock, Package, TrendingUp, Award, AlertTriangle, CheckCircle } from 'lucide-react'
 import './dashboard.css'
+import Image from 'next/image';
 
 // Viewport
 export const viewport = {
@@ -241,7 +242,14 @@ export default async function DashboardPage() {
         <div className="header-content">
           <div className="header-left">
             <div className="logo-container">
-              <span className="logo-text">MD</span>
+              <span className="logo-text">              <Image
+                src="/logo.svg"
+                alt="Logo"
+                width={50}
+                height={50}
+                priority
+              />
+</span>
             </div>
             <div className="header-text">
               <h1 className="platform-name">محمود الديب</h1>

@@ -54,6 +54,7 @@ const LoadingScreen = () => {
                 priority
               />
             </div>
+            <div className={styles.logoGlow}></div>
           </div>
           
           <div className={styles.titleSection}>

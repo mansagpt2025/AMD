@@ -64,7 +64,7 @@
   left: -10px;
   right: -10px;
   bottom: -10px;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, transparent 50%);
+  background: linear-gradient(135deg, rgba(255, 217, 0, 0) 0%, rgba(255, 0, 0, 0) 100%);
   border-radius: 50%;
   animation: glowPulse 2s ease-in-out infinite;
   z-index: 1;
