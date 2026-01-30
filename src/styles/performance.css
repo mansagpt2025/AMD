@@ -1,0 +1,144 @@
+/* ============================================
+   SCROLL OPTIMIZATION - FAST LIKE ROCKET
+   ============================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* تفعيل التمرير السلس على كل الأجهزة */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* iOS */
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* تحسين الذاكرة */
+  contain-intrinsic-size: 0 500px;
+}
+
+body {
+  overflow-x: hidden;
+  /* منع الـ bounce effect على iOS */
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  /* تحسين أداء اللمس */
+  touch-action: pan-y pinch-zoom;
+}
+
+/* GPU Acceleration لكل الأقسام */
+section {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform;
+  contain: layout style paint;
+}
+
+/* تحسين الصور - تحميل فوري بدون lazy */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  /* منع الـ layout shift */
+  aspect-ratio: attr(width) / attr(height);
+  /* GPU acceleration */
+  transform: translateZ(0);
+}
+
+/* تحسين أداء الـ Scroll على الهاتف */
+@media (pointer: coarse) {
+  html {
+    /* إلغاء السموث سكرول على الهاتف للسرعة */
+    scroll-behavior: auto;
+  }
+  
+  * {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  
+  /* تحسين أداء الـ touch */
+  body {
+    touch-action: pan-y pinch-zoom;
+  }
+  
+  /* تقليل الجودة قليلاً للأداء الأفضل على الهاتف */
+  img {
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+/* تحسين أداء الـ Fixed/Sticky elements */
+header, nav, .sticky-element {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  contain: layout;
+}
+
+/* تحسين أداء الرسوم المتحركة */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-element {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+  }
+}
+
+/* تحسين أداء الـ Grid والـ Flex */
+.container, .grid, .flex-container {
+  contain: layout;
+}
+
+/* تحسين أداء النصوص الكبيرة */
+h1, h2, h3, p {
+  contain: layout;
+  text-rendering: optimizeLegibility;
+}
+
+/* إخفاء الـ scrollbar مع الحفاظ على الوظيفة */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* للمتصفحات الحديثة - تحسين الـ paint */
+@supports (content-visibility: auto) {
+  section {
+    content-visibility: visible; /* visible مش auto عشان يظهر كل حاجة فوراً */
+  }
+}
+
+/* تحسين أداء الـ hover على الهاتف */
+@media (hover: none) {
+  *:hover {
+    transition: none !important;
+  }
+}
+
+/* تحسين أداء اللمس السريع */
+button, a, input, textarea, select {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* تحسين أداء الـ will-change للعناصر المتحركة */
+.will-change-transform {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* إلغاء الـ transitions الثقيلة على الهاتف */
+@media (max-width: 768px) {
+  * {
+    transition-duration: 0.05s !important;
+    animation-duration: 0.05s !important;
+  }
+  
+  /* تقليل الـ shadow للأداء الأفضل */
+  * {
+    box-shadow: none !important;
+  }
+}

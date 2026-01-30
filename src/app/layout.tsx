@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Noto_Sans_Arabic, Inter } from 'next/font/google'
 import './globals.css'
+import '@/styles/performance.css'; // إضافة هذا السطر
 
 const notoSansArabic = Noto_Sans_Arabic({
   subsets: ['arabic'],
