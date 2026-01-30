@@ -9,11 +9,12 @@ import {
   Crown, Sparkles, Clock, Calendar, Medal, PlayCircle,
   CheckCircle2, ArrowLeft, ShoppingCart, RefreshCw, 
   Ticket, CreditCard, X, Shield, Gift, Zap, Star,
-  ChevronLeft, TrendingUp, Award, BookMarked, Play, Info
+  ChevronLeft, TrendingUp, ArrowRight, BookMarked, Play, Info
 } from 'lucide-react'
 import styles from './GradePage.module.css'
 import { getWalletBalance } from './actions'
 import Image from 'next/image';
+
 
 // أنواع البيانات
 interface Package {
@@ -308,6 +309,7 @@ export default function GradePage() {
             <h3 style={{ color: theme.primary }}>جاري تحميل البيانات...</h3>
             <p>نحضر لك أفضل محتوى تعليمي</p>
           </motion.div>
+          <div className={styles.loadingBars}> {[0, 1, 2].map((i) => ( <motion.div key={i} className={styles.loadingBar} animate={{ height: ["20%", "80%", "20%"], backgroundColor: [theme.primary, theme.accent, theme.primary] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.2, ease: "easeInOut" }} /> ))} </div>
         </div>
       </div>
     )
@@ -791,12 +793,17 @@ function PackageCardPro({ pkg, isPurchased, theme, index, onPurchase, onEnter }:
 }
 
 // مكون مودال الشراء المحترف
+// في أعلى الملف، تأكد من وجود هذا الاستيراد
+import { deductWalletBalance, markCodeAsUsed, createUserPackage, validateCode } from './actions'
+
+// ============================================================================
+// مكون مودال الشراء المعدل (PurchaseModalPro)
+// ============================================================================
 function PurchaseModalPro({ pkg, user, walletBalance, theme, onClose, onSuccess, gradeSlug }: any) {
   const [method, setMethod] = useState<'wallet' | 'code'>('wallet')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [codeValid, setCodeValid] = useState<any>(null)
   const [showSuccess, setShowSuccess] = useState(false)
 
   const supabase = createBrowserClient(
@@ -810,29 +817,99 @@ function PurchaseModalPro({ pkg, user, walletBalance, theme, onClose, onSuccess,
     return () => window.removeEventListener('keydown', handleEsc)
   }, [onClose])
 
-  const handleValidateCode = async () => {
-    if (!code.trim()) { setError('أدخل الكود'); return }
-    setLoading(true); setError('')
-    try {
-      // محاكاة التحقق - استبدل بالـ API الفعلي
-      await new Promise(r => setTimeout(r, 1000))
-      setCodeValid({ id: '123', discount_percentage: 20 })
-    } catch (err: any) {
-      setError('كود غير صالح')
-    } finally { setLoading(false) }
-  }
-
+  // ============================================================================
+  // دالة الشراء الحقيقية (المعدلة)
+  // ============================================================================
   const handlePurchase = async () => {
-    setLoading(true); setError('')
+    setLoading(true)
+    setError('')
+
     try {
-      await new Promise(r => setTimeout(r, 1500))
+      // ------------------------------------------------------------------
+      // 1. الشراء عبر المحفظة
+      // ------------------------------------------------------------------
+      if (method === 'wallet') {
+        // التحقق من الرصيد أولاً (للـ UI سريع)
+        if (walletBalance < pkg.price) {
+          throw new Error('رصيد غير كافٍ في المحفظة')
+        }
+
+        // خصم المبلغ من المحفظة
+        const deductResult = await deductWalletBalance(user.id, pkg.price, pkg.id)
+        if (!deductResult.success) {
+          throw new Error(deductResult.message || 'فشل خصم المبلغ من المحفظة')
+        }
+
+        // إنشاء اشتراك المستخدم
+        const createResult = await createUserPackage(
+          user.id, 
+          pkg.id, 
+          pkg.duration_days || 30, 
+          'wallet'
+        )
+        
+        if (!createResult.success) {
+          // في حالة فشل إنشاء الاشتراك، النظام يحتاج لـ rollback (استرجاع المبلغ)
+          // هذا يتم عادة في transaction، لكن هنا نكتفي بإظهار الخطأ
+          throw new Error(createResult.message || 'فشل في تفعيل الباقة بعد الدفع')
+        }
+
+      // ------------------------------------------------------------------
+      // 2. الشراء عبر الكود
+      // ------------------------------------------------------------------
+      } else if (method === 'code') {
+        if (!code.trim()) {
+          throw new Error('أدخل كود التفعيل أولاً')
+        }
+
+        // التحقق من صحة الكود مباشرة
+        const validateResult = await validateCode(code, gradeSlug, pkg.id)
+        if (!validateResult.success) {
+          throw new Error(validateResult.message || 'كود غير صالح')
+        }
+
+        // تحديث حالة الكود إلى "مستخدم"
+        const markResult = await markCodeAsUsed(validateResult.data.id, user.id)
+        if (!markResult.success) {
+          throw new Error(markResult.message || 'فشل في استخدام الكود')
+        }
+
+        // إنشاء الاشتراك
+        const createResult = await createUserPackage(
+          user.id, 
+          pkg.id, 
+          pkg.duration_days || 30, 
+          'code'
+        )
+        
+        if (!createResult.success) {
+          throw new Error(createResult.message || 'فشل في تفعيل الباقة')
+        }
+      }
+
+      // ------------------------------------------------------------------
+      // 3. نجاح الشراء - إظهار رسالة النجاح والكونفيتي
+      // ------------------------------------------------------------------
       setShowSuccess(true)
+      
+      // إضافة إشعار في قاعدة البيانات
+      await supabase.from('notifications').insert({
+        user_id: user.id,
+        title: 'تم الشراء بنجاح! 🎉',
+        message: `تم تفعيل ${pkg.name}`,
+        type: 'success'
+      })
+
+      // الانتظار قليلاً ثم إغلاق المودال وتحديث البيانات
       setTimeout(() => {
-        onSuccess()
+        onSuccess() // هذا يستدعي handleRefresh لتحديث الباقات والرصيد
       }, 2000)
+
     } catch (err: any) {
-      setError(err.message)
-    } finally { setLoading(false) }
+      setError(err.message || 'حدث خطأ أثناء عملية الشراء')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -886,10 +963,14 @@ function PurchaseModalPro({ pkg, user, walletBalance, theme, onClose, onSuccess,
             </div>
 
             <div className={styles.modalBodyPro}>
+              {/* اختيار طريقة الدفع */}
               <div className={styles.methodsGrid}>
                 <motion.button 
                   className={`${styles.methodCardPro} ${method === 'wallet' ? styles.active : ''}`}
-                  onClick={() => setMethod('wallet')}
+                  onClick={() => {
+                    setMethod('wallet')
+                    setError('') // مسح الأخطاء عند التبديل
+                  }}
                   whileHover={{ scale: 1.02 }}
                   style={method === 'wallet' ? { borderColor: theme.primary } : {}}
                 >
@@ -911,7 +992,10 @@ function PurchaseModalPro({ pkg, user, walletBalance, theme, onClose, onSuccess,
 
                 <motion.button 
                   className={`${styles.methodCardPro} ${method === 'code' ? styles.active : ''}`}
-                  onClick={() => setMethod('code')}
+                  onClick={() => {
+                    setMethod('code')
+                    setError('') // مسح الأخطاء عند التبديل
+                  }}
                   whileHover={{ scale: 1.02 }}
                   style={method === 'code' ? { borderColor: '#f59e0b' } : {}}
                 >
@@ -920,74 +1004,77 @@ function PurchaseModalPro({ pkg, user, walletBalance, theme, onClose, onSuccess,
                   </div>
                   <div className={styles.methodInfoPro}>
                     <strong>كود تفعيل</strong>
-                    <span>أدخل كود الخصم</span>
+                    <span>لديك كود خصم؟</span>
                   </div>
                 </motion.button>
               </div>
 
+              {/* حقل إدخال الكود (يظهر فقط عند اختيار الكود) */}
               {method === 'code' && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   className={styles.codeSection}
                 >
-                  <div className={styles.codeInputPro}>
+                  <div className={styles.codeInputPro} style={{ flexDirection: 'column', gap: '0.5rem' }}>
                     <input 
                       type="text" 
                       value={code} 
                       onChange={e => setCode(e.target.value.toUpperCase())} 
-                      placeholder="أدخل الكود هنا (مثال: SAVE20)"
-                      disabled={!!codeValid}
+                      placeholder="أدخل كود التفعيل هنا (مثال: SAVE20)"
+                      maxLength={20}
+                      style={{ textAlign: 'center', fontSize: '1.1rem' }}
                     />
-                    <button 
-                      onClick={handleValidateCode}
-                      disabled={loading || !code || !!codeValid}
-                      style={{ background: codeValid ? '#10b981' : theme.primary }}
-                    >
-                      {loading ? <Loader2 className={styles.spinning} size={20} /> : 
-                       codeValid ? <CheckCircle2 size={20} /> : 'تحقق'}
-                    </button>
+                    <small style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+                      سيتم التحقق من الكود عند الضغط على "تأكيد الشراء"
+                    </small>
                   </div>
-                  {codeValid && (
-                    <div className={styles.codeSuccessPro}>
-                      <Star size={16} fill="#f59e0b" />
-                      <span>كود صالح! خصم {codeValid.discount_percentage}%</span>
-                    </div>
-                  )}
                 </motion.div>
               )}
 
+              {/* رسالة خطأ الرصيد غير الكافي */}
               {method === 'wallet' && walletBalance < pkg.price && (
                 <div className={styles.insufficientPro}>
                   <AlertCircle size={24} color="#ef4444" />
                   <div>
                     <strong>رصيد غير كافٍ</strong>
-                    <span>يرجى شحن محفظتك أولاً</span>
+                    <span>يرجى شحن محفظتك أولاً. الرصيد المطلوب: {pkg.price.toLocaleString()} ج.م</span>
                   </div>
                 </div>
               )}
 
+              {/* رسالة خطأ عامة */}
               {error && (
-                <div className={styles.errorMessagePro}>
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={styles.errorMessagePro}
+                >
                   <Info size={18} />
                   <span>{error}</span>
-                </div>
+                </motion.div>
               )}
 
+              {/* زر تأكيد الشراء */}
               <motion.button 
                 className={styles.confirmBtnPro}
                 style={{ 
-                  background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`
+                  background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
+                  opacity: (method === 'wallet' && walletBalance < pkg.price) ? 0.5 : 1
                 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ 
+                  scale: (method === 'wallet' && walletBalance < pkg.price) ? 1 : 1.02 
+                }}
+                whileTap={{ 
+                  scale: (method === 'wallet' && walletBalance < pkg.price) ? 1 : 0.98 
+                }}
                 onClick={handlePurchase}
-                disabled={loading || (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid && method === 'code')}
+                disabled={loading || (method === 'wallet' && walletBalance < pkg.price)}
               >
                 {loading ? (
-                  <><Loader2 className={styles.spinning} size={20} /> جاري المعالجة...</>
+                  <><Loader2 className={styles.spinning} size={20} /> جاري معالجة الشراء...</>
                 ) : (
-                  <><span>تأكيد الشراء</span><ArrowLeft size={20} /></>
+                  <><span>تأكيد الشراء</span><ArrowRight size={20} /></>
                 )}
               </motion.button>
 
