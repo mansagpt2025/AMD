@@ -219,9 +219,7 @@ export async function createContent(formData: FormData) {
 
   // If type is exam, store exam questions in description or separate handling
   const examQuestions = formData.get('exam_questions') as string;
-  const finalDescription = type === 'exam' && examQuestions 
-    ? `${description}\n\n[EXAM_QUESTIONS]:${examQuestions}` 
-    : description;
+const finalDescription = description;
 
   for (const lecture_id of lecture_ids) {
     const { error } = await supabase.from('lecture_contents').insert({
