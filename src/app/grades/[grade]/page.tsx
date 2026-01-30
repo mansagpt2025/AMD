@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import styles from './GradePage.module.css'
 import { getWalletBalance } from './actions'
+import Image from 'next/image';
 
 // أنواع البيانات
 interface Package {
@@ -67,12 +68,12 @@ const themes: Record<string, ThemeType> = {
     dark: '#211d95'          // Violet-900
   },
   third: {
-    primary: '#0cea26',      // Orange-600
-    secondary: '#0cc215',    // Orange-700
+    primary: '#03ba00',      // Orange-600
+    secondary: '#037a09',    // Orange-700
     accent: '#3cfb4c',       // Orange-400
     gradient: 'from-orange-500 via-amber-600 to-orange-700',
     light: '#d5ffdb',        // Orange-100
-    dark: '#127c14'          // Orange-900
+    dark: '#006202'          // Orange-900
   }
 }
 
@@ -305,7 +306,7 @@ export default function GradePage() {
             className={styles.loadingText}
           >
             <h3 style={{ color: theme.primary }}>جاري تحميل البيانات...</h3>
-            <p>نحضر لك أفضل المحتوى التعليمي</p>
+            <p>نحضر لك أفضل محتوى تعليمي</p>
           </motion.div>
         </div>
       </div>
@@ -338,11 +339,23 @@ export default function GradePage() {
           >
             <div className={styles.brandSection}>
               <div className={styles.brandLogo}>
-                <Crown size={32} color="white" />
-              </div>
+
+
+            <div className={styles.logoCircle}>
+              <Image
+                src="/icon.png"
+                alt="Logo"
+                width={50}
+                height={50}
+                className={styles.logoImage}
+                priority
+              />
+                              </div>
+
+                </div>
               <div className={styles.brandText}>
                 <h1>البارع محمود الديب</h1>
-                <span>منارة العلم والتميز</span>
+                <span>أستاذ اللغة العربية للمرحلة الثانوية</span>
               </div>
             </div>
 
