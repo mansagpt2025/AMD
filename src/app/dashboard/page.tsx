@@ -398,15 +398,6 @@ export default async function DashboardPage() {
                       <span className={`status-indicator ${userPackage.is_active ? 'active' : 'inactive'}`}></span>
                       {userPackage.is_active ? 'نشط' : 'غير نشط'}
                     </div>
-                          <div className="card-image-wrapper">
-        {userPackage.image_url ? (
-          <img src={userPackage.image_url} alt={Package.name} loading="lazy" />
-        ) : (
-          <div className="placeholderImage" style={{ background: 'var(--slate-100)' }}>
-          </div>
-        )}
-                  </div>
-
                   </div>
                   
                   <div className="package-content">
