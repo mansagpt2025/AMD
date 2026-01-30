@@ -62,7 +62,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   // ───────────────────────────────────────────────
   if (pathname.startsWith('/admin')) {
     if (!session) {
-      return NextResponse.redirect(new URL('/login', req.url))
+      // إرجاع 404 بدلاً من إعادة التوجيه
+      return NextResponse.rewrite(new URL('/not-found', req.url))
     }
     
     const { data: profile, error } = await supabase
@@ -72,7 +73,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       .single()
     
     if (error || profile?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/', req.url))
+      // إرجاع 404 بدلاً من إعادة التوجيه
+      return NextResponse.rewrite(new URL('/not-found', req.url))
     }
   }
 
@@ -83,10 +85,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   const match: RegExpMatchArray | null = pathname.match(packagePattern)
   
   if (match) {
+    // إذا لم يكن مسجل دخول أو ليس مشتركاً، إرجاع 404
     if (!session) {
-      const loginUrl = new URL('/login', req.url)
-      loginUrl.searchParams.set('redirect', pathname)
-      return NextResponse.redirect(loginUrl)
+      return NextResponse.rewrite(new URL('/not-found', req.url))
     }
     
     const packageId: string = match[1]
@@ -101,11 +102,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       .maybeSingle()
     
     if (error || !userPackage) {
-      const gradeMatch: RegExpMatchArray | null = pathname.match(/\/grades\/([^/]+)/)
-      if (gradeMatch) {
-        return NextResponse.redirect(new URL(`/grades/${gradeMatch[1]}`, req.url))
-      }
-      return NextResponse.redirect(new URL('/dashboard', req.url))
+      // إرجاع 404 بدلاً من إعادة التوجيه
+      return NextResponse.rewrite(new URL('/not-found', req.url))
     }
   }
 

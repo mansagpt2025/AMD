@@ -386,3 +386,9 @@ body.scrolling * {
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+img {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
