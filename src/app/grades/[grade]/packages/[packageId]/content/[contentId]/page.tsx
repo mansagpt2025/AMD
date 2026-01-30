@@ -10,180 +10,10 @@ import {
   Award, Zap, Play, Pause, Volume2, Maximize,
   ExternalLink, Trophy, ArrowLeft, RefreshCw, XCircle
 } from 'lucide-react'
+import styles from './ContentPage.module.css'
 
 // ==========================================
-// STYLES (نفس الـ styles اللي عندك)
-// ==========================================
-const styles: Record<string, React.CSSProperties> = {
-  pageContainer: { minHeight: '100vh', background: '#f8fafc' },
-  loadingContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '1rem' },
-  loadingSpinner: { animation: 'spin 1s linear infinite', width: 40, height: 40, color: '#3b82f6' },
-  loadingText: { color: '#64748b', fontSize: '1.125rem' },
-  errorContainer: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '2rem' },
-  errorContent: { background: 'white', padding: '2rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', textAlign: 'center', maxWidth: 400 },
-  errorIcon: { width: 48, height: 48, color: '#ef4444', margin: '0 auto 1rem' },
-  errorTitle: { fontSize: '1.5rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.5rem' },
-  errorMessage: { color: '#64748b', marginBottom: '1.5rem' },
-  backBtn: { background: '#3b82f6', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: 600 },
-  header: { background: 'white', borderBottom: '1px solid #e2e8f0', padding: '1.5rem 2rem' },
-  headerContent: { maxWidth: '1400px', margin: '0 auto' },
-  breadcrumb: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem', flexWrap: 'wrap' },
-  breadcrumbItem: { display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' },
-  breadcrumbSeparator: { color: '#cbd5e1' },
-  currentPage: { color: '#1e293b', fontWeight: 600 },
-  contentHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' },
-  contentInfo: { flex: 1 },
-  contentTitle: { fontSize: '1.875rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.5rem' },
-  contentMeta: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.875rem', flexWrap: 'wrap' },
-  contentType: { background: '#dbeafe', color: '#1e40af', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontWeight: 500 },
-  contentSeparator: { color: '#cbd5e1' },
-  headerActions: { display: 'flex', gap: '0.75rem' },
-  backActionBtn: { display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: '1px solid', background: 'white', cursor: 'pointer', fontWeight: 500 },
-  mainContent: { maxWidth: '1400px', margin: '0 auto', padding: '2rem' },
-  contentLayout: { display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem', alignItems: 'start' },
-  leftColumn: { minWidth: 0 },
-  rightColumn: { display: 'flex', flexDirection: 'column', gap: '1.5rem' },
-  tabs: { display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '2px solid #e2e8f0' },
-  tabButton: { display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: '2px solid transparent', marginBottom: '-2px', cursor: 'pointer', fontWeight: 500, color: '#64748b' },
-  activeTab: { color: '#3b82f6', borderBottomColor: '#3b82f6' },
-  contentArea: { background: 'white', borderRadius: '1rem', padding: '1.5rem', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' },
-  infoContainer: { padding: '1rem' },
-  infoContent: { maxWidth: '800px' },
-  infoTitle: { fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1e293b' },
-  infoGrid: { display: 'grid', gap: '1.5rem' },
-  infoSection: { marginBottom: '1.5rem' },
-  infoSectionTitle: { fontSize: '0.875rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' },
-  infoDescription: { color: '#334155', lineHeight: 1.6 },
-  infoDetails: { display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' },
-  detailItem: { background: '#f8fafc', padding: '1rem', borderRadius: '0.5rem' },
-  detailLabel: { fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' },
-  detailValue: { fontWeight: 600, color: '#1e293b' },
-  detailBadge: { display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0' },
-  progressTracking: { marginTop: '1.5rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '0.75rem' },
-  progressHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' },
-  progressTitle: { fontWeight: 600, color: '#1e293b' },
-  progressPercentage: { fontWeight: 700, color: '#3b82f6' },
-  progressBar: { height: '8px', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden', marginBottom: '0.5rem' },
-  progressFill: { height: '100%', background: '#3b82f6', borderRadius: '9999px', transition: 'width 0.3s ease' },
-  progressLabels: { display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b' },
-  statusCard: { background: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' },
-  cardTitle: { fontSize: '1rem', fontWeight: 700, color: '#1e293b', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' },
-  statusContent: { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', borderRadius: '0.75rem', marginBottom: '1rem' },
-  statusCompleted: { background: '#d1fae5', color: '#065f46' },
-  statusFailed: { background: '#fee2e2', color: '#991b1b' },
-  statusInProgress: { background: '#dbeafe', color: '#1e40af' },
-  statusNotStarted: { background: '#f3f4f6', color: '#4b5563' },
-  statusInfo: { flex: 1 },
-  statusText: { fontWeight: 700 },
-  statusDate: { fontSize: '0.75rem', marginTop: '0.25rem', opacity: 0.8 },
-  completeButton: { width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', color: 'white', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: '#10b981' },
-  completeButtonDisabled: { background: '#9ca3af', cursor: 'not-allowed' },
-  actionsCard: { background: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' },
-  actionsList: { display: 'flex', flexDirection: 'column', gap: '0.75rem' },
-  actionItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', textDecoration: 'none', color: 'inherit', transition: 'background 0.2s' },
-  actionText: { fontWeight: 500 },
-  packageCard: { background: 'white', padding: '1.5rem', borderRadius: '1rem', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' },
-  packageInfo: { display: 'flex', flexDirection: 'column', gap: '1rem' },
-  packageItem: { display: 'flex', alignItems: 'center', gap: '1rem' },
-  packageIcon: { width: 40, height: 40, borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' },
-  packageDetails: { flex: 1 },
-  packageName: { fontWeight: 600, color: '#1e293b' },
-  packageType: { fontSize: '0.875rem', color: '#64748b' },
-  packageStatus: { fontSize: '0.875rem', color: '#059669' },
-  tipsCard: { background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid #f59e0b' },
-  tipsHeader: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' },
-  tipsIcon: { width: 20, height: 20 },
-  tipsTitle: { fontWeight: 700, color: '#92400e' },
-  tipsList: { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' },
-  tipItem: { fontSize: '0.875rem', color: '#78350f', paddingRight: '1.25rem', position: 'relative' },
-  spinning: { animation: 'spin 1s linear infinite' },
-  textContent: { padding: '2rem', lineHeight: 1.8, color: '#334155' },
-  textContentInner: { maxWidth: '800px', margin: '0 auto' },
-  unsupportedContent: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem', color: '#64748b' },
-  unsupportedIcon: { width: 48, height: 48, marginBottom: '1rem', color: '#cbd5e1' },
-  unsupportedText: { fontSize: '1.125rem' },
-  
-  videoPlayerContainer: { position: 'relative', background: '#000', borderRadius: '0.75rem', overflow: 'hidden', aspectRatio: '16/9' },
-  videoElement: { width: '100%', height: '100%', objectFit: 'contain' },
-  loadingOverlayVideo: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', color: 'white', zIndex: 10 },
-  controlsOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)', padding: '1rem', transition: 'opacity 0.3s' },
-  progressSection: { marginBottom: '0.75rem' },
-  progressBarVideo: { width: '100%', height: '6px', cursor: 'pointer', accentColor: '#3b82f6' },
-  timeDisplay: { display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'white', marginTop: '0.25rem' },
-  controlsBar: { display: 'flex', alignItems: 'center', gap: '1rem' },
-  controlButton: { background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.5rem', transition: 'background 0.2s' },
-  volumeControl: { display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' },
-  volumeSlider: { width: 80, accentColor: 'white' },
-  protectionIndicator: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', color: '#fbbf24', background: 'rgba(0,0,0,0.5)', padding: '0.25rem 0.75rem', borderRadius: '9999px' },
-  protectionBadge: { position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(0,0,0,0.7)', color: '#fbbf24', padding: '0.5rem 1rem', borderRadius: '9999px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', zIndex: 5 },
-  youtubeIframe: { position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' },
-  errorContainerVideo: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', color: 'white', textAlign: 'center' },
-  videoErrorHint: { fontSize: '0.875rem', marginTop: '0.5rem', opacity: 0.8 },
-  pdfViewerContainer: { background: 'white', borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid #e2e8f0' },
-  pdfHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '1rem' },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: '1rem' },
-  iconContainer: { width: 40, height: 40, borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  title: { fontWeight: 700, color: '#1e293b' },
-  subtitle: { fontSize: '0.875rem', color: '#64748b' },
-  headerActionsPdf: { display: 'flex', gap: '0.5rem' },
-  openButton: { display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: '1px solid', background: 'white', cursor: 'pointer', fontSize: '0.875rem' },
-  downloadButton: { display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: 'none', color: 'white', cursor: 'pointer', fontSize: '0.875rem' },
-  viewerContainer: { position: 'relative', height: '600px', background: '#f8fafc' },
-  iframeContainer: { position: 'relative', width: '100%', height: '100%' },
-  pdfFrame: { width: '100%', height: '100%', border: 'none' },
-  protectionOverlay: { position: 'absolute', inset: 0, zIndex: 10, cursor: 'default' },
-  pdfFooter: { padding: '1rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc' },
-  progressBarContainer: { height: '4px', background: '#e2e8f0', borderRadius: '9999px', marginBottom: '0.5rem', overflow: 'hidden' },
-  progressBarFill: { height: '100%', transition: 'width 0.3s' },
-  progressText: { fontSize: '0.875rem', color: '#059669', fontWeight: 500 },
-  driveNotice: { fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' },
-  watermark: { textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', marginTop: '1rem' },
-  
-  examContainer: { background: 'white', borderRadius: '0.75rem', padding: '2rem', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' },
-  examHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '2px solid #e2e8f0' },
-  examInfo: { display: 'flex', alignItems: 'center', gap: '1rem' },
-  timer: { display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 700, fontFamily: 'monospace' },
-  questionCard: { background: '#f8fafc', padding: '2rem', borderRadius: '1rem', marginBottom: '2rem' },
-  questionHeader: { marginBottom: '1rem' },
-  questionNumber: { background: '#3b82f6', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.875rem', fontWeight: 600 },
-  questionText: { fontSize: '1.25rem', fontWeight: 600, color: '#1e293b', marginTop: '1rem', lineHeight: 1.6 },
-  options: { display: 'flex', flexDirection: 'column', gap: '1rem' },
-  option: { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'white', border: '2px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'right' },
-  selected: { borderColor: '#3b82f6', background: '#eff6ff' },
-  optionLabel: { width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e2e8f0', borderRadius: '50%', fontWeight: 700, color: '#475569', flexShrink: 0 },
-  optionText: { flex: 1, fontWeight: 500, color: '#334155' },
-  radio: { width: 24, height: 24, border: '2px solid #cbd5e1', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  radioInner: { width: 12, height: 12, background: '#3b82f6', borderRadius: '50%' },
-  navigation: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  navButton: { display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontWeight: 600, color: '#475569' },
-  progressDots: { display: 'flex', gap: '0.5rem' },
-  dot: { width: 8, height: 8, borderRadius: '50%', background: '#e2e8f0', transition: 'all 0.2s' },
-  active: { background: '#3b82f6', transform: 'scale(1.2)' },
-  answered: { background: '#10b981' },
-  submitButton: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem 2rem', borderRadius: '0.5rem', border: 'none', color: 'white', fontWeight: 700, cursor: 'pointer' },
-  resultsContainer: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' },
-  resultCard: { textAlign: 'center', padding: '3rem', borderRadius: '1rem', maxWidth: '500px', width: '100%' },
-  passed: { background: '#d1fae5', border: '2px solid #059669' },
-  failed: { background: '#fee2e2', border: '2px solid #dc2626' },
-  resultIcon: { marginBottom: '1.5rem' },
-  youtubeContainer: { 
-  width: '100%', 
-  height: '100%', 
-  position: 'relative',
-  userSelect: 'none', // يمنع تحديد النص
-  WebkitUserSelect: 'none'
-},
-  scoreText: { fontSize: '3rem', fontWeight: 800, margin: '1rem 0', color: '#1e293b' },
-  passScoreText: { color: '#64748b', marginBottom: '1.5rem' },
-  stats: { display: 'flex', justifyContent: 'center', gap: '2rem', margin: '2rem 0' },
-  stat: { display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 },
-  resultButtons: { display: 'flex', gap: '1rem', justifyContent: 'center' },
-  retryButton: { display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '2px solid #3b82f6', background: 'white', color: '#3b82f6', fontWeight: 700, cursor: 'pointer' },
-  backButtonExam: { padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', color: 'white', fontWeight: 700, cursor: 'pointer' }
-}
-
-// ==========================================
-// SUPABASE CLIENT - نفس نظام PackagePage
+// SUPABASE CLIENT
 // ==========================================
 declare global {
   var __contentPageSupabase: ReturnType<typeof createBrowserClient> | undefined
@@ -217,7 +47,7 @@ interface Theme {
 }
 
 // ==========================================
-// VIDEO PLAYER
+// VIDEO PLAYER - محسن بعناصر تحكم كاملة
 // ==========================================
 function ProtectedVideoPlayer({ 
   videoUrl, contentId, userId, packageId, onProgress, theme 
@@ -227,91 +57,196 @@ function ProtectedVideoPlayer({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const youtubePlayerRef = useRef<any>(null)
+  const youtubeContainerRef = useRef<HTMLDivElement>(null)
+  
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [playbackRate, setPlaybackRate] = useState(1)
   const [showControls, setShowControls] = useState(true)
-  const lastSavedTimeRef = useRef(0)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showQualityMenu, setShowQualityMenu] = useState(false)
+  const [availableQualities, setAvailableQualities] = useState<string[]>([])
+  const [currentQuality, setCurrentQuality] = useState('auto')
+  const [isYouTubeReady, setIsYouTubeReady] = useState(false)
 
   const isYouTube = videoUrl?.includes('youtube.com') || videoUrl?.includes('youtu.be')
-  
   const getYouTubeId = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/|live\/)([^#\&\?]*).*/
     const match = url.match(regExp)
     return (match && match[2].length === 11) ? match[2] : null
   }
-
   const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null
 
-  const saveProgress = useCallback(async (currentTimeValue: number, totalDuration: number) => {
-    if (!userId || !contentId) return
-    try {
-      const supabase = getSupabase()
-      if (!supabase) return
-      const progress = totalDuration > 0 ? (currentTimeValue / totalDuration) * 100 : 0
-      if (Math.abs(currentTimeValue - lastSavedTimeRef.current) < 10 && progress < 95) return
-      
-      await supabase.from('user_progress').upsert({
-        user_id: userId,
-        lecture_content_id: contentId,
-        package_id: packageId,
-        status: progress >= 90 ? 'completed' : 'in_progress',
-        score: Math.round(progress),
-        last_accessed_at: new Date().toISOString(),
-        ...(progress >= 90 && { completed_at: new Date().toISOString() })
-      }, { onConflict: 'user_id,lecture_content_id' })
-
-      lastSavedTimeRef.current = currentTimeValue
-      onProgress(Math.round(progress))
-    } catch (err) {
-      console.error('Error saving progress:', err)
-    }
-  }, [userId, contentId, packageId, onProgress])
-
+  // تحميل YouTube API والمشغل
   useEffect(() => {
-    if (isYouTube || !videoRef.current) return
-    const video = videoRef.current
+    if (!isYouTube || !youtubeId) return
+
+    const loadYouTubeAPI = () => {
+      if ((window as any).YT && (window as any).YT.Player) {
+        initYouTubePlayer()
+        return
+      }
+      
+      const tag = document.createElement('script')
+      tag.src = 'https://www.youtube.com/iframe_api'
+      const firstScriptTag = document.getElementsByTagName('script')[0]
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag)
+      
+      ;(window as any).onYouTubeIframeAPIReady = initYouTubePlayer
+    }
+
+    const initYouTubePlayer = () => {
+      if (!youtubeContainerRef.current) return
+      
+      youtubePlayerRef.current = new (window as any).YT.Player(youtubeContainerRef.current, {
+        videoId: youtubeId,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          modestbranding: 1,
+          rel: 0,
+          showinfo: 0,
+          fs: 0,
+          iv_load_policy: 3,
+          playsinline: 1,
+          enablejsapi: 1
+        },
+        events: {
+          onReady: onPlayerReady,
+          onStateChange: onPlayerStateChange
+        }
+      })
+    }
+
+    loadYouTubeAPI()
     
-    const handleTimeUpdate = () => {
-      setCurrentTime(video.currentTime)
-      if (Math.floor(video.currentTime) % 10 === 0) saveProgress(video.currentTime, video.duration)
-    }
-    const handleLoadedMetadata = () => { setDuration(video.duration); setIsLoading(false) }
-    const handleEnded = () => { setIsPlaying(false); saveProgress(video.duration, video.duration); onProgress(100) }
-    const handleError = () => { setError('حدث خطأ في تحميل الفيديو'); setIsLoading(false) }
-
-    video.addEventListener('timeupdate', handleTimeUpdate)
-    video.addEventListener('loadedmetadata', handleLoadedMetadata)
-    video.addEventListener('ended', handleEnded)
-    video.addEventListener('error', handleError)
-    const handleContextMenu = (e: MouseEvent) => e.preventDefault()
-    document.addEventListener('contextmenu', handleContextMenu)
-
     return () => {
-      video.removeEventListener('timeupdate', handleTimeUpdate)
-      video.removeEventListener('loadedmetadata', handleLoadedMetadata)
-      video.removeEventListener('ended', handleEnded)
-      video.removeEventListener('error', handleError)
-      document.removeEventListener('contextmenu', handleContextMenu)
-      saveProgress(video.currentTime, video.duration)
+      if (youtubePlayerRef.current) {
+        youtubePlayerRef.current.destroy()
+      }
     }
-  }, [isYouTube, saveProgress, onProgress])
+  }, [isYouTube, youtubeId])
+
+  const onPlayerReady = (event: any) => {
+    setIsYouTubeReady(true)
+    setDuration(event.target.getDuration())
+    const qualities = event.target.getAvailableQualityLevels()
+    if (qualities && qualities.length > 0) {
+      setAvailableQualities(qualities)
+    }
+    event.target.setVolume(100)
+  }
+
+  const onPlayerStateChange = (event: any) => {
+    setIsPlaying(event.data === 1)
+    if (event.data === 0) {
+      onProgress(100)
+    }
+  }
+
+  // تحديث التقدم والوقت لليوتيوب
+  useEffect(() => {
+    if (!isYouTube || !isPlaying) return
+    
+    const interval = setInterval(() => {
+      if (youtubePlayerRef.current && isYouTubeReady) {
+        const current = youtubePlayerRef.current.getCurrentTime()
+        const dur = youtubePlayerRef.current.getDuration()
+        setCurrentTime(current)
+        setDuration(dur)
+        if (dur > 0) {
+          onProgress((current / dur) * 100)
+        }
+      }
+    }, 1000)
+    
+    return () => clearInterval(interval)
+  }, [isYouTube, isPlaying, isYouTubeReady, onProgress])
 
   const togglePlay = () => {
-    if (!videoRef.current) return
-    if (isPlaying) videoRef.current.pause()
-    else videoRef.current.play()
-    setIsPlaying(!isPlaying)
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      if (isPlaying) {
+        youtubePlayerRef.current.pauseVideo()
+      } else {
+        youtubePlayerRef.current.playVideo()
+      }
+    } else if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause()
+      } else {
+        videoRef.current.play()
+      }
+    }
+  }
+
+  const skip = (seconds: number) => {
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      const current = youtubePlayerRef.current.getCurrentTime()
+      youtubePlayerRef.current.seekTo(current + seconds, true)
+    } else if (videoRef.current) {
+      videoRef.current.currentTime += seconds
+    }
   }
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!videoRef.current) return
     const time = parseFloat(e.target.value)
-    videoRef.current.currentTime = time
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      youtubePlayerRef.current.seekTo(time, true)
+    } else if (videoRef.current) {
+      videoRef.current.currentTime = time
+    }
     setCurrentTime(time)
+  }
+
+  const changeSpeed = () => {
+    const speeds = [0.5, 1, 1.25, 1.5, 2]
+    const currentIndex = speeds.indexOf(playbackRate)
+    const next = speeds[(currentIndex + 1) % speeds.length]
+    
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      youtubePlayerRef.current.setPlaybackRate(next)
+    } else if (videoRef.current) {
+      videoRef.current.playbackRate = next
+    }
+    setPlaybackRate(next)
+  }
+
+  const changeQuality = (quality: string) => {
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      youtubePlayerRef.current.setPlaybackQuality(quality)
+      setCurrentQuality(quality)
+    }
+    setShowQualityMenu(false)
+  }
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return
+    
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`)
+      })
+    } else {
+      document.exitFullscreen()
+    }
+  }
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  // منع القائمة اليمنى والنسخ
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    return false
   }
 
   const formatTime = (seconds: number) => {
@@ -320,106 +255,343 @@ function ProtectedVideoPlayer({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  if (isYouTube && youtubeId) {
-    return (
-      <div ref={containerRef} style={styles.videoPlayerContainer}>
-<div 
-  style={styles.youtubeContainer} 
-  onContextMenu={(e) => e.preventDefault()}
->
-  <iframe
-    src={`https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1&showinfo=0&controls=0&disablekb=1&fs=0&iv_load_policy=3&cc_load_policy=0&playsinline=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
-    title="Protected Video"
-    style={{...styles.youtubeIframe, pointerEvents: 'none'}} // pointerEvents: 'none' يمنع النقر على links اليوتيوب
-    sandbox="allow-scripts allow-same-origin allow-presentation"
-    referrerPolicy="strict-origin-when-cross-origin"
-  />
-  {/* Overlay شفاف يمنع استخراج الرابط بالكليك يمين */}
-  <div 
-    style={{
+  // واجهة التحكم الموحدة
+  const renderControls = () => (
+    <div style={{
       position: 'absolute',
-      inset: 0,
-      zIndex: 5,
-      cursor: 'default'
-    }} 
-    onContextMenu={(e) => {
-      e.preventDefault();
-      alert('المحتوى محمي ©');
-      return false;
-    }}
-  />
-</div>
-<div style={{...styles.protectionBadge, zIndex: 6}}>
-  <Shield size={16} />
-  <span>محمي ضد النسخ</span>
-</div>
- </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div style={{...styles.videoPlayerContainer, ...styles.errorContainerVideo}}>
-        <AlertCircle size={48} color="#ef4444" />
-        <p>{error}</p>
-        <p style={styles.videoErrorHint}>تأكد من أن رابط الفيديو صحيح</p>
+      bottom: 0,
+      left: 0,
+      right: 0,
+      background: 'linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.6), transparent)',
+      padding: '20px 16px 16px',
+      transition: 'opacity 0.3s',
+      opacity: showControls ? 1 : 0,
+      pointerEvents: showControls ? 'auto' : 'none',
+      zIndex: 20,
+      direction: 'rtl'
+    }}>
+      {/* شريط التقدم */}
+      <div style={{ marginBottom: '12px' }}>
+        <input
+          type="range"
+          min={0}
+          max={duration || 100}
+          value={currentTime}
+          onChange={handleSeek}
+          style={{
+            width: '100%',
+            height: '6px',
+            cursor: 'pointer',
+            accentColor: theme.primary,
+            background: 'rgba(255,255,255,0.3)',
+            borderRadius: '3px',
+            outline: 'none',
+            direction: 'ltr'
+          }}
+        />
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          color: 'white', 
+          fontSize: '0.8rem',
+          marginTop: '4px',
+          fontFamily: 'monospace',
+          direction: 'ltr'
+        }}>
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
       </div>
-    )
-  }
+
+      {/* أزرار التحكم */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '12px',
+        justifyContent: 'center',
+        flexWrap: 'wrap'
+      }}>
+        {/* تأخير 10 ثواني */}
+        <button 
+          onClick={() => skip(-10)}
+          style={buttonStyle}
+          title="تأخير 10 ثواني"
+        >
+          <RefreshCw size={20} style={{ transform: 'scaleX(-1)' }} />
+        </button>
+
+        {/* تشغيل/إيقاف */}
+        <button 
+          onClick={togglePlay}
+          style={{
+            ...buttonStyle,
+            background: 'rgba(255,255,255,0.2)',
+            borderRadius: '50%',
+            padding: '12px',
+            transform: 'scale(1.1)'
+          }}
+        >
+          {isPlaying ? <Pause size={28} fill="white" /> : <Play size={28} fill="white" />}
+        </button>
+
+        {/* تقديم 10 ثواني */}
+        <button 
+          onClick={() => skip(10)}
+          style={buttonStyle}
+          title="تقديم 10 ثواني"
+        >
+          <RefreshCw size={20} />
+        </button>
+
+        {/* فاصل */}
+        <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.3)', margin: '0 8px' }} />
+
+        {/* الصوت */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Volume2 size={20} color="white" />
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.1}
+            value={volume}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value)
+              setVolume(v)
+              if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+                youtubePlayerRef.current.setVolume(v * 100)
+              } else if (videoRef.current) {
+                videoRef.current.volume = v
+              }
+            }}
+            style={{ width: '80px', accentColor: 'white', cursor: 'pointer' }}
+          />
+        </div>
+
+        {/* السرعة */}
+        <button 
+          onClick={changeSpeed}
+          style={{ ...buttonStyle, fontSize: '0.85rem', fontWeight: 'bold', minWidth: '48px' }}
+          title="سرعة التشغيل"
+        >
+          {playbackRate}x
+        </button>
+
+        {/* الجودة - لليوتيوب فقط */}
+        {isYouTube && (
+          <div style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setShowQualityMenu(!showQualityMenu)}
+              style={{ ...buttonStyle, fontSize: '0.8rem', fontWeight: 'bold', minWidth: '50px' }}
+              title="جودة الفيديو"
+            >
+              {currentQuality === 'auto' ? 'جودة' : currentQuality}
+            </button>
+            {showQualityMenu && (
+              <div style={{
+                position: 'absolute',
+                bottom: '40px',
+                right: '50%',
+                transform: 'translateX(50%)',
+                background: 'rgba(0,0,0,0.95)',
+                borderRadius: '8px',
+                padding: '8px',
+                minWidth: '100px',
+                zIndex: 30,
+                border: '1px solid rgba(255,255,255,0.2)'
+              }}>
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.7rem', padding: '4px 8px', textAlign: 'center' }}>
+                  الجودة
+                </div>
+                {['auto', ...availableQualities].map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => changeQuality(q)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '6px 12px',
+                      color: 'white',
+                      background: currentQuality === q ? theme.primary : 'transparent',
+                      border: 'none',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      borderRadius: '4px',
+                      marginBottom: '2px'
+                    }}
+                  >
+                    {q === 'auto' ? 'تلقائي' : q}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ملء الشاشة */}
+        <button 
+          onClick={toggleFullscreen}
+          style={buttonStyle}
+          title={isFullscreen ? 'إخراج من ملء الشاشة' : 'ملء الشاشة'}
+        >
+          <Maximize size={20} />
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <div 
       ref={containerRef}
-      style={styles.videoPlayerContainer}
+      style={{ 
+        position: 'relative', 
+        background: '#000', 
+        borderRadius: '0.75rem', 
+        overflow: 'hidden',
+        aspectRatio: '16/9',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        msUserSelect: 'none'
+      }}
       onMouseEnter={() => setShowControls(true)}
-      onMouseLeave={() => isPlaying && setTimeout(() => setShowControls(false), 3000)}
+      onMouseLeave={() => isPlaying && setShowControls(false)}
+      onContextMenu={handleContextMenu}
+      onCopy={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}
     >
-      {isLoading && (
-        <div style={styles.loadingOverlayVideo}>
-          <Loader2 style={{...styles.loadingSpinner, color: theme.primary}} />
-          <p>جاري تحميل الفيديو...</p>
-        </div>
+      {isYouTube && youtubeId ? (
+        <>
+          <div 
+            ref={youtubeContainerRef}
+            style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
+          />
+          {/* طبقة حماية لليوتيوب */}
+          <div 
+            onClick={togglePlay}
+            onContextMenu={handleContextMenu}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 10,
+              cursor: 'pointer',
+              background: 'transparent'
+            }}
+          />
+        </>
+      ) : (
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+          onTimeUpdate={() => {
+            if (videoRef.current) {
+              setCurrentTime(videoRef.current.currentTime)
+              setDuration(videoRef.current.duration || 0)
+              if (videoRef.current.duration > 0) {
+                onProgress((videoRef.current.currentTime / videoRef.current.duration) * 100)
+              }
+            }
+          }}
+          onLoadedMetadata={() => {
+            if (videoRef.current) setDuration(videoRef.current.duration || 0)
+          }}
+          onEnded={() => setIsPlaying(false)}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onVolumeChange={() => {
+            if (videoRef.current) setVolume(videoRef.current.volume)
+          }}
+          onRateChange={() => {
+            if (videoRef.current) setPlaybackRate(videoRef.current.playbackRate)
+          }}
+          controls={false}
+          playsInline
+          disablePictureInPicture
+          controlsList="nodownload noplaybackrate nofullscreen"
+          onContextMenu={handleContextMenu}
+        />
       )}
-      <video
-        ref={videoRef}
-        src={videoUrl}
-        style={styles.videoElement}
-        controls={false}
-        onClick={togglePlay}
-        preload="metadata"
-        playsInline
+
+      {/* طبقة حماية إضافية */}
+      <div 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 5,
+          pointerEvents: 'none'
+        }}
+        onContextMenu={handleContextMenu}
       />
-      {showControls && !isLoading && (
-        <div style={styles.controlsOverlay}>
-          <div style={styles.progressSection}>
-            <input type="range" min="0" max={duration || 0} value={currentTime} onChange={handleSeek} style={styles.progressBarVideo} />
-            <div style={styles.timeDisplay}>
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-          </div>
-          <div style={styles.controlsBar}>
-            <button onClick={togglePlay} style={styles.controlButton}>
-              {isPlaying ? <Pause size={24} /> : <Play size={24} />}
-            </button>
-            <div style={styles.volumeControl}>
-              <Volume2 size={20} />
-              <input type="range" min="0" max="1" step="0.1" value={volume} 
-                onChange={(e) => { const vol = parseFloat(e.target.value); setVolume(vol); if (videoRef.current) videoRef.current.volume = vol }}
-                style={styles.volumeSlider} />
-            </div>
-            <div style={styles.protectionIndicator}><Lock size={16} /><span>محمي</span></div>
-            <button onClick={() => containerRef.current?.requestFullscreen()} style={styles.controlButton}>
-              <Maximize size={20} />
-            </button>
-          </div>
+
+      {renderControls()}
+
+      {/* أيقونة التشغيل في المنتصف */}
+      {!isPlaying && (
+        <div 
+          onClick={togglePlay}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(0,0,0,0.7)',
+            borderRadius: '50%',
+            padding: '24px',
+            cursor: 'pointer',
+            zIndex: 15,
+            border: '2px solid rgba(255,255,255,0.3)'
+          }}
+        >
+          <Play size={40} color="white" fill="white" />
         </div>
       )}
+
+      {/* شارة المحتوى المحمي */}
+      <div style={{
+        position: 'absolute',
+        top: '12px',
+        left: '12px',
+        background: 'rgba(0,0,0,0.8)',
+        color: '#fbbf24',
+        padding: '6px 12px',
+        borderRadius: '20px',
+        fontSize: '0.75rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        zIndex: 15,
+        userSelect: 'none',
+        pointerEvents: 'none',
+        fontWeight: 'bold',
+        border: '1px solid rgba(251, 191, 36, 0.3)'
+      }}>
+        <Shield size={14} />
+        <span>محمي من النسخ</span>
+      </div>
     </div>
   )
 }
 
-// ==========================================
+// style للأزرار
+const buttonStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  color: 'white',
+  cursor: 'pointer',
+  padding: '8px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: '8px',
+  transition: 'all 0.2s'
+}// ==========================================
 // PDF VIEWER
 // ==========================================
 function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: { 
@@ -490,15 +662,23 @@ function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: 
 
   if (error) {
     return (
-      <div style={{...styles.pdfViewerContainer, padding: '2rem', textAlign: 'center'}}>
+      <div className={styles.pdfViewerContainer} style={{ padding: '2rem', textAlign: 'center' }}>
         <AlertCircle size={48} color="#ef4444" />
         <h3>حدث خطأ في تحميل الملف</h3>
-        <div style={{display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem'}}>
-          <button onClick={handleOpenOriginal} style={{...styles.openButton, borderColor: theme.primary, color: theme.primary}}>
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
+          <button 
+            onClick={handleOpenOriginal} 
+            className={styles.openButton}
+            style={{ borderColor: theme.primary, color: theme.primary }}
+          >
             <ExternalLink size={18} /> فتح الرابط الأصلي
           </button>
           {isGoogleDrive && (
-            <button onClick={handleDownload} style={{...styles.downloadButton, background: theme.primary}}>
+            <button 
+              onClick={handleDownload} 
+              className={styles.downloadButton}
+              style={{ background: theme.primary }}
+            >
               <Download size={18} /> تحميل
             </button>
           )}
@@ -508,55 +688,72 @@ function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: 
   }
 
   return (
-    <div style={styles.pdfViewerContainer}>
-      <div style={styles.pdfHeader}>
-        <div style={styles.headerLeft}>
-          <div style={{...styles.iconContainer, background: theme.primary}}>
+    <div className={styles.pdfViewerContainer}>
+      <div className={styles.pdfHeader}>
+        <div className={styles.headerLeft}>
+          <div className={styles.iconContainer} style={{ background: theme.primary }}>
             <BookOpen size={24} color="white" />
           </div>
           <div>
-            <h3 style={styles.title}>ملف PDF</h3>
-            <p style={styles.subtitle}>
+            <h3 className={styles.title}>ملف PDF</h3>
+            <p className={styles.subtitle}>
               {isGoogleDrive ? 'Google Drive' : 'PDF'}
               {timeSpent > 0 && ` | ${Math.floor(timeSpent / 60)}:${(timeSpent % 60).toString().padStart(2, '0')}`}
             </p>
           </div>
         </div>
-        <div style={styles.headerActionsPdf}>
-          <button onClick={handleOpenOriginal} style={{...styles.openButton, borderColor: theme.primary, color: theme.primary}}>
+        <div className={styles.headerActionsPdf}>
+          <button 
+            onClick={handleOpenOriginal} 
+            className={styles.openButton}
+            style={{ borderColor: theme.primary, color: theme.primary }}
+          >
             <ExternalLink size={18} /><span>فتح في Drive</span>
           </button>
-          <button onClick={handleDownload} style={{...styles.downloadButton, background: theme.primary}}>
+          <button 
+            onClick={handleDownload} 
+            className={styles.downloadButton}
+            style={{ background: theme.primary }}
+          >
             <Download size={18} /><span>تحميل</span>
           </button>
         </div>
       </div>
-      <div style={styles.viewerContainer}>
+      <div className={styles.viewerContainer}>
         {isLoading ? (
-          <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%'}}>
-            <Loader2 style={{...styles.loadingSpinner, color: theme.primary}} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
           </div>
         ) : (
-          <div style={styles.iframeContainer}>
-            <iframe src={getViewerUrl()} style={styles.pdfFrame} title="PDF Viewer" sandbox="allow-scripts allow-same-origin allow-popups" />
-            <div style={styles.protectionOverlay} onContextMenu={(e) => e.preventDefault()} />
+          <div className={styles.iframeContainer}>
+            <iframe 
+              src={getViewerUrl()} 
+              className={styles.pdfFrame} 
+              title="PDF Viewer" 
+              sandbox="allow-scripts allow-same-origin allow-popups"
+            />
+            <div className={styles.protectionOverlay} onContextMenu={(e) => e.preventDefault()} />
           </div>
         )}
       </div>
-      <div style={styles.pdfFooter}>
-        <div style={styles.progressBarContainer}>
-          <div style={{...styles.progressBarFill, width: '100%', background: theme.success}} />
+      <div className={styles.pdfFooter}>
+        <div className={styles.progressBarContainer}>
+          <div className={styles.progressBarFill} style={{ width: '100%', background: theme.success }} />
         </div>
-        <div style={styles.progressText}>{progressSaved ? '✓ تم التحميل' : 'جاري التحميل...'}</div>
-        {isGoogleDrive && <p style={styles.driveNotice}><AlertCircle size={14} /> قد تحتاج لتسجيل الدخول في Google</p>}
-        <p style={styles.watermark}>الأبــارع محمود الـديــب © 2024</p>
+        <div className={styles.progressText}>{progressSaved ? '✓ تم التحميل' : 'جاري التحميل...'}</div>
+        {isGoogleDrive && (
+          <p className={styles.driveNotice}>
+            <AlertCircle size={14} /> قد تحتاج لتسجيل الدخول في Google
+          </p>
+        )}
+        <p className={styles.watermark}>الأبــارع محمود الـديــب © 2024</p>
       </div>
     </div>
   )
 }
 
 // ==========================================
-// EXAM VIEWER
+// EXAM VIEWER - معدل ليقرأ من JSON في الوصف
 // ==========================================
 function ExamViewer({ examContent, contentId, packageId, userId, theme, onComplete }: {
   examContent: any; contentId: string; packageId: string; userId: string
@@ -571,90 +768,148 @@ function ExamViewer({ examContent, contentId, packageId, userId, theme, onComple
   const [showResults, setShowResults] = useState(false)
   const [score, setScore] = useState(0)
   const [loading, setLoading] = useState(true)
-
-useEffect(() => {
-  const fetchQuestions = async () => {
-    try {
-      const supabase = getSupabase()
-      if (!supabase) {
-        setLoading(false)
-        return
-      }
-
-      // جلب الأسئلة من جدول questions
-      const { data, error } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('content_id', contentId)
-        .eq('is_active', true)
-        .order('order_number', { ascending: true })
-
-      if (error) {
-        console.error('Error fetching questions:', error)
-        setError('فشل تحميل الأسئلة')
-        setLoading(false)
-        return
-      }
-
-      if (!data || data.length === 0) {
-        setError('لا توجد أسئلة متاحة لهذا الامتحان')
-        setLoading(false)
-        return
-      }
-
-      // تنسيق البيانات لتتناسب مع الـ interface
-      const formattedQuestions: Question[] = data.map((q: any, index: number) => ({
-        id: q.id || index + 1,
-        text: q.question_text || q.text,
-        options: Array.isArray(q.options) ? q.options : [
-          { id: 'A', text: q.option_a || 'الإجابة أ' },
-          { id: 'B', text: q.option_b || 'الإجابة ب' },
-          { id: 'C', text: q.option_c || 'الإجابة ج' },
-          { id: 'D', text: q.option_d || 'الإجابة د' }
-        ],
-        correctAnswer: q.correct_answer || 'A'
-      }))
-
-      setQuestions(formattedQuestions)
-      setTimeLeft((examContent?.duration_minutes || 10) * 60)
-      setLoading(false)
-    } catch (err) {
-      console.error('Exam fetch error:', err)
-      setError('حدث خطأ في تحميل الامتحان')
-      setLoading(false)
-    }
-  }
-
-  fetchQuestions()
-}, [contentId, examContent])
+  const [error, setError] = useState<string | null>(null)
+const [results, setResults] = useState<{correct: number, wrong: number} | null>(null)
 
   useEffect(() => {
-    if (showResults || loading) return
+    const fetchQuestions = async () => {
+      try {
+        // البحث عن الأسئلة في content_url أو description
+        const contentText = examContent?.content_url || examContent?.description || '';
+        
+        // البحث عن النمط [EXAM_QUESTIONS]:{...}
+        const match = contentText.match(/\[EXAM_QUESTIONS\]:(\{[\s\S]*\})/);
+        
+        if (match && match[1]) {
+          try {
+            const parsedData = JSON.parse(match[1]);
+            
+            if (parsedData.questions && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
+              const formattedQuestions: Question[] = parsedData.questions.map((q: any, index: number) => ({
+                id: index + 1,
+                text: q.question,
+                options: q.options.map((opt: string, optIndex: number) => ({
+                  id: String.fromCharCode(65 + optIndex), // A, B, C, D
+                  text: opt
+                })),
+                correctAnswer: q.correct // يجب أن تطابق نص أحد الخيارات
+              }));
+              
+              setQuestions(formattedQuestions);
+              setTimeLeft((examContent?.duration_minutes || 10) * 60);
+              setLoading(false);
+              return;
+            } else {
+              throw new Error('لا توجد أسئلة في البيانات');
+            }
+          } catch (parseErr) {
+            console.error('JSON Parse Error:', parseErr);
+            setError('تنسيق الأسئلة غير صحيح');
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // Fallback: محاولة الجلب من قاعدة البيانات إذا لم يوجد JSON
+        const supabase = getSupabase()
+        if (!supabase) {
+          setError('لا توجد أسئلة متاحة');
+          setLoading(false);
+          return
+        }
+
+        const { data, error: dbError } = await supabase
+          .from('questions')
+          .select('*')
+          .eq('content_id', contentId)
+          .eq('is_active', true)
+          .order('order_number', { ascending: true })
+
+        if (dbError || !data || data.length === 0) {
+          setError('لا توجد أسئلة متاحة لهذا الامتحان')
+          setLoading(false)
+          return
+        }
+
+        const formattedQuestions: Question[] = data.map((q: any, index: number) => ({
+          id: q.id || index + 1,
+          text: q.question_text || q.text,
+          options: Array.isArray(q.options) ? q.options : [
+            { id: 'A', text: q.option_a || 'الإجابة أ' },
+            { id: 'B', text: q.option_b || 'الإجابة ب' },
+            { id: 'C', text: q.option_c || 'الإجابة ج' },
+            { id: 'D', text: q.option_d || 'الإجابة د' }
+          ],
+          correctAnswer: q.correct_answer || 'A'
+        }))
+
+        setQuestions(formattedQuestions)
+        setTimeLeft((examContent?.duration_minutes || 10) * 60)
+        setLoading(false)
+      } catch (err) {
+        console.error('Exam fetch error:', err)
+        setError('حدث خطأ في تحميل الامتحان')
+        setLoading(false)
+      }
+    }
+
+    fetchQuestions()
+  }, [contentId, examContent])
+
+  useEffect(() => {
+    if (showResults || loading || error) return
     const timer = setInterval(() => {
-      setTimeLeft(prev => { if (prev <= 1) { clearInterval(timer); handleSubmit(); return 0 } return prev - 1 })
+      setTimeLeft(prev => { 
+        if (prev <= 1) { 
+          clearInterval(timer); 
+          handleSubmit(); 
+          return 0 
+        } 
+        return prev - 1 
+      })
     }, 1000)
     return () => clearInterval(timer)
-  }, [showResults, loading])
+  }, [showResults, loading, error])
 
-  const handleAnswer = (questionId: number, answerId: string) => setAnswers(prev => ({ ...prev, [questionId]: answerId }))
+  const handleAnswer = (questionId: number, answerId: string) => {
+    setAnswers(prev => ({ ...prev, [questionId]: answerId }))
+  }
 
   const handleSubmit = async () => {
+    if (isSubmitting) return
     setIsSubmitting(true)
+    
     let correctCount = 0
-    questions.forEach(q => { if (answers[q.id] === q.correctAnswer) correctCount++ })
+    questions.forEach(q => { 
+      const userAnswer = answers[q.id]
+      const isCorrect = userAnswer === q.correctAnswer || 
+        q.options.find(opt => opt.id === userAnswer)?.text === q.correctAnswer
+      if (isCorrect) correctCount++ 
+    })
+    
+    const wrongCount = questions.length - correctCount
     const finalScore = Math.round((correctCount / questions.length) * 100)
+    
     setScore(finalScore)
+    setResults({ correct: correctCount, wrong: wrongCount }) // 👈 حفظ النتيجة
     setShowResults(true)
     setIsSubmitting(false)
+    
     if (finalScore >= (examContent?.pass_score || 50)) onComplete()
 
     try {
       const supabase = getSupabase()
       if (supabase) await supabase.from('exam_results').insert({
-        user_id: userId, content_id: contentId, score: finalScore,
-        total_questions: questions.length, correct_answers: correctCount, wrong_answers: questions.length - correctCount
+        user_id: userId, 
+        content_id: contentId, 
+        score: finalScore,
+        total_questions: questions.length, 
+        correct_answers: correctCount, 
+        wrong_answers: wrongCount
       })
-    } catch (err) { console.error('Error saving exam results:', err) }
+    } catch (err) { 
+      console.error('Error saving exam results:', err) 
+    }
   }
 
   const formatTime = (seconds: number) => {
@@ -663,24 +918,68 @@ useEffect(() => {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  if (loading) return <div style={{...styles.loadingContainer, minHeight: '400px'}}><Loader2 style={{...styles.loadingSpinner, color: theme.primary}} /><p>جاري التحميل...</p></div>
+  if (loading) return (
+    <div className={styles.loadingContainer} style={{ minHeight: '400px' }}>
+      <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
+      <p>جاري التحميل...</p>
+    </div>
+  )
+
+  if (error) return (
+    <div className={styles.errorContainer} style={{ minHeight: '400px' }}>
+      <div className={styles.errorContent}>
+        <AlertCircle className={styles.errorIcon} />
+        <h3 className={styles.errorTitle}>خطأ</h3>
+        <p className={styles.errorMessage}>{error}</p>
+      </div>
+    </div>
+  )
 
   if (showResults) {
     const passed = score >= (examContent?.pass_score || 50)
     return (
-      <div style={styles.resultsContainer}>
-        <div style={{...styles.resultCard, ...(passed ? styles.passed : styles.failed)}}>
-          <div style={styles.resultIcon}>{passed ? <Trophy size={64} color="#10b981" /> : <AlertCircle size={64} color="#ef4444" />}</div>
-          <h2>{passed ? 'مبروك! لقد نجحت' : 'للأسف، لم تنجح'}</h2>
-          <p style={styles.scoreText}>{score}%</p>
-          <p style={styles.passScoreText}>درجة النجاح: {examContent?.pass_score || 50}%</p>
-          <div style={styles.stats}>
-            <div style={styles.stat}><CheckCircle color="#10b981" /><span>صحيحة: {Object.keys(answers).filter(id => answers[parseInt(id)] === questions.find(q => q.id === parseInt(id))?.correctAnswer).length}</span></div>
-            <div style={styles.stat}><XCircle color="#ef4444" /><span>خاطئة: {questions.length - Object.keys(answers).filter(id => answers[parseInt(id)] === questions.find(q => q.id === parseInt(id))?.correctAnswer).length}</span></div>
+      <div className={styles.resultsContainer}>
+        <div 
+          className={styles.resultCard} 
+          style={passed ? { background: '#d1fae5', border: '2px solid #059669' } : { background: '#fee2e2', border: '2px solid #dc2626' }}
+        >
+          <div className={styles.resultIcon}>
+            {passed ? <Trophy size={64} color="#10b981" /> : <AlertCircle size={64} color="#ef4444" />}
           </div>
-          <div style={styles.resultButtons}>
-            <button onClick={() => router.back()} style={{...styles.backButtonExam, background: theme.primary}}>العودة للباقة</button>
-            {!passed && <button onClick={() => { setShowResults(false); setAnswers({}); setCurrentQuestion(0); setTimeLeft((examContent?.duration_minutes || 10) * 60) }} style={styles.retryButton}><RefreshCw size={18} /> إعادة المحاولة</button>}
+          <h2>{passed ? 'مبروك! لقد نجحت' : 'للأسف، لم تنجح'}</h2>
+          <p className={styles.scoreText}>{score}%</p>
+          <p className={styles.passScoreText}>درجة النجاح: {examContent?.pass_score || 50}%</p>
+          <div className={styles.stats}>
+            <div className={styles.stat}>
+              <CheckCircle color="#10b981" />
+              <span>صحيحة: {results?.correct ?? 0}</span>  {/* 👈 استخدم results */}
+            </div>
+            <div className={styles.stat}>
+              <XCircle color="#ef4444" />
+              <span>خاطئة: {results?.wrong ?? 0}</span>    {/* 👈 استخدم results */}
+            </div>
+          </div>
+          <div className={styles.resultButtons}>
+            <button 
+              onClick={() => router.back()} 
+              className={styles.backButtonExam}
+              style={{ background: theme.primary }}
+            >
+              العودة للباقة
+            </button>
+            {!passed && (
+              <button 
+                onClick={() => { 
+                  setShowResults(false); 
+                  setAnswers({}); 
+                  setCurrentQuestion(0); 
+                  setTimeLeft((examContent?.duration_minutes || 10) * 60) 
+                }} 
+                className={styles.retryButton}
+              >
+                <RefreshCw size={18} /> إعادة المحاولة
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -690,36 +989,88 @@ useEffect(() => {
   const currentQ = questions[currentQuestion]
   const isLastQuestion = currentQuestion === questions.length - 1
 
+  if (!currentQ) return null
+
   return (
-    <div style={styles.examContainer}>
-      <div style={styles.examHeader}>
-        <div style={styles.examInfo}><Target style={{ color: theme.primary }} /><div><h3>{examContent?.title || 'امتحان'}</h3><p>سؤال {currentQuestion + 1} من {questions.length}</p></div></div>
-        <div style={{...styles.timer, background: timeLeft < 60 ? '#fee2e2' : timeLeft < 300 ? '#fef3c7' : '#d1fae5', color: timeLeft < 60 ? '#dc2626' : timeLeft < 300 ? '#d97706' : '#059669'}}>
-          <Clock size={20} /><span>{formatTime(timeLeft)}</span>
+    <div className={styles.examContainer}>
+      <div className={styles.examHeader}>
+        <div className={styles.examInfo}>
+          <Target style={{ color: theme.primary }} />
+          <div>
+            <h3>{examContent?.title || 'امتحان'}</h3>
+            <p>سؤال {currentQuestion + 1} من {questions.length}</p>
+          </div>
+        </div>
+        <div 
+          className={styles.timer} 
+          style={{ 
+            background: timeLeft < 60 ? '#fee2e2' : timeLeft < 300 ? '#fef3c7' : '#d1fae5', 
+            color: timeLeft < 60 ? '#dc2626' : timeLeft < 300 ? '#d97706' : '#059669' 
+          }}
+        >
+          <Clock size={20} />
+          <span>{formatTime(timeLeft)}</span>
         </div>
       </div>
-      <div style={styles.questionCard}>
-        <div style={styles.questionHeader}><span style={styles.questionNumber}>سؤال {currentQuestion + 1}</span></div>
-        <h4 style={styles.questionText}>{currentQ?.text}</h4>
-        <div style={styles.options}>
-          {currentQ?.options.map(option => (
-            <button key={option.id} onClick={() => handleAnswer(currentQ.id, option.id)} style={{...styles.option, ...(answers[currentQ.id] === option.id ? styles.selected : {})}}>
-              <span style={styles.optionLabel}>{option.id}</span>
-              <span style={styles.optionText}>{option.text}</span>
-              <div style={styles.radio}>{answers[currentQ.id] === option.id && <div style={styles.radioInner} />}</div>
+      
+      <div className={styles.questionCard}>
+        <div className={styles.questionHeader}>
+          <span className={styles.questionNumber}>سؤال {currentQuestion + 1}</span>
+        </div>
+        <h4 className={styles.questionText}>{currentQ.text}</h4>
+        <div className={styles.options}>
+          {currentQ.options.map(option => (
+            <button 
+              key={option.id} 
+              onClick={() => handleAnswer(currentQ.id, option.id)} 
+              className={`${styles.option} ${answers[currentQ.id] === option.id ? styles.selected : ''}`}
+            >
+              <span className={styles.optionLabel}>{option.id}</span>
+              <span className={styles.optionText}>{option.text}</span>
+              <div className={styles.radio}>
+                {answers[currentQ.id] === option.id && <div className={styles.radioInner} />}
+              </div>
             </button>
           ))}
         </div>
       </div>
-      <div style={styles.navigation}>
-        <button onClick={() => setCurrentQuestion(prev => prev - 1)} disabled={currentQuestion === 0} style={{...styles.navButton, opacity: currentQuestion === 0 ? 0.5 : 1}}><ArrowRight size={20} /> السابق</button>
-        <div style={styles.progressDots}>
-          {questions.map((_, idx) => <div key={idx} style={{...styles.dot, ...(idx === currentQuestion ? styles.active : {}), ...(answers[questions[idx].id] ? styles.answered : {})}} />)}
+      
+      <div className={styles.navigation}>
+        <button 
+          onClick={() => setCurrentQuestion(prev => prev - 1)} 
+          disabled={currentQuestion === 0} 
+          className={styles.navButton}
+          style={{ opacity: currentQuestion === 0 ? 0.5 : 1 }}
+        >
+          <ArrowRight size={20} /> السابق
+        </button>
+        
+        <div className={styles.progressDots}>
+          {questions.map((_, idx) => (
+            <div 
+              key={idx} 
+              className={`${styles.dot} ${idx === currentQuestion ? styles.active : ''} ${answers[questions[idx].id] ? styles.answered : ''}`} 
+            />
+          ))}
         </div>
+        
         {isLastQuestion ? (
-          <button onClick={handleSubmit} disabled={isSubmitting} style={{...styles.submitButton, background: theme.success}}>{isSubmitting ? <Loader2 style={styles.spinning} /> : 'تسليم'}</button>
+          <button 
+            onClick={handleSubmit} 
+            disabled={isSubmitting || Object.keys(answers).length < questions.length} 
+            className={styles.submitButton}
+            style={{ background: theme.success, opacity: Object.keys(answers).length < questions.length ? 0.5 : 1 }}
+          >
+            {isSubmitting ? <Loader2 className={styles.loadingSpinner} /> : 'تسليم'}
+          </button>
         ) : (
-          <button onClick={() => setCurrentQuestion(prev => prev + 1)} style={{...styles.navButton, background: theme.primary, color: 'white', border: 'none'}}>التالي <ArrowLeft size={20} /></button>
+          <button 
+            onClick={() => setCurrentQuestion(prev => prev + 1)} 
+            className={styles.navButton}
+            style={{ background: theme.primary, color: 'white', border: 'none' }}
+          >
+            التالي <ArrowLeft size={20} />
+          </button>
         )}
       </div>
     </div>
@@ -739,13 +1090,13 @@ function getGradeTheme(gradeSlug: string): Theme {
 }
 
 // ==========================================
-// MAIN PAGE - الإصلاح النهائي
+// MAIN PAGE
 // ==========================================
 function LoadingState() {
   return (
-    <div style={styles.loadingContainer}>
-      <Loader2 style={styles.loadingSpinner} />
-      <p style={styles.loadingText}>جاري تحميل المحتوى...</p>
+    <div className={styles.loadingContainer}>
+      <Loader2 className={styles.loadingSpinner} />
+      <p className={styles.loadingText}>جاري تحميل المحتوى...</p>
     </div>
   )
 }
@@ -772,7 +1123,6 @@ function ContentViewer() {
   const [videoProgress, setVideoProgress] = useState(0)
   const [authChecked, setAuthChecked] = useState(false)
   
-  // استخدام نفس نظام PackagePage
   const supabase = useMemo(() => getSupabase(), [])
 
   useEffect(() => {
@@ -782,7 +1132,6 @@ function ContentViewer() {
       try {
         setLoading(true)
         
-        // 1. التحقق من الجلسة (نفس PackagePage)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError || !session?.user) {
@@ -794,7 +1143,6 @@ function ContentViewer() {
         const user = session.user
         setCurrentUser(user)
         
-        // 2. التحقق من صلاحية الباقة
         const { data: userPackageData, error: accessError } = await supabase
           .from('user_packages')
           .select('*')
@@ -811,7 +1159,6 @@ function ContentViewer() {
         
         setUserPackage(userPackageData)
         
-        // 3. تحميل بيانات المحتوى
         const { data: contentData, error: contentError } = await supabase
           .from('lecture_contents')
           .select('*')
@@ -827,7 +1174,6 @@ function ContentViewer() {
         
         setContent(contentData)
         
-        // 4. تحميل البيانات الأخرى
         const [lectureRes, packageRes, progressRes] = await Promise.all([
           supabase.from('lectures').select('*').eq('id', contentData.lecture_id).single(),
           supabase.from('packages').select('*').eq('id', packageId).single(),
@@ -942,9 +1288,9 @@ function ContentViewer() {
         return <ExamViewer examContent={content} {...commonProps} onComplete={markAsCompleted} />
       case 'text': 
         return (
-          <div style={styles.textContent}>
+          <div className={styles.textContent}>
             <div 
-              style={styles.textContentInner} 
+              className={styles.textContentInner}
               dangerouslySetInnerHTML={{ 
                 __html: content.content_url || 'لا يوجد محتوى' 
               }} 
@@ -953,8 +1299,8 @@ function ContentViewer() {
         )
       default: 
         return (
-          <div style={styles.unsupportedContent}>
-            <AlertCircle style={styles.unsupportedIcon} />
+          <div className={styles.unsupportedContent}>
+            <AlertCircle className={styles.unsupportedIcon} />
             <p>نوع المحتوى غير مدعوم</p>
           </div>
         )
@@ -975,12 +1321,12 @@ function ContentViewer() {
   
   if (error) {
     return (
-      <div style={styles.errorContainer}>
-        <div style={styles.errorContent}>
-          <AlertCircle style={styles.errorIcon} />
-          <h2 style={styles.errorTitle}>حدث خطأ</h2>
-          <p style={styles.errorMessage}>{error}</p>
-          <button onClick={handleBack} style={styles.backBtn}>
+      <div className={styles.errorContainer}>
+        <div className={styles.errorContent}>
+          <AlertCircle className={styles.errorIcon} />
+          <h2 className={styles.errorTitle}>حدث خطأ</h2>
+          <p className={styles.errorMessage}>{error}</p>
+          <button onClick={handleBack} className={styles.backBtn}>
             العودة للباقة
           </button>
         </div>
@@ -990,12 +1336,12 @@ function ContentViewer() {
   
   if (!content) {
     return (
-      <div style={styles.errorContainer}>
-        <div style={styles.errorContent}>
-          <AlertCircle style={styles.errorIcon} />
-          <h2 style={styles.errorTitle}>حدث خطأ</h2>
-          <p style={styles.errorMessage}>المحتوى غير موجود</p>
-          <button onClick={handleBack} style={styles.backBtn}>
+      <div className={styles.errorContainer}>
+        <div className={styles.errorContent}>
+          <AlertCircle className={styles.errorIcon} />
+          <h2 className={styles.errorTitle}>حدث خطأ</h2>
+          <p className={styles.errorMessage}>المحتوى غير موجود</p>
+          <button onClick={handleBack} className={styles.backBtn}>
             العودة للباقة
           </button>
         </div>
@@ -1004,86 +1350,148 @@ function ContentViewer() {
   }
 
   return (
-    <div style={styles.pageContainer}>
-      <style jsx global>{`
-        @keyframes spin { 
-          from { transform: rotate(0deg); } 
-          to { transform: rotate(360deg); } 
-        }
-        
-        * {
-          -webkit-tap-highlight-color: transparent;
-        }
-        
-        input[type="range"] {
-          -webkit-appearance: none;
-        }
-      `}</style>
-      
-      <div style={styles.header}>
-        <div style={styles.headerContent}>
-          <div style={styles.breadcrumb}>
-            <button onClick={() => router.push('/')} style={styles.breadcrumbItem}><Home size={16} />الرئيسية</button>
-            <ChevronRight size={16} style={styles.breadcrumbSeparator} />
-            <button onClick={() => router.push(`/grades/${gradeSlug}`)} style={styles.breadcrumbItem}>{gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}</button>
-            <ChevronRight size={16} style={styles.breadcrumbSeparator} />
-            <button onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)} style={styles.breadcrumbItem}>{packageData?.name || 'الباقة'}</button>
-            <ChevronRight size={16} style={styles.breadcrumbSeparator} />
-            <span style={styles.currentPage}>{content.title}</span>
+    <div className={styles.pageContainer}>
+      <div className={styles.header}>
+        <div className={styles.headerContent}>
+          <div className={styles.breadcrumb}>
+            <button onClick={() => router.push('/')} className={styles.breadcrumbItem}>
+              <Home size={16} />الرئيسية
+            </button>
+            <ChevronRight size={16} className={styles.breadcrumbSeparator} />
+            <button 
+              onClick={() => router.push(`/grades/${gradeSlug}`)} 
+              className={styles.breadcrumbItem}
+            >
+              {gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}
+            </button>
+            <ChevronRight size={16} className={styles.breadcrumbSeparator} />
+            <button 
+              onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)} 
+              className={styles.breadcrumbItem}
+            >
+              {packageData?.name || 'الباقة'}
+            </button>
+            <ChevronRight size={16} className={styles.breadcrumbSeparator} />
+            <span className={styles.currentPage}>{content.title}</span>
           </div>
-          <div style={styles.contentHeader}>
-            <div style={styles.contentInfo}>
-              <h1 style={styles.contentTitle}>{content.title}</h1>
-              <div style={styles.contentMeta}>
-                <span style={styles.contentType}>{getContentTypeLabel()}</span>
-                <span style={styles.contentSeparator}>•</span>
+          
+          <div className={styles.contentHeader}>
+            <div className={styles.contentInfo}>
+              <h1 className={styles.contentTitle}>{content.title}</h1>
+              <div className={styles.contentMeta}>
+                <span className={styles.contentType}>{getContentTypeLabel()}</span>
+                <span className={styles.contentSeparator}>•</span>
                 <span>{lecture?.title}</span>
-                <span style={styles.contentSeparator}>•</span>
+                <span className={styles.contentSeparator}>•</span>
                 <span>{packageData?.name}</span>
               </div>
             </div>
-            <div style={styles.headerActions}>
-              <button onClick={handleBack} style={{...styles.backActionBtn, borderColor: theme.primary, color: theme.primary}}><ArrowRight size={18} />العودة</button>
+            <div className={styles.headerActions}>
+              <button 
+                onClick={handleBack} 
+                className={styles.backActionBtn}
+                style={{ borderColor: theme.primary, color: theme.primary }}
+              >
+                <ArrowRight size={18} />العودة
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div style={styles.mainContent}>
-        <div style={styles.contentLayout}>
-          <div style={styles.leftColumn}>
-            <div style={styles.tabs}>
-              <button onClick={() => setActiveTab('viewer')} style={{...styles.tabButton, ...(activeTab === 'viewer' ? {...styles.activeTab, borderColor: theme.primary, color: theme.primary} : {})}}><Eye size={18} /><span>العرض</span></button>
-              <button onClick={() => setActiveTab('info')} style={{...styles.tabButton, ...(activeTab === 'info' ? {...styles.activeTab, borderColor: theme.primary, color: theme.primary} : {})}}><BookOpen size={18} /><span>المعلومات</span></button>
+      <div className={styles.mainContent}>
+        <div className={styles.contentLayout}>
+          <div className={styles.leftColumn}>
+            <div className={styles.tabs}>
+              <button 
+                onClick={() => setActiveTab('viewer')} 
+                className={`${styles.tabButton} ${activeTab === 'viewer' ? styles.activeTab : ''}`}
+                style={activeTab === 'viewer' ? { borderColor: theme.primary, color: theme.primary } : {}}
+              >
+                <Eye size={18} /><span>العرض</span>
+              </button>
+              <button 
+                onClick={() => setActiveTab('info')} 
+                className={`${styles.tabButton} ${activeTab === 'info' ? styles.activeTab : ''}`}
+                style={activeTab === 'info' ? { borderColor: theme.primary, color: theme.primary } : {}}
+              >
+                <BookOpen size={18} /><span>المعلومات</span>
+              </button>
             </div>
-            <div style={styles.contentArea}>
+            
+            <div className={styles.contentArea}>
               {activeTab === 'viewer' ? renderContent() : (
-                <div style={styles.infoContainer}>
-                  <h3 style={styles.infoTitle}>معلومات المحتوى</h3>
+                <div className={styles.infoContainer}>
+                  <h3 className={styles.infoTitle}>معلومات المحتوى</h3>
                   <p>{content.description || 'لا يوجد وصف'}</p>
                 </div>
               )}
+              
               {content.type === 'video' && (
-                <div style={styles.progressTracking}>
-                  <div style={styles.progressHeader}><h4>تقدم المشاهدة</h4><span>{videoProgress}%</span></div>
-                  <div style={styles.progressBar}><div style={{...styles.progressFill, width: `${videoProgress}%`, background: theme.primary}} /></div>
+                <div className={styles.progressTracking}>
+                  <div className={styles.progressHeader}>
+                    <h4>تقدم المشاهدة</h4>
+                    <span>{videoProgress}%</span>
+                  </div>
+                  <div className={styles.progressBar}>
+                    <div 
+                      className={styles.progressFill} 
+                      style={{ width: `${videoProgress}%`, background: theme.primary }} 
+                    />
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          <div style={styles.rightColumn}>
-            <div style={styles.statusCard}>
-              <h4 style={styles.cardTitle}>الحالة</h4>
-              <div style={{...styles.statusContent, ...(userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.statusCompleted : userProgress?.status === 'failed' ? styles.statusFailed : userProgress?.status === 'in_progress' ? styles.statusInProgress : styles.statusNotStarted)}}>
-                {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? <CheckCircle size={24} /> : userProgress?.status === 'failed' ? <X size={24} /> : userProgress?.status === 'in_progress' ? <Loader2 style={styles.spinning} size={24} /> : <BookOpen size={24} />}
-                <div style={styles.statusInfo}>
-                  <div>{userProgress?.status === 'completed' ? 'مكتمل' : userProgress?.status === 'passed' ? 'ناجح' : userProgress?.status === 'failed' ? 'فاشل' : userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}</div>
+          <div className={styles.rightColumn}>
+            <div className={styles.statusCard}>
+              <h4 className={styles.cardTitle}>الحالة</h4>
+              <div 
+                className={styles.statusContent}
+                style={
+                  userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                    { background: '#d1fae5', color: '#065f46' } : 
+                  userProgress?.status === 'failed' ? 
+                    { background: '#fee2e2', color: '#991b1b' } : 
+                  userProgress?.status === 'in_progress' ? 
+                    { background: '#dbeafe', color: '#1e40af' } : 
+                    { background: '#f3f4f6', color: '#4b5563' }
+                }
+              >
+                {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                  <CheckCircle size={24} /> : 
+                  userProgress?.status === 'failed' ? 
+                    <X size={24} /> : 
+                  userProgress?.status === 'in_progress' ? 
+                    <Loader2 className={styles.loadingSpinner} size={24} /> : 
+                    <BookOpen size={24} />
+                }
+                <div className={styles.statusInfo}>
+                  <div className={styles.statusText}>
+                    {userProgress?.status === 'completed' ? 'مكتمل' : 
+                     userProgress?.status === 'passed' ? 'ناجح' : 
+                     userProgress?.status === 'failed' ? 'فاشل' : 
+                     userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}
+                  </div>
                 </div>
               </div>
+              
               {content.type !== 'exam' && (
-                <button onClick={markAsCompleted} disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'} style={{...styles.completeButton, ...(userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.completeButtonDisabled : {background: theme.success})}}>
-                  {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? <><CheckCircle size={18} />تم</> : <><CheckCircle size={18} />تمييز كمكتمل</>}
+                <button 
+                  onClick={markAsCompleted} 
+                  disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'} 
+                  className={styles.completeButton}
+                  style={
+                    userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                      { background: '#9ca3af', cursor: 'not-allowed' } : 
+                      { background: theme.success }
+                  }
+                >
+                  {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                    <><CheckCircle size={18} />تم</> : 
+                    <><CheckCircle size={18} />تمييز كمكتمل</>
+                  }
                 </button>
               )}
             </div>
@@ -1100,8 +1508,4 @@ export default function ContentPage() {
       <ContentViewer />
     </Suspense>
   )
-}
-
-function setError(arg0: string) {
-  throw new Error('Function not implemented.')
 }
