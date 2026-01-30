@@ -3,87 +3,45 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 
 interface Props {
-  children?: React.ReactNode;
+  children?: React.ReactNode;  // اختياري علشان ما يطلعش خطأ لوستخدمته فاضي
 }
 
-// استخدمت function عادية بدل arrow function مع React.memo
-function ViewportOptimizerComponent({ children }: Props) {
+export const ViewportOptimizer = React.memo<Props>(function ViewportOptimizer({ 
+  children 
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
-  // ✅ صلحت الخطأين هنا: حطيت initial value null وغيرت النوع
-  const rafId = useRef<number | null>(null);
-  const activeElements = useRef<Set<Element>>(new Set());
+  const lastScrollY = useRef(0);
+  const ticking = useRef(false);
 
-  const optimizeVisibleImages = useCallback(() => {
-    if (!containerRef.current) return;
-    
-    const images = containerRef.current.querySelectorAll('img');
-    const viewportHeight = window.innerHeight;
-    
-    images.forEach((img) => {
-      const rect = img.getBoundingClientRect();
-      const isNearViewport = rect.top < viewportHeight + 200 && rect.bottom > -200;
-      
-      if (isNearViewport) {
-        if (!activeElements.current.has(img)) {
-          const htmlImg = img as HTMLElement;
-          htmlImg.style.transform = 'translate3d(0, 0, 0)';
-          htmlImg.style.backfaceVisibility = 'hidden';
-          htmlImg.style.willChange = 'transform';
-          htmlImg.style.contain = 'strict';
-          activeElements.current.add(img);
+  const handleScroll = useCallback(() => {
+    if (!ticking.current) {
+      requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY;
+        
+        if (Math.abs(currentScrollY - lastScrollY.current) > 5) {
+          lastScrollY.current = currentScrollY;
         }
-      } else {
-        if (activeElements.current.has(img)) {
-          const htmlImg = img as HTMLElement;
-          htmlImg.style.willChange = 'auto';
-          htmlImg.style.transform = 'none';
-          htmlImg.style.contain = 'none';
-          activeElements.current.delete(img);
-        }
-      }
-    });
+        
+        ticking.current = false;
+      });
+      ticking.current = true;
+    }
   }, []);
 
   useEffect(() => {
-    const handleScroll = () => {
-      // ✅ صلحت الشرط هنا
-      if (rafId.current !== null) return;
-      
-      rafId.current = requestAnimationFrame(() => {
-        optimizeVisibleImages();
-        rafId.current = null;
-      });
-    };
-
     window.addEventListener('scroll', handleScroll, { passive: true });
     
-    optimizeVisibleImages();
-    
-    const observer = new MutationObserver(() => {
-      const newImages = containerRef.current?.querySelectorAll('img:not([data-optimized])');
-      newImages?.forEach((img, index) => {
-        img.setAttribute('data-optimized', 'true');
-        img.setAttribute('decoding', 'async');
-        if (!img.hasAttribute('loading')) {
-          img.setAttribute('loading', index < 2 ? 'eager' : 'lazy');
-        }
-      });
-      optimizeVisibleImages();
+    // Lazy loading للصور
+    const images = document.querySelectorAll('img:not([loading])');
+    images.forEach((img) => {
+      img.setAttribute('loading', 'lazy');
+      img.setAttribute('decoding', 'async');
     });
-
-    if (containerRef.current) {
-      observer.observe(containerRef.current, { childList: true, subtree: true });
-    }
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      observer.disconnect();
-      // ✅ صلحت فحص null هنا
-      if (rafId.current !== null) {
-        cancelAnimationFrame(rafId.current);
-      }
     };
-  }, [optimizeVisibleImages]);
+  }, [handleScroll]);
 
   return (
     <div 
@@ -93,30 +51,29 @@ function ViewportOptimizerComponent({ children }: Props) {
       }}
     >
       <style jsx global>{`
-        img {
-          content-visibility: auto;
-          image-rendering: -webkit-optimize-contrast;
-          image-rendering: crisp-edges;
-          -webkit-font-smoothing: antialiased;
-          transform: translateZ(0);
-          backface-visibility: hidden !important;
-          perspective: 1000px;
-          transition: none !important;
-          filter: none !important;
+        html {
+          scroll-behavior: smooth;
         }
         
-        img:hover {
+        * {
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
+        
+        img {
+          content-visibility: auto;
+        }
+        
+        .will-change-transform {
           will-change: transform;
-          transform: translateZ(0) scale(1);
+          transform: translateZ(0);
         }
       `}</style>
       {children}
     </div>
   );
-}
+});
 
-// ✅ شلت Generic Type من React.memo واستخدمت export منفصل
-export const ViewportOptimizer = React.memo(ViewportOptimizerComponent);
 ViewportOptimizer.displayName = 'ViewportOptimizer';
 
 export default ViewportOptimizer;

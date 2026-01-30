@@ -3,6 +3,8 @@
   background: linear-gradient(180deg, var(--primary-900) 0%, var(--primary-800) 100%);
   color: white;
   overflow: hidden;
+  word-spacing: 1.5;
+
 }
 
 
