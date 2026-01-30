@@ -2,24 +2,21 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/supabase-server'
 import type { Metadata } from 'next'
-import { Bell, BookOpen, Clock, Package, TrendingUp, Award, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Bell, BookOpen, Clock, Package, TrendingUp, Award, PlayCircle, Sparkles, Zap } from 'lucide-react'
 import './dashboard.css'
 import Image from 'next/image';
 
-// Viewport
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
 }
 
-// Metadata
 export const metadata: Metadata = {
   title: 'لوحة التحكم | محمود الديب',
   description: 'لوحة تحكم الطالب',
 }
 
-// Type Definitions
 interface PackageData {
   id: string;
   name: string;
@@ -72,9 +69,7 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  // =========================
-  // PROFILE (SAFE)
-  // =========================
+  // PROFILE
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
@@ -89,9 +84,7 @@ export default async function DashboardPage() {
     redirect('/complete-profile')
   }
 
-  // =========================
-  // WALLET (SAFE)
-  // =========================
+  // WALLET
   const { data: wallet, error: walletError } = await supabase
     .from('wallets')
     .select('balance')
@@ -102,13 +95,10 @@ export default async function DashboardPage() {
     console.error('Wallet error:', walletError)
   }
 
-  // =========================
-  // PURCHASED PACKAGES - الطريقة الصحيحة
-  // =========================
+  // PURCHASED PACKAGES مع الصور
   let userPackages: UserPackage[] | null = null
   
   try {
-    // الطريقة الأولى: جلب user_packages ثم جلب كل package على حدة
     const { data: purchasedPackages, error: packagesError } = await supabase
       .from('user_packages')
       .select('*')
@@ -120,18 +110,16 @@ export default async function DashboardPage() {
     }
 
     if (purchasedPackages && purchasedPackages.length > 0) {
-      // جلب تفاصيل كل package
       const packageIds = purchasedPackages.map(p => p.package_id)
       const { data: packagesData, error: packagesDataError } = await supabase
         .from('packages')
-        .select('*')
+        .select('id, name, description, image_url, lecture_count, duration_days, type, grade')
         .in('id', packageIds)
 
       if (packagesDataError) {
         console.error('Packages data error:', packagesDataError)
       }
 
-      // دمج البيانات
       userPackages = purchasedPackages.map(up => {
         const packageDetails = packagesData?.find(p => p.id === up.package_id)
         return {
@@ -144,9 +132,7 @@ export default async function DashboardPage() {
     console.error('Error fetching packages:', error)
   }
 
-  // =========================
   // STATISTICS
-  // =========================
   const { count: activePackagesCount } = await supabase
     .from('user_packages')
     .select('*', { count: 'exact', head: true })
@@ -159,13 +145,10 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .eq('status', 'completed')
 
-  // =========================
   // NOTIFICATIONS
-  // =========================
   let userNotifications: Notification[] | null = null
   
   try {
-    // جلب الإشعارات العامة والإشعارات المخصصة للصف
     const { data: notifications, error: notificationsError } = await supabase
       .from('notifications')
       .select('*')
@@ -222,7 +205,7 @@ export default async function DashboardPage() {
   }
 
   const calculateDaysRemaining = (expiryDate: string | null): string => {
-    if (!expiryDate) return 'لا يوجد'
+    if (!expiryDate) return 'غير محدود'
     
     const now = new Date()
     const expiry = new Date(expiryDate)
@@ -232,50 +215,59 @@ export default async function DashboardPage() {
     if (diffDays < 0) return 'منتهي'
     if (diffDays === 0) return 'ينتهي اليوم'
     if (diffDays === 1) return 'يوم واحد'
+    if (diffDays <= 7) return `${diffDays} أيام`
     return `${diffDays} يوم`
   }
 
   return (
     <div className="dashboard-container">
+      {/* Animated Background Waves */}
+      <div className="animated-background">
+        <div className="wave wave-1"></div>
+        <div className="wave wave-2"></div>
+        <div className="wave wave-3"></div>
+        <div className="floating-shapes">
+          <div className="shape shape-1"></div>
+          <div className="shape shape-2"></div>
+          <div className="shape shape-3"></div>
+        </div>
+      </div>
+
       {/* Header */}
       <header className="dashboard-header">
         <div className="header-content">
           <div className="header-left">
             <div className="logo-container">
-              <span className="logo-text">              <Image
+              <Image
                 src="/logo.svg"
                 alt="Logo"
-                width={50}
-                height={50}
+                width={40}
+                height={40}
                 priority
+                className="logo-image"
               />
-</span>
             </div>
             <div className="header-text">
               <h1 className="platform-name">محمود الديب</h1>
-              <p className="platform-description">
-                التعليم التفاعلي للثانوية العامة
-              </p>
+              <p className="platform-description">منصة التعليم التفاعلي</p>
             </div>
           </div>
 
           <div className="header-right">
-  <Link 
-    href="/notifications" 
-    className="notification-link"
-    aria-label="الإشعارات"
-  >
-    <Bell size={20} strokeWidth={2.5} />
-    {userNotifications && userNotifications.length > 0 && (
-      <span className="notification-badge">{userNotifications.length}</span>
-    )}
-  </Link>
+            <Link 
+              href="/notifications" 
+              className="notification-link"
+              aria-label="الإشعارات"
+            >
+              <Bell size={20} strokeWidth={2.5} />
+              {userNotifications && userNotifications.length > 0 && (
+                <span className="notification-badge">{userNotifications.length}</span>
+              )}
+            </Link>
             <div className="user-profile-card">
               <div className="user-info">
                 <p className="user-name">{profile.full_name}</p>
-                <p className="user-grade">
-                  الصف {getGradeText(profile.grade)}
-                </p>
+                <p className="user-grade">الصف {getGradeText(profile.grade)}</p>
               </div>
               <div className="user-avatar">
                 <span>{getInitials(profile.full_name)}</span>
@@ -286,69 +278,97 @@ export default async function DashboardPage() {
       </header>
 
       <main className="main-content">
-        {/* Welcome Card */}
+        {/* Welcome Card - Light Design */}
         <div className="welcome-card">
+          <div className="welcome-pattern"></div>
           <div className="welcome-content">
             <div className="welcome-text">
+              <div className="welcome-badge">
+                <Sparkles size={16} />
+                <span>مرحباً بعودتك</span>
+              </div>
               <h2 className="welcome-title">
-                 مرحبًا بك ،    {profile.full_name} !
+                {profile.full_name} ! 👋
               </h2>
               <p className="welcome-subtitle">
-                استمر في رحلتك التعليمية وحقق أهدافك
+                استمر في رحلتك التعليمية وحقق أهدافك مع باقاتنا المميزة
               </p>
 
               <div className="welcome-actions">
                 <div className="wallet-balance">
-                  <span className="balance-label">رصيد المحفظة : </span>
-                  <span className="balance-amount">
-                       {wallet?.balance ?? 0}  ج.م
-                  </span>
+                  <div className="wallet-icon">
+                    <Zap size={20} />
+                  </div>
+                  <div className="wallet-info">
+                    <span className="balance-label">رصيد المحفظة</span>
+                    <span className="balance-amount">
+                      {wallet?.balance ?? 0} ج.م
+                    </span>
+                  </div>
                 </div>
-
-
               </div>
             </div>
 
-            <div className="welcome-emoji">
-              <Award size={64} />
+            <div className="welcome-illustration">
+              <div className="floating-card card-1">
+                <PlayCircle size={24} />
+                <span>مشاهدة المحاضرات</span>
+              </div>
+              <div className="floating-card card-2">
+                <Award size={24} />
+                <span>شهادات الإتمام</span>
+              </div>
+              <div className="main-illustration">
+                <Image 
+                  src="/dashboard-illustration.svg" 
+                  alt="Learning" 
+                  width={300} 
+                  height={250}
+                  className="illustration-image"
+                />
+              </div>
             </div>
           </div>
         </div>
 
         {/* Stats Cards */}
         <div className="stats-section">
-          <h3 className="section-title">إحصائياتك</h3>
+          <h3 className="section-title">
+            <TrendingUp size={20} />
+            إحصائياتك
+          </h3>
           <div className="stats-grid">
             <div className="stat-card">
-              <div className="stat-icon-wrapper bg-primary-50 text-primary-600">
+              <div className="stat-icon-wrapper blue">
                 <Package size={24} />
               </div>
               <div className="stat-content">
                 <h4 className="stat-value">{activePackagesCount || 0}</h4>
                 <p className="stat-label">الباقات النشطة</p>
               </div>
+              <div className="stat-wave"></div>
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon-wrapper bg-secondary-50 text-secondary-600">
+              <div className="stat-icon-wrapper cyan">
                 <BookOpen size={24} />
               </div>
               <div className="stat-content">
                 <h4 className="stat-value">{completedLecturesCount || 0}</h4>
                 <p className="stat-label">محاضرات مكتملة</p>
               </div>
+              <div className="stat-wave"></div>
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon-wrapper bg-success-500/10 text-success-500">
-                <TrendingUp size={24} />
+              <div className="stat-icon-wrapper purple">
+                <Clock size={24} />
               </div>
               <div className="stat-content">
-                <h4 className="stat-value">
-                  {userPackages?.length || 0}
-                </h4>
+                <h4 className="stat-value">{userPackages?.length || 0}</h4>
                 <p className="stat-label">إجمالي المشتريات</p>
               </div>
+              <div className="stat-wave"></div>
             </div>
           </div>
         </div>
@@ -357,43 +377,69 @@ export default async function DashboardPage() {
         <div className="grade-section">
           <div className="grade-card">
             <div className="grade-content">
+              <div className="grade-badge">الصف الدراسي</div>
               <div className="grade-info">
-                <h4>الصف {getGradeText(profile.grade)}</h4>
-                <p>ابدأ رحلتك التعليمية مع باقات مميزة </p>
+                <h4>{getGradeText(profile.grade)}</h4>
+                <p>ابدأ رحلتك التعليمية مع باقات مميزة مصممة خصيصاً لك</p>
               </div>
               <Link 
                 href={`/grades/${profile.grade}`}
                 className="secondary-button"
               >
-                استعراض الباقات
+                استعراض الباقات المتاحة
+                <span className="button-arrow">←</span>
               </Link>
             </div>
-            <div className="grade-illustration">
-              <div className="books-stack">
-                <div className="book book-1"></div>
-                <div className="book book-2"></div>
-                <div className="book book-3"></div>
-              </div>
+            <div className="grade-decoration">
+              <div className="circle-decoration"></div>
+              <div className="dots-pattern"></div>
             </div>
           </div>
         </div>
 
-        {/* Purchased Packages */}
+        {/* Purchased Packages with Images */}
         <div className="packages-section">
           <div className="section-header">
-            <h3 className="section-title">الباقات المشتركة</h3>
+            <h3 className="section-title">
+              <Package size={20} />
+              الباقات المشتركة
+            </h3>
+            <Link href="/packages" className="view-all-link">
+              عرض الكل
+            </Link>
           </div>
           
           {userPackages && userPackages.length > 0 ? (
             <div className="packages-grid">
-              {userPackages.map((userPackage) => (
-                <div key={userPackage.id} className="package-card">
-                  <div className="package-header">
-                    <div className="package-badge">
+              {userPackages.map((userPackage, index) => (
+                <div 
+                  key={userPackage.id} 
+                  className="package-card"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  {/* Package Image */}
+                  <div className="package-image-wrapper">
+                    <div className="package-image-container">
+                      {userPackage.packages?.image_url ? (
+                        <Image
+                          src={userPackage.packages.image_url}
+                          alt={userPackage.packages.name}
+                          fill
+                          className="package-image"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        />
+                      ) : (
+                        <div className="package-image-placeholder">
+                          <BookOpen size={40} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="package-image-overlay"></div>
+                    <div className="package-type-badge">
                       {getPackageTypeText(userPackage.packages?.type || '')}
                     </div>
-                    <div className="package-status">
-                      <span className={`status-indicator ${userPackage.is_active ? 'active' : 'inactive'}`}></span>
+                    <div className={`package-status-badge ${userPackage.is_active ? 'active' : 'inactive'}`}>
+                      <span className="status-dot"></span>
                       {userPackage.is_active ? 'نشط' : 'غير نشط'}
                     </div>
                   </div>
@@ -404,37 +450,42 @@ export default async function DashboardPage() {
                       {userPackage.packages?.description || 'لا يوجد وصف'}
                     </p>
                     
-                    <div className="package-details">
-                      <div className="detail-item">
+                    <div className="package-meta">
+                      <div className="meta-item">
                         <BookOpen size={16} />
                         <span>{userPackage.packages?.lecture_count || 0} محاضرة</span>
                       </div>
-                      <div className="detail-item">
+                      <div className="meta-item">
                         <Clock size={16} />
-                        <span>{userPackage.packages?.duration_days || 0} يوم</span>
+                        <span>{calculateDaysRemaining(userPackage.expires_at)}</span>
                       </div>
                     </div>
                     
-                    <div className="package-footer">
-                      <span className="purchase-date">
-                        مشترك منذ {formatDate(userPackage.purchased_at)}
-                      </span>
-                      <Link
-                        href={`/grades/${userPackage.packages?.grade || profile.grade}/packages/${userPackage.packages?.id}`}
-                        className="access-button"
-                      >
-                        دخول الباقة
-                      </Link>
+                    <div className="package-progress">
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: '60%' }}></div>
+                      </div>
+                      <span className="progress-text">تقدم التعلم</span>
                     </div>
+                    
+                    <Link
+                      href={`/grades/${userPackage.packages?.grade || profile.grade}/packages/${userPackage.packages?.id}`}
+                      className="access-button"
+                    >
+                      <PlayCircle size={18} />
+                      <span>مشاهدة المحتوى</span>
+                    </Link>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="empty-state">
-              <Package size={48} />
+              <div className="empty-icon">
+                <Package size={48} />
+              </div>
               <h4>لا توجد باقات مشتركة</h4>
-              <p>ابدأ رحلتك التعليمية بالاشتراك في إحدى باقاتنا</p>
+              <p>ابدأ رحلتك التعليمية بالاشتراك في إحدى باقاتنا المميزة</p>
               <Link href={`/grades/${profile.grade}`} className="primary-button">
                 استعراض الباقات
               </Link>
@@ -445,10 +496,3 @@ export default async function DashboardPage() {
     </div>
   )
 }
-
-// Helper components for icons
-const Info = ({ size }: { size: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-  </svg>
-)

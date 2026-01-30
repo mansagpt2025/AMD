@@ -1,86 +1,36 @@
-"use client";
 
-import { useEffect, useState } from 'react';
-import styles from './LoadingScreen.module.css';
-import Image from 'next/image';
-
-const LoadingScreen = () => {
-  const [progress, setProgress] = useState(0);
-  const [phase, setPhase] = useState(0);
-  const phases = [
-    "جاري تحميل ...",
-  ];
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(timer);
-          return 100;
-        }
-        return prev + 1;
-      });
-    }, 30);
-
-    const phaseTimer = setInterval(() => {
-      setPhase(prev => {
-        if (prev >= phases.length - 1) {
-          clearInterval(phaseTimer);
-          return phases.length - 1;
-        }
-        return prev + 1;
-      });
-    }, 1000);
-
-    return () => {
-      clearInterval(timer);
-      clearInterval(phaseTimer);
-    };
-  }, [phases.length]);
+export default function Loading() {
 
   return (
-    <div className={styles.loadingContainer}>
-      <div className={styles.loadingContent}>
+    <div className="loadingContainer">
+      <div className="loadingContent">
         {/* شعار المنصة */}
-        <div className={styles.logoSection}>
-          <div className={styles.logoAnimation}>
-            <div className={styles.logoCircle}>
-              <Image
-                src="/logo.svg"
-                alt="Logo"
-                width={50}
-                height={50}
-                className={styles.logoImage}
-                priority
-              />
-            </div>
-            <div className={styles.logoGlow}></div>
+        <div className="logoSection">
+          <div className="logoAnimation">
+            <h1 className="mainTitle">جاري التحميل ...</h1>
           </div>
           
-          <div className={styles.titleSection}>
-            <h1 className={styles.mainTitle}>البارع محمود الديب</h1>
-            <p className={styles.subtitle}>منصة تعليم اللغة العربية للثانوية العامة</p>
+          <div className="titleSection">
+            <h1 className="mainTitle">البارع محمود الديب</h1>
+            <p className="subtitle">منصة تعليم اللغة العربية للثانوية العامة</p>
           </div>
         </div>
 
         {/* شريط التقدم */}
-        <div className={styles.progressContainer}>
-          <div className={styles.progressBar}>
+        <div className="progressContainer">
+          <div className="progressBar">
             <div 
-              className={styles.progressFill}
-              style={{ width: `${progress}%` }}
+              className="progressFill"
             >
-              <div className={styles.progressGlow}></div>
+              <div className="progressGlow"></div>
             </div>
           </div>
-          <div className={styles.progressText}>
-            <span className={styles.progressPercent}>{progress}%</span>
-            <span className={styles.progressPhase}>{phases[phase]}</span>
+          <div className="progressText">
+            <span className="progressPercent">100%</span>
+            <span className="progressPhase">جاري التحميل...</span>
           </div>
       </div>
       </div>
     </div>
   );
 };
-
-export default LoadingScreen;
