@@ -392,3 +392,17 @@ img {
   backface-visibility: hidden;
   will-change: transform;
 }
+
+html, body {
+  scroll-behavior: smooth;
+}
+
+body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Smooth scroll لأي عنصر قابل للتمرير */
+* {
+  scroll-behavior: smooth;
+}

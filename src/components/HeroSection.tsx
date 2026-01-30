@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { FiChevronRight, FiPlayCircle, FiUsers, FiAward, FiBookOpen } from 'react-icons/fi';
 import styles from './HeroSection.module.css';
 import Image from 'next/image';
+{/* استيرادات جديدة في الأعلى - حط مع الاستيرادات القديمة: */}
+import { FiLayout, FiLogOut } from 'react-icons/fi';
+import { useRouter } from 'next/navigation';
 
 interface User {
   isLoggedIn: boolean;
@@ -16,6 +19,37 @@ const HeroSection = ({ user }: { user: User }) => {
   const sectionRef = useRef<HTMLElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
+const router = useRouter();
+const [currentUser, setCurrentUser] = useState(user);
+const [loading, setLoading] = useState(false);
+
+useEffect(() => {
+  const checkAuth = async () => {
+    try {
+      const res = await fetch('/api/auth/check', { credentials: 'include' });
+      const data = await res.json();
+      setCurrentUser(data.isLoggedIn ? { isLoggedIn: true } : { isLoggedIn: false });
+    } catch {
+      const token = localStorage.getItem('token');
+      setCurrentUser({ isLoggedIn: !!token });
+    }
+  };
+  
+  checkAuth();
+  const interval = setInterval(checkAuth, 5000);
+  return () => clearInterval(interval);
+}, []);
+
+// دالة تسجيل الخروج:
+const logout = async () => {
+  setLoading(true);
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  localStorage.removeItem('token');
+  setCurrentUser({ isLoggedIn: false });
+  setLoading(false);
+  router.push('/');
+};
+
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -62,24 +96,29 @@ const HeroSection = ({ user }: { user: User }) => {
               أستاذ&nbsp;اللغة&nbsp;العربية&nbsp;للثانوية&nbsp;العامة
               <span className={styles.highlight}> و مؤلف سلسلة البارع</span>
             </h2>
-
-            <div className={styles.ctaButtons}>
-              {!user.isLoggedIn ? (
-                <>
-                  <Link href="/register" className={styles.primaryButton}>
-                    <span>ابدأ رحلتك الآن</span>
-                  </Link>
-                  <Link href="/login" className={styles.secondaryButton}>
-                    <span>تسجيل الدخول</span>
-                  </Link>
-                </>
-              ) : (
-                <Link href="/courses" className={styles.primaryButton}>
-                  <span>استمر في التعلم</span>
-                  <FiChevronRight className={styles.buttonIcon} />
-                </Link>
-              )}
-            </div>
+<div className={styles.ctaButtons}>
+  {!currentUser.isLoggedIn ? (
+    <>
+      <Link href="/register" className={styles.primaryButton}>
+        <span>ابدأ رحلتك الآن</span>
+      </Link>
+      <Link href="/login" className={styles.secondaryButton}>
+        <span>تسجيل الدخول</span>
+      </Link>
+    </>
+  ) : (
+    <>
+      <Link href="/dashboard" className={styles.primaryButton}>
+        <FiLayout style={{ marginLeft: '8px' }} />
+        <span>لوحة التحكم</span>
+      </Link>
+      <button onClick={logout} disabled={loading} className={styles.secondaryButton} style={{ cursor: loading ? 'wait' : 'pointer' }}>
+        <FiLogOut style={{ marginLeft: '8px' }} />
+        <span>{loading ? 'جاري الخروج...' : 'تسجيل الخروج'}</span>
+      </button>
+    </>
+  )}
+</div>
           </div>
 
           <div ref={imageRef} className={styles.heroImage}>
