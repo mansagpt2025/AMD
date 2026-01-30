@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { FiChevronRight, FiPlayCircle, FiUsers, FiAward, FiBookOpen, FiLayout, FiLogOut } from 'react-icons/fi';
+import { FiChevronRight, FiLayout, FiLogOut } from 'react-icons/fi';
 import styles from './HeroSection.module.css';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/supabase-client'; // نفس الimport اللي في صفحة اللوجن
 
 interface User {
   isLoggedIn: boolean;
@@ -13,48 +13,39 @@ interface User {
 
 const HeroSection = ({ user: initialUser }: { user: User }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [scrollPosition, setScrollPosition] = useState(0);
   const [user, setUser] = useState<User>(initialUser);
   const sectionRef = useRef<HTMLElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // التحقق من حالة المصادقة من Supabase (localStorage)
+  // التحقق من حالة المصادقة فوراً ومراقبة أي تغيير
   useEffect(() => {
-    const checkAuth = () => {
-      // Supabase يخزن التوكن في مفتاح يبدأ بـ 'sb-' وينتهي بـ '-auth-token'
-      const keys = Object.keys(localStorage);
-      const hasSupabaseToken = keys.some(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
-      
-      if (hasSupabaseToken && !user.isLoggedIn) {
+    // فحص أولي
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser({ isLoggedIn: !!session });
+    };
+    
+    checkSession();
+
+    // مراقبة تغييرات المصادقة (تسجيل دخول/خروج)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
         setUser({ isLoggedIn: true });
-      } else if (!hasSupabaseToken && user.isLoggedIn) {
+      } else if (event === 'SIGNED_OUT') {
         setUser({ isLoggedIn: false });
       }
-    };
-
-    // فحص أولي
-    checkAuth();
-
-    // فحص كل ثانية
-    const interval = setInterval(checkAuth, 1000);
-
-    // فحص لو اتفتح تبويب تاني واتعمل فيه login/logout
-    window.addEventListener('storage', checkAuth);
+    });
 
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('storage', checkAuth);
+      subscription.unsubscribe();
     };
-  }, [user.isLoggedIn]);
+  }, []);
 
-  // تسجيل الخروج
-  const handleLogout = () => {
-    // مسح كل مفاتيح Supabase
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('sb-')) localStorage.removeItem(key);
-    });
+  // تسجيل الخروج باستخدام Supabase
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setUser({ isLoggedIn: false });
     router.push('/');
   };
@@ -73,13 +64,7 @@ const HeroSection = ({ user: initialUser }: { user: User }) => {
       observer.observe(sectionRef.current);
     }
 
-    const handleScroll = () => {
-      setScrollPosition(window.scrollY);
-    };
-
-    window.addEventListener('scroll', handleScroll);
     return () => {
-      window.removeEventListener('scroll', handleScroll);
       if (sectionRef.current) {
         observer.unobserve(sectionRef.current);
       }
@@ -88,8 +73,6 @@ const HeroSection = ({ user: initialUser }: { user: User }) => {
 
   return (
     <section ref={sectionRef} className={styles.heroSection}>
-      {/* خلفية متحركة */}
-
       <div className={styles.container}>
         <div className={`${styles.heroContent} ${isVisible ? styles.visible : ''}`}>
           <div ref={textRef} className={styles.heroText}>
@@ -136,7 +119,6 @@ const HeroSection = ({ user: initialUser }: { user: User }) => {
 
           <div ref={imageRef} className={styles.heroImage}>
             <div className={styles.imageContainer}>
-
               <div className={styles.teacherImage}>
                 <div className={styles.imageGlow}></div>
                 <div className={styles.imageBorder}></div>
@@ -146,8 +128,7 @@ const HeroSection = ({ user: initialUser }: { user: User }) => {
                   className={styles.teacherImage}
                 />
               </div>              
-
-              </div>              
+            </div>              
           </div>
         </div>
       </div>
@@ -157,81 +138,16 @@ const HeroSection = ({ user: initialUser }: { user: User }) => {
         <div className={styles.slantContent}>
           <div className={styles.marquee}>
             <div className={styles.marqueeContent}>
-              <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-              <div className={styles.separator}>
-                <span>✦</span>
-                <span>✦</span>
-                <span>✦</span>
-              </div>
-              <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-              <div className={styles.separator}>
-                <span>✦</span>
-                <span>✦</span>
-                <span>✦</span>
-              </div>
-              <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-                            <div className={styles.separator}>
-                <span>✦</span>
-                <span>✦</span>
-                <span>✦</span>
-              </div>
-
-                            <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-              <div className={styles.separator}>
-                <span>✦</span>
-                <span>✦</span>
-                <span>✦</span>
-              </div>
-              <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-              <div className={styles.separator}>
-                <span>✦</span>
-                <span>✦</span>
-                <span>✦</span>
-              </div>
-              <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-     <div className={styles.separator}>
-                <span>✦</span>
-                <span>✦</span>
-                <span>✦</span>
-              </div>
-              <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-                   <div className={styles.separator}>
-                <span>✦</span>
-                <span>✦</span>
-                <span>✦</span>
-              </div>
-              <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-     <div className={styles.separator}>
-                <span>✦</span>
-                <span>✦</span>
-                <span>✦</span>
-              </div>
-              <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-     <div className={styles.separator}>
-                <span>✦</span>
-                <span>✦</span>
-                <span>✦</span>
-              </div>
-              <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-     <div className={styles.separator}>
-                <span>✦</span>
-                <span>✦</span>
-                <span>✦</span>
-              </div>
-              <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-     <div className={styles.separator}>
-                <span>✦</span>
-                <span>✦</span>
-                <span>✦</span>
-              </div>
-              <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-     <div className={styles.separator}>
-                <span>✦</span>
-                <span>✦</span>
-                <span>✦</span>
-              </div>
-              <span className={styles.slantText}>وما توفيقي إلا بالله</span>
-
+              {[...Array(6)].map((_, i) => (
+                <span key={i} style={{ display: 'flex', alignItems: 'center' }}>
+                  <span className={styles.slantText}>وما توفيقي إلا بالله</span>
+                  <div className={styles.separator}>
+                    <span>✦</span>
+                    <span>✦</span>
+                    <span>✦</span>
+                  </div>
+                </span>
+              ))}
             </div>
           </div>
         </div>
