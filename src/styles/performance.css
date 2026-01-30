@@ -79,14 +79,6 @@ header, nav, .sticky-element {
   contain: layout;
 }
 
-/* تحسين أداء الرسوم المتحركة */
-@media (prefers-reduced-motion: no-preference) {
-  .animate-element {
-    will-change: transform, opacity;
-    transform: translateZ(0);
-  }
-}
-
 /* تحسين أداء الـ Grid والـ Flex */
 .container, .grid, .flex-container {
   contain: layout;
@@ -132,10 +124,6 @@ button, a, input, textarea, select {
 
 /* إلغاء الـ transitions الثقيلة على الهاتف */
 @media (max-width: 768px) {
-  * {
-    transition-duration: 0.05s !important;
-    animation-duration: 0.05s !important;
-  }
   
   /* تقليل الـ shadow للأداء الأفضل */
   * {
