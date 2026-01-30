@@ -56,14 +56,22 @@ function ProtectedVideoPlayer({
   onProgress: (progress: number) => void; theme: Theme
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const youtubePlayerRef = useRef<any>(null)
+  const youtubeContainerRef = useRef<HTMLDivElement>(null)
+  
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
   const [playbackRate, setPlaybackRate] = useState(1)
   const [showControls, setShowControls] = useState(true)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showQualityMenu, setShowQualityMenu] = useState(false)
+  const [availableQualities, setAvailableQualities] = useState<string[]>([])
+  const [currentQuality, setCurrentQuality] = useState('auto')
+  const [isYouTubeReady, setIsYouTubeReady] = useState(false)
 
-  // يوتيوب Check
   const isYouTube = videoUrl?.includes('youtube.com') || videoUrl?.includes('youtu.be')
   const getYouTubeId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/|live\/)([^#\&\?]*).*/
@@ -72,87 +80,173 @@ function ProtectedVideoPlayer({
   }
   const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null
 
-  // YouTube Player
-  if (isYouTube && youtubeId) {
-    return (
-      <div style={{ 
-        position: 'relative', 
-        background: '#000', 
-        borderRadius: '0.75rem', 
-        overflow: 'hidden', 
-        aspectRatio: '16/9',
-        direction: 'ltr'
-      }}>
-        <iframe
-          src={`https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1&showinfo=0&controls=1&disablekb=0&playsinline=1&fs=1`}
-          style={{ width: '100%', height: '100%', border: 'none' }}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          allowFullScreen
-        />
-        {/* طبقة حماية خفيفة */}
-        <div 
-          onContextMenu={(e) => e.preventDefault()}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: '60px', // يترك مسافة لـ controls اليوتيوب
-            zIndex: 5,
-            cursor: 'default'
-          }}
-        />
-        <div style={{
-          position: 'absolute',
-          top: '10px',
-          left: '10px',
-          background: 'rgba(0,0,0,0.7)',
-          color: '#fbbf24',
-          padding: '0.25rem 0.75rem',
-          borderRadius: '9999px',
-          fontSize: '0.75rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          zIndex: 6
-        }}>
-          <Shield size={14} />
-          <span>محمي</span>
-        </div>
-      </div>
-    )
+  // تحميل YouTube API والمشغل
+  useEffect(() => {
+    if (!isYouTube || !youtubeId) return
+
+    const loadYouTubeAPI = () => {
+      if ((window as any).YT && (window as any).YT.Player) {
+        initYouTubePlayer()
+        return
+      }
+      
+      const tag = document.createElement('script')
+      tag.src = 'https://www.youtube.com/iframe_api'
+      const firstScriptTag = document.getElementsByTagName('script')[0]
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag)
+      
+      ;(window as any).onYouTubeIframeAPIReady = initYouTubePlayer
+    }
+
+    const initYouTubePlayer = () => {
+      if (!youtubeContainerRef.current) return
+      
+      youtubePlayerRef.current = new (window as any).YT.Player(youtubeContainerRef.current, {
+        videoId: youtubeId,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          modestbranding: 1,
+          rel: 0,
+          showinfo: 0,
+          fs: 0,
+          iv_load_policy: 3,
+          playsinline: 1,
+          enablejsapi: 1
+        },
+        events: {
+          onReady: onPlayerReady,
+          onStateChange: onPlayerStateChange
+        }
+      })
+    }
+
+    loadYouTubeAPI()
+    
+    return () => {
+      if (youtubePlayerRef.current) {
+        youtubePlayerRef.current.destroy()
+      }
+    }
+  }, [isYouTube, youtubeId])
+
+  const onPlayerReady = (event: any) => {
+    setIsYouTubeReady(true)
+    setDuration(event.target.getDuration())
+    const qualities = event.target.getAvailableQualityLevels()
+    if (qualities && qualities.length > 0) {
+      setAvailableQualities(qualities)
+    }
+    event.target.setVolume(100)
   }
 
-  // Video Player عادي
-  const togglePlay = () => {
-    if (!videoRef.current) return
-    if (isPlaying) {
-      videoRef.current.pause()
-    } else {
-      videoRef.current.play()
+  const onPlayerStateChange = (event: any) => {
+    setIsPlaying(event.data === 1)
+    if (event.data === 0) {
+      onProgress(100)
     }
-    setIsPlaying(!isPlaying)
+  }
+
+  // تحديث التقدم والوقت لليوتيوب
+  useEffect(() => {
+    if (!isYouTube || !isPlaying) return
+    
+    const interval = setInterval(() => {
+      if (youtubePlayerRef.current && isYouTubeReady) {
+        const current = youtubePlayerRef.current.getCurrentTime()
+        const dur = youtubePlayerRef.current.getDuration()
+        setCurrentTime(current)
+        setDuration(dur)
+        if (dur > 0) {
+          onProgress((current / dur) * 100)
+        }
+      }
+    }, 1000)
+    
+    return () => clearInterval(interval)
+  }, [isYouTube, isPlaying, isYouTubeReady, onProgress])
+
+  const togglePlay = () => {
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      if (isPlaying) {
+        youtubePlayerRef.current.pauseVideo()
+      } else {
+        youtubePlayerRef.current.playVideo()
+      }
+    } else if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause()
+      } else {
+        videoRef.current.play()
+      }
+    }
   }
 
   const skip = (seconds: number) => {
-    if (!videoRef.current) return
-    videoRef.current.currentTime += seconds
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      const current = youtubePlayerRef.current.getCurrentTime()
+      youtubePlayerRef.current.seekTo(current + seconds, true)
+    } else if (videoRef.current) {
+      videoRef.current.currentTime += seconds
+    }
   }
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!videoRef.current) return
     const time = parseFloat(e.target.value)
-    videoRef.current.currentTime = time
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      youtubePlayerRef.current.seekTo(time, true)
+    } else if (videoRef.current) {
+      videoRef.current.currentTime = time
+    }
     setCurrentTime(time)
   }
 
   const changeSpeed = () => {
-    if (!videoRef.current) return
     const speeds = [0.5, 1, 1.25, 1.5, 2]
     const currentIndex = speeds.indexOf(playbackRate)
     const next = speeds[(currentIndex + 1) % speeds.length]
-    videoRef.current.playbackRate = next
+    
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      youtubePlayerRef.current.setPlaybackRate(next)
+    } else if (videoRef.current) {
+      videoRef.current.playbackRate = next
+    }
     setPlaybackRate(next)
+  }
+
+  const changeQuality = (quality: string) => {
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      youtubePlayerRef.current.setPlaybackQuality(quality)
+      setCurrentQuality(quality)
+    }
+    setShowQualityMenu(false)
+  }
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return
+    
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`)
+      })
+    } else {
+      document.exitFullscreen()
+    }
+  }
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  // منع القائمة اليمنى والنسخ
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    return false
   }
 
   const formatTime = (seconds: number) => {
@@ -161,155 +255,284 @@ function ProtectedVideoPlayer({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  // واجهة التحكم الموحدة
+  const renderControls = () => (
+    <div style={{
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      background: 'linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.6), transparent)',
+      padding: '20px 16px 16px',
+      transition: 'opacity 0.3s',
+      opacity: showControls ? 1 : 0,
+      pointerEvents: showControls ? 'auto' : 'none',
+      zIndex: 20,
+      direction: 'rtl'
+    }}>
+      {/* شريط التقدم */}
+      <div style={{ marginBottom: '12px' }}>
+        <input
+          type="range"
+          min={0}
+          max={duration || 100}
+          value={currentTime}
+          onChange={handleSeek}
+          style={{
+            width: '100%',
+            height: '6px',
+            cursor: 'pointer',
+            accentColor: theme.primary,
+            background: 'rgba(255,255,255,0.3)',
+            borderRadius: '3px',
+            outline: 'none',
+            direction: 'ltr'
+          }}
+        />
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          color: 'white', 
+          fontSize: '0.8rem',
+          marginTop: '4px',
+          fontFamily: 'monospace',
+          direction: 'ltr'
+        }}>
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+      </div>
+
+      {/* أزرار التحكم */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '12px',
+        justifyContent: 'center',
+        flexWrap: 'wrap'
+      }}>
+        {/* تأخير 10 ثواني */}
+        <button 
+          onClick={() => skip(-10)}
+          style={buttonStyle}
+          title="تأخير 10 ثواني"
+        >
+          <RefreshCw size={20} style={{ transform: 'scaleX(-1)' }} />
+        </button>
+
+        {/* تشغيل/إيقاف */}
+        <button 
+          onClick={togglePlay}
+          style={{
+            ...buttonStyle,
+            background: 'rgba(255,255,255,0.2)',
+            borderRadius: '50%',
+            padding: '12px',
+            transform: 'scale(1.1)'
+          }}
+        >
+          {isPlaying ? <Pause size={28} fill="white" /> : <Play size={28} fill="white" />}
+        </button>
+
+        {/* تقديم 10 ثواني */}
+        <button 
+          onClick={() => skip(10)}
+          style={buttonStyle}
+          title="تقديم 10 ثواني"
+        >
+          <RefreshCw size={20} />
+        </button>
+
+        {/* فاصل */}
+        <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.3)', margin: '0 8px' }} />
+
+        {/* الصوت */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Volume2 size={20} color="white" />
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.1}
+            value={volume}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value)
+              setVolume(v)
+              if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+                youtubePlayerRef.current.setVolume(v * 100)
+              } else if (videoRef.current) {
+                videoRef.current.volume = v
+              }
+            }}
+            style={{ width: '80px', accentColor: 'white', cursor: 'pointer' }}
+          />
+        </div>
+
+        {/* السرعة */}
+        <button 
+          onClick={changeSpeed}
+          style={{ ...buttonStyle, fontSize: '0.85rem', fontWeight: 'bold', minWidth: '48px' }}
+          title="سرعة التشغيل"
+        >
+          {playbackRate}x
+        </button>
+
+        {/* الجودة - لليوتيوب فقط */}
+        {isYouTube && (
+          <div style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setShowQualityMenu(!showQualityMenu)}
+              style={{ ...buttonStyle, fontSize: '0.8rem', fontWeight: 'bold', minWidth: '50px' }}
+              title="جودة الفيديو"
+            >
+              {currentQuality === 'auto' ? 'جودة' : currentQuality}
+            </button>
+            {showQualityMenu && (
+              <div style={{
+                position: 'absolute',
+                bottom: '40px',
+                right: '50%',
+                transform: 'translateX(50%)',
+                background: 'rgba(0,0,0,0.95)',
+                borderRadius: '8px',
+                padding: '8px',
+                minWidth: '100px',
+                zIndex: 30,
+                border: '1px solid rgba(255,255,255,0.2)'
+              }}>
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.7rem', padding: '4px 8px', textAlign: 'center' }}>
+                  الجودة
+                </div>
+                {['auto', ...availableQualities].map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => changeQuality(q)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '6px 12px',
+                      color: 'white',
+                      background: currentQuality === q ? theme.primary : 'transparent',
+                      border: 'none',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      borderRadius: '4px',
+                      marginBottom: '2px'
+                    }}
+                  >
+                    {q === 'auto' ? 'تلقائي' : q}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ملء الشاشة */}
+        <button 
+          onClick={toggleFullscreen}
+          style={buttonStyle}
+          title={isFullscreen ? 'إخراج من ملء الشاشة' : 'ملء الشاشة'}
+        >
+          <Maximize size={20} />
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <div 
+      ref={containerRef}
       style={{ 
         position: 'relative', 
         background: '#000', 
         borderRadius: '0.75rem', 
         overflow: 'hidden',
-        aspectRatio: '16/9'
+        aspectRatio: '16/9',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        msUserSelect: 'none'
       }}
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => isPlaying && setShowControls(false)}
+      onContextMenu={handleContextMenu}
+      onCopy={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}
     >
-      {/* الفيديو نفسه */}
-      <video
-        ref={videoRef}
-        src={videoUrl}
-        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-        onTimeUpdate={() => {
-          if (videoRef.current) {
-            setCurrentTime(videoRef.current.currentTime)
-            setDuration(videoRef.current.duration || 0)
-          }
-        }}
-        onLoadedMetadata={() => {
-          if (videoRef.current) setDuration(videoRef.current.duration || 0)
-        }}
-        onEnded={() => setIsPlaying(false)}
-        onClick={togglePlay}
-        onContextMenu={(e) => e.preventDefault()}
-        controls={false}
-        playsInline
-      />
-
-      {/* طبقة Controls */}
-      <div style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: 'linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.4), transparent)',
-        padding: '20px 16px 16px',
-        transition: 'opacity 0.3s',
-        opacity: showControls ? 1 : 0,
-        pointerEvents: showControls ? 'auto' : 'none',
-        zIndex: 10
-      }}>
-        {/* شريط التقدم */}
-        <div style={{ marginBottom: '12px' }}>
-          <input
-            type="range"
-            min={0}
-            max={duration || 100}
-            value={currentTime}
-            onChange={handleSeek}
+      {isYouTube && youtubeId ? (
+        <>
+          <div 
+            ref={youtubeContainerRef}
+            style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
+          />
+          {/* طبقة حماية لليوتيوب */}
+          <div 
+            onClick={togglePlay}
+            onContextMenu={handleContextMenu}
             style={{
-              width: '100%',
-              height: '6px',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 10,
               cursor: 'pointer',
-              accentColor: theme.primary,
-              background: 'rgba(255,255,255,0.3)',
-              borderRadius: '3px',
-              outline: 'none'
+              background: 'transparent'
             }}
           />
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            color: 'white', 
-            fontSize: '0.8rem',
-            marginTop: '4px',
-            fontFamily: 'monospace'
-          }}>
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-        </div>
+        </>
+      ) : (
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+          onTimeUpdate={() => {
+            if (videoRef.current) {
+              setCurrentTime(videoRef.current.currentTime)
+              setDuration(videoRef.current.duration || 0)
+              if (videoRef.current.duration > 0) {
+                onProgress((videoRef.current.currentTime / videoRef.current.duration) * 100)
+              }
+            }
+          }}
+          onLoadedMetadata={() => {
+            if (videoRef.current) setDuration(videoRef.current.duration || 0)
+          }}
+          onEnded={() => setIsPlaying(false)}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onVolumeChange={() => {
+            if (videoRef.current) setVolume(videoRef.current.volume)
+          }}
+          onRateChange={() => {
+            if (videoRef.current) setPlaybackRate(videoRef.current.playbackRate)
+          }}
+          controls={false}
+          playsInline
+          disablePictureInPicture
+          controlsList="nodownload noplaybackrate nofullscreen"
+          onContextMenu={handleContextMenu}
+        />
+      )}
 
-        {/* أزرار التحكم */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '12px',
-          justifyContent: 'center'
-        }}>
-          {/* تأخير */}
-          <button 
-            onClick={() => skip(-10)}
-            style={buttonStyle}
-            title="تأخير 10 ثواني"
-          >
-            <RefreshCw size={20} style={{ transform: 'scaleX(-1)' }} />
-          </button>
+      {/* طبقة حماية إضافية */}
+      <div 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 5,
+          pointerEvents: 'none'
+        }}
+        onContextMenu={handleContextMenu}
+      />
 
-          {/* تشغيل/إيقاف */}
-          <button 
-            onClick={togglePlay}
-            style={{
-              ...buttonStyle,
-              background: 'rgba(255,255,255,0.2)',
-              borderRadius: '50%',
-              padding: '12px',
-              transform: 'scale(1.1)'
-            }}
-          >
-            {isPlaying ? <Pause size={28} fill="white" /> : <Play size={28} fill="white" />}
-          </button>
+      {renderControls()}
 
-          {/* تقديم */}
-          <button 
-            onClick={() => skip(10)}
-            style={buttonStyle}
-            title="تقديم 10 ثواني"
-          >
-            <RefreshCw size={20} />
-          </button>
-
-          {/* فاصل */}
-          <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.3)', margin: '0 8px' }} />
-
-          {/* الصوت */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Volume2 size={20} color="white" />
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.1}
-              value={volume}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value)
-                setVolume(v)
-                if (videoRef.current) videoRef.current.volume = v
-              }}
-              style={{ width: '80px', accentColor: 'white', cursor: 'pointer' }}
-            />
-          </div>
-
-          {/* السرعة */}
-          <button 
-            onClick={changeSpeed}
-            style={{ ...buttonStyle, fontSize: '0.9rem', fontWeight: 'bold', minWidth: '48px' }}
-            title="سرعة التشغيل"
-          >
-            {playbackRate}x
-          </button>
-        </div>
-      </div>
-
-      {/* Play Icon في المنتصف (لما يكون متوقف) */}
+      {/* أيقونة التشغيل في المنتصف */}
       {!isPlaying && (
         <div 
           onClick={togglePlay}
@@ -318,16 +541,40 @@ function ProtectedVideoPlayer({
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            background: 'rgba(0,0,0,0.6)',
+            background: 'rgba(0,0,0,0.7)',
             borderRadius: '50%',
-            padding: '20px',
+            padding: '24px',
             cursor: 'pointer',
-            zIndex: 5
+            zIndex: 15,
+            border: '2px solid rgba(255,255,255,0.3)'
           }}
         >
-          <Play size={48} color="white" fill="white" />
+          <Play size={40} color="white" fill="white" />
         </div>
       )}
+
+      {/* شارة المحتوى المحمي */}
+      <div style={{
+        position: 'absolute',
+        top: '12px',
+        left: '12px',
+        background: 'rgba(0,0,0,0.8)',
+        color: '#fbbf24',
+        padding: '6px 12px',
+        borderRadius: '20px',
+        fontSize: '0.75rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        zIndex: 15,
+        userSelect: 'none',
+        pointerEvents: 'none',
+        fontWeight: 'bold',
+        border: '1px solid rgba(251, 191, 36, 0.3)'
+      }}>
+        <Shield size={14} />
+        <span>محمي من النسخ</span>
+      </div>
     </div>
   )
 }
@@ -344,8 +591,7 @@ const buttonStyle: React.CSSProperties = {
   justifyContent: 'center',
   borderRadius: '8px',
   transition: 'all 0.2s'
-}
-// ==========================================
+}// ==========================================
 // PDF VIEWER
 // ==========================================
 function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: { 
