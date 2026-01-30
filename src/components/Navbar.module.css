@@ -329,7 +329,7 @@ body {
   top:calc(100% + 10rem);
   left: 0;
   width: 280px;
-  background: rgba(255, 255, 255, 0.093);
+  background: rgb(255, 255, 255);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-2xl);
   border: 1px solid var(--gray-200);

@@ -13,9 +13,9 @@ const Footer = () => {
   ];
 
   const stageLinks = [
-    { label: 'الصف الأول الثانوي', href: '/courses/1' },
-    { label: 'الصف الثاني الثانوي', href: '/courses/2' },
-    { label: 'الصف الثالث الثانوي', href: '/courses/3' },
+    { label: 'الصف الأول الثانوي', href: '/grades/first' },
+    { label: 'الصف الثاني الثانوي', href: '/grades/second' },
+    { label: 'الصف الثالث الثانوي', href: '/grades/third' },
   ];
 
   return (
