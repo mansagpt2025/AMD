@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FiChevronRight, FiPlayCircle, FiUsers, FiAward, FiBookOpen } from 'react-icons/fi';
 import styles from './HeroSection.module.css';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 interface User {
   isLoggedIn: boolean;
@@ -16,6 +17,25 @@ const HeroSection = ({ user }: { user: User }) => {
   const sectionRef = useRef<HTMLElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
+
+const [currentUser, setCurrentUser] = useState(user);
+const router = useRouter();
+
+// التحقق كل ثانية من localStorage
+useEffect(() => {
+  const checkAuth = () => {
+    const token = localStorage.getItem('token');
+    if (token && !currentUser.isLoggedIn) {
+      setCurrentUser({ isLoggedIn: true });
+    } else if (!token && currentUser.isLoggedIn) {
+      setCurrentUser({ isLoggedIn: false });
+    }
+  };
+  
+  checkAuth();
+  const interval = setInterval(checkAuth, 1000);
+  return () => clearInterval(interval);
+}, [currentUser.isLoggedIn]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -63,23 +83,37 @@ const HeroSection = ({ user }: { user: User }) => {
               <span className={styles.highlight}> و مؤلف سلسلة البارع</span>
             </h2>
 
-            <div className={styles.ctaButtons}>
-              {!user.isLoggedIn ? (
-                <>
-                  <Link href="/register" className={styles.primaryButton}>
-                    <span>ابدأ رحلتك الآن</span>
-                  </Link>
-                  <Link href="/login" className={styles.secondaryButton}>
-                    <span>تسجيل الدخول</span>
-                  </Link>
-                </>
-              ) : (
-                <Link href="/courses" className={styles.primaryButton}>
-                  <span>استمر في التعلم</span>
-                  <FiChevronRight className={styles.buttonIcon} />
-                </Link>
-              )}
-            </div>
+<div className={styles.ctaButtons}>
+  {!currentUser.isLoggedIn ? (
+    <>
+      <Link href="/register" className={styles.primaryButton}>
+        <span>ابدأ رحلتك الآن</span>
+      </Link>
+      <Link href="/login" className={styles.secondaryButton}>
+        <span>تسجيل الدخول</span>
+      </Link>
+    </>
+  ) : (
+    <>
+      <Link href="/dashboard" className={styles.primaryButton}>
+        <span>لوحة التحكم</span>
+      </Link>
+      <button 
+        onClick={() => {
+          localStorage.removeItem('token');
+          setCurrentUser({ isLoggedIn: false });
+          router.push('/');
+        }} 
+        className={styles.secondaryButton}
+        style={{ cursor: 'pointer' }}
+      >
+        <span>تسجيل الخروج</span>
+      </button>
+    </>
+  )}
+</div>
+
+
           </div>
 
           <div ref={imageRef} className={styles.heroImage}>

@@ -193,7 +193,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--primary), var(--success), var(--warning));
+  background: linear-gradient(90deg, red 0%, rgb(62, 0, 0) );
   opacity: 0.8;
 }
 
