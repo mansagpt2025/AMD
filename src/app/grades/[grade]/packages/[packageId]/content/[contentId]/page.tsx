@@ -47,7 +47,7 @@ interface Theme {
 }
 
 // ==========================================
-// VIDEO PLAYER - محسن لمنع التحميل والنسخ
+// VIDEO PLAYER - محسن بعناصر تحكم كاملة
 // ==========================================
 function ProtectedVideoPlayer({ 
   videoUrl, contentId, userId, packageId, onProgress, theme 
@@ -64,12 +64,13 @@ function ProtectedVideoPlayer({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showControls, setShowControls] = useState(true)
+  const [playbackRate, setPlaybackRate] = useState(1)
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastSavedTimeRef = useRef(0)
 
   const isYouTube = videoUrl?.includes('youtube.com') || videoUrl?.includes('youtu.be')
   
   const getYouTubeId = (url: string) => {
-    // دعم روابط المشاركة العادية والمختصرة والخاصة
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/|live\/)([^#\&\?]*).*/
     const match = url.match(regExp)
     return (match && match[2].length === 11) ? match[2] : null
@@ -111,7 +112,11 @@ function ProtectedVideoPlayer({
       if (Math.floor(video.currentTime) % 10 === 0) saveProgress(video.currentTime, video.duration)
     }
     const handleLoadedMetadata = () => { setDuration(video.duration); setIsLoading(false) }
-    const handleEnded = () => { setIsPlaying(false); saveProgress(video.duration, video.duration); onProgress(100) }
+    const handleEnded = () => { 
+      setIsPlaying(false); 
+      saveProgress(video.duration, video.duration); 
+      onProgress(100) 
+    }
     const handleError = () => { setError('حدث خطأ في تحميل الفيديو'); setIsLoading(false) }
 
     video.addEventListener('timeupdate', handleTimeUpdate)
@@ -119,12 +124,21 @@ function ProtectedVideoPlayer({
     video.addEventListener('ended', handleEnded)
     video.addEventListener('error', handleError)
     
-    // منع قائمة السياق على الفيديو
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault()
       return false
     }
     video.addEventListener('contextmenu', handleContextMenu)
+
+    // منع اختصارات الكيبورد الخطرة
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (['s', 'p', 'u', 'c'].includes(e.key.toLowerCase())) {
+          e.preventDefault()
+        }
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate)
@@ -132,6 +146,7 @@ function ProtectedVideoPlayer({
       video.removeEventListener('ended', handleEnded)
       video.removeEventListener('error', handleError)
       video.removeEventListener('contextmenu', handleContextMenu)
+      document.removeEventListener('keydown', handleKeyDown)
       saveProgress(video.currentTime, video.duration)
     }
   }, [isYouTube, saveProgress, onProgress])
@@ -143,11 +158,38 @@ function ProtectedVideoPlayer({
     setIsPlaying(!isPlaying)
   }
 
+  // التقديم والتأخير
+  const skip = (seconds: number) => {
+    if (!videoRef.current) return
+    videoRef.current.currentTime += seconds
+    setCurrentTime(videoRef.current.currentTime)
+  }
+
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!videoRef.current) return
     const time = parseFloat(e.target.value)
     videoRef.current.currentTime = time
     setCurrentTime(time)
+  }
+
+  // تغيير سرعة التشغيل
+  const changePlaybackRate = () => {
+    if (!videoRef.current) return
+    const rates = [0.5, 1, 1.25, 1.5, 2]
+    const currentIndex = rates.indexOf(playbackRate)
+    const nextRate = rates[(currentIndex + 1) % rates.length]
+    videoRef.current.playbackRate = nextRate
+    setPlaybackRate(nextRate)
+  }
+
+  // زر المشاركة (نسخ الرابط فقط - آمن)
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      alert('تم نسخ رابط المحتوى!')
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
   }
 
   const formatTime = (seconds: number) => {
@@ -156,7 +198,15 @@ function ProtectedVideoPlayer({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // يوتيوب محسن - يخفي البراندنج ويمنع النقر الأيمن
+  // إخفاء الكنترولز بعد فترة من عدم الحركة
+  const handleMouseMove = () => {
+    setShowControls(true)
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
+    if (isPlaying) {
+      controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000)
+    }
+  }
+
   if (isYouTube && youtubeId) {
     return (
       <div 
@@ -175,17 +225,11 @@ function ProtectedVideoPlayer({
             referrerPolicy="strict-origin-when-cross-origin"
             loading="lazy"
           />
-          {/* Overlay شفاف يمنع استخراج الرابط ويكسر الـ iframe إن حاول الطفو */}
           <div 
             className={styles.youtubeProtectionOverlay}
             onContextMenu={(e) => {
               e.preventDefault()
-              alert('المحتوى محمي ©')
               return false
-            }}
-            onClick={(e) => {
-              // السماح بالنقر للتشغيل فقط إذا كان الـ iframe تحت
-              e.preventDefault()
             }}
           />
         </div>
@@ -199,7 +243,7 @@ function ProtectedVideoPlayer({
 
   if (error) {
     return (
-      <div className={styles.videoPlayerContainer} style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <div className={styles.videoPlayerContainer} style={{ justifyContent: 'center', alignItems: 'center', display: 'flex' }}>
         <div className={styles.errorContainerVideo}>
           <AlertCircle size={48} color="#ef4444" />
           <p>{error}</p>
@@ -213,9 +257,13 @@ function ProtectedVideoPlayer({
     <div 
       ref={containerRef}
       className={styles.videoPlayerContainer}
-      onMouseEnter={() => setShowControls(true)}
-      onMouseLeave={() => isPlaying && setTimeout(() => setShowControls(false), 3000)}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => isPlaying && setTimeout(() => setShowControls(false), 1000)}
       onContextMenu={(e) => e.preventDefault()}
+      onClick={(e) => {
+        // التشغيل/الإيقاف عند النقر على الفيديو مباشرة
+        if (e.target === videoRef.current) togglePlay()
+      }}
     >
       {isLoading && (
         <div className={styles.loadingOverlayVideo}>
@@ -223,38 +271,74 @@ function ProtectedVideoPlayer({
           <p>جاري تحميل الفيديو...</p>
         </div>
       )}
+      
       <video
         ref={videoRef}
         src={videoUrl}
         className={styles.videoElement}
         controls={false}
-        onClick={togglePlay}
         preload="metadata"
         playsInline
         disablePictureInPicture
         disableRemotePlayback
         onContextMenu={(e) => e.preventDefault()}
       />
+
+      {/* طبقة التحكم الرئيسية */}
       {showControls && !isLoading && (
         <div className={styles.controlsOverlay}>
+          {/* شريط الوقت في الأعلى */}
           <div className={styles.progressSection}>
             <input 
               type="range" 
               min="0" 
               max={duration || 0} 
               value={currentTime} 
-              onChange={handleSeek} 
-              className={styles.progressBarVideo} 
+              onChange={handleSeek}
+              className={styles.progressBarVideo}
+              style={{ cursor: 'pointer' }}
             />
             <div className={styles.timeDisplay}>
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
           </div>
+
+          {/* أزرار التحكم في الأسفل */}
           <div className={styles.controlsBar}>
-            <button onClick={togglePlay} className={styles.controlButton}>
-              {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+            {/* زر التأخير 10 ثواني */}
+            <button 
+              onClick={() => skip(-10)} 
+              className={styles.controlButton}
+              title="تأخير 10 ثواني"
+            >
+              <RefreshCw size={20} style={{ transform: 'scaleX(-1)' }} />
             </button>
+
+            {/* زر التشغيل/الإيقاف الرئيسي */}
+            <button 
+              onClick={togglePlay} 
+              className={styles.controlButton}
+              style={{ 
+                background: 'rgba(255,255,255,0.2)', 
+                borderRadius: '50%',
+                padding: '0.75rem',
+                transform: 'scale(1.1)'
+              }}
+            >
+              {isPlaying ? <Pause size={28} fill="white" /> : <Play size={28} fill="white" style={{ marginRight: '-3px' }} />}
+            </button>
+
+            {/* زر التقديم 10 ثواني */}
+            <button 
+              onClick={() => skip(10)} 
+              className={styles.controlButton}
+              title="تقديم 10 ثواني"
+            >
+              <RefreshCw size={20} />
+            </button>
+
+            {/* الصوت */}
             <div className={styles.volumeControl}>
               <Volume2 size={20} />
               <input 
@@ -271,16 +355,42 @@ function ProtectedVideoPlayer({
                 className={styles.volumeSlider} 
               />
             </div>
-            <div className={styles.protectionIndicator}>
-              <Lock size={16} />
-              <span>محمي</span>
-            </div>
+
+            {/* سرعة التشغيل */}
+            <button 
+              onClick={changePlaybackRate}
+              className={styles.controlButton}
+              title="سرعة التشغيل"
+              style={{ fontSize: '0.75rem', fontWeight: 'bold', minWidth: '40px' }}
+            >
+              {playbackRate}x
+            </button>
+
+            <div style={{ flex: 1 }} />
+
+            {/* زر المشاركة */}
+            <button 
+              onClick={handleShare}
+              className={styles.controlButton}
+              title="نسخ رابط المشاركة"
+            >
+              <ExternalLink size={18} />
+            </button>
+
+            {/* زر ملء الشاشة */}
             <button 
               onClick={() => containerRef.current?.requestFullscreen()} 
               className={styles.controlButton}
+              title="ملء الشاشة"
             >
               <Maximize size={20} />
             </button>
+
+            {/* مؤشر الحماية */}
+            <div className={styles.protectionIndicator}>
+              <Lock size={14} />
+              <span>محمي</span>
+            </div>
           </div>
         </div>
       )}
