@@ -2,14 +2,15 @@
 
 import { useState, useEffect, Suspense, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { createBrowserClient } from '@supabase/ssr'
 import {
   PlayCircle, BookOpen, Clock, Lock, Unlock,
   CheckCircle, XCircle, AlertCircle, Home,
   ChevronRight, GraduationCap, BarChart3,
   Calendar, Video, File, Target, Loader2,
-  ArrowRight, Shield, Users, Award
+  ArrowRight, Shield, Users, Award, Sparkles,
+  Play, FileText, HelpCircle, Crown, Star
 } from 'lucide-react'
 import { getGradeTheme } from '@/lib/utils/grade-themes'
 import styles from './PackagePage.module.css'
@@ -78,7 +79,6 @@ interface UserPackage {
   source: string
 }
 
-// FIX: Global singleton to prevent "Multiple GoTrueClient instances"
 declare global {
   var __packagePageSupabase: ReturnType<typeof createBrowserClient> | undefined
 }
@@ -99,7 +99,11 @@ const getSupabase = () => {
 function LoadingState() {
   return (
     <div className={styles.loadingContainer}>
-      <Loader2 className={styles.loadingSpinner} />
+      <div className={styles.loadingWrapper}>
+        <div className={styles.spinnerRing}></div>
+        <div className={styles.spinnerRing}></div>
+        <div className={styles.spinnerRing}></div>
+      </div>
       <p className={styles.loadingText}>جاري تحميل البيانات...</p>
     </div>
   )
@@ -110,13 +114,35 @@ function ErrorState({ message, onBack }: { message: string; onBack: () => void }
   return (
     <div className={styles.errorContainer}>
       <div className={styles.errorContent}>
-        <AlertCircle className={styles.errorIcon} />
+        <div className={styles.errorGlow}>
+          <AlertCircle className={styles.errorIcon} />
+        </div>
         <h2 className={styles.errorTitle}>حدث خطأ</h2>
         <p className={styles.errorMessage}>{message}</p>
         <button onClick={onBack} className={styles.backButton}>
+          <ArrowRight size={18} />
           العودة إلى الصفحة الرئيسية
         </button>
       </div>
+    </div>
+  )
+}
+
+// Wave Animation Component
+function WaveAnimation() {
+  return (
+    <div className={styles.waveContainer}>
+      <svg className={styles.waves} xmlns="http://www.w3.org/2000/svg" viewBox="0 24 150 28" preserveAspectRatio="none">
+        <defs>
+          <path id="wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
+        </defs>
+        <g className={styles.waveParallax}>
+          <use href="#wave" x="48" y="0" fill="rgba(255,255,255,0.1)" />
+          <use href="#wave" x="48" y="3" fill="rgba(255,255,255,0.07)" />
+          <use href="#wave" x="48" y="5" fill="rgba(255,255,255,0.05)" />
+          <use href="#wave" x="48" y="7" fill="rgba(255,255,255,0.03)" />
+        </g>
+      </svg>
     </div>
   )
 }
@@ -143,7 +169,6 @@ function PackageContent() {
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
 
-  // FIX: Single supabase instance per component lifecycle
   const supabase = useMemo(() => getSupabase(), [])
 
   useEffect(() => {
@@ -159,13 +184,11 @@ function PackageContent() {
     setCompletion(Math.round((completed / allContents.length) * 100))
   }
 
-  // FIX: Single auth check effect with early exit
   useEffect(() => {
     if (!mounted || !gradeSlug || !packageId || !supabase || authChecked) return
 
     const checkAuth = async () => {
       try {
-        // Check session once
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
@@ -184,7 +207,6 @@ function PackageContent() {
 
         const user = session.user
 
-        // Check package access
         const { data: userPackageData, error: accessError } = await supabase
           .from('user_packages')
           .select('*')
@@ -201,7 +223,6 @@ function PackageContent() {
         
         setUserPackage(userPackageData)
 
-        // Fetch package data
         const { data: pkgData, error: pkgError } = await supabase
           .from('packages')
           .select('*')
@@ -222,7 +243,6 @@ function PackageContent() {
         
         setPackageData(pkgData)
 
-        // Fetch lectures
         const { data: lecturesData, error: lecturesError } = await supabase
           .from('lectures')
           .select('*')
@@ -233,7 +253,6 @@ function PackageContent() {
         if (lecturesError) throw lecturesError
         setLectures(lecturesData || [])
 
-        // Fetch contents
         if (lecturesData && lecturesData.length > 0) {
           const lectureIds = lecturesData.map((l: { id: any }) => l.id)
           const { data: contentsData, error: contentsError } = await supabase
@@ -246,7 +265,6 @@ function PackageContent() {
           if (contentsError) throw contentsError
           setContents(contentsData || [])
           
-          // Fetch progress
           const { data: progressData, error: progressError } = await supabase
             .from('user_progress')
             .select('*')
@@ -309,9 +327,9 @@ function PackageContent() {
 
   const getContentIcon = (type: string) => {
     switch (type) {
-      case 'video': return <Video className={styles.contentTypeIcon} />
-      case 'pdf': return <File className={styles.contentTypeIcon} />
-      case 'exam': return <Target className={styles.contentTypeIcon} />
+      case 'video': return <Play className={styles.contentTypeIcon} />
+      case 'pdf': return <FileText className={styles.contentTypeIcon} />
+      case 'exam': return <HelpCircle className={styles.contentTypeIcon} />
       case 'text': return <BookOpen className={styles.contentTypeIcon} />
       default: return <PlayCircle className={styles.contentTypeIcon} />
     }
@@ -341,8 +359,19 @@ function PackageContent() {
 
   return (
     <div className={styles.pageContainer}>
-      <div className={styles.header} style={{ background: theme.header }}>
+      <div className={styles.header} style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }}>
+        <WaveAnimation />
+        
         <div className={styles.headerContent}>
+          {/* Brand Header */}
+          <div className={styles.brandHeader}>
+            <div className={styles.brandLogo}>
+              <Crown className={styles.brandIcon} />
+              <span className={styles.brandText}>البارع محمود الديب</span>
+              <Sparkles className={styles.sparkleIcon} />
+            </div>
+          </div>
+
           <div className={styles.breadcrumb}>
             <button onClick={() => router.push('/')} className={styles.breadcrumbItem}>
               <Home className={styles.breadcrumbIcon} /> الرئيسية
@@ -357,69 +386,101 @@ function PackageContent() {
 
           <div className={styles.packageHeader}>
             <div className={styles.packageImageContainer}>
-              {packageData.image_url ? (
-                <div className={styles.imageWrapper}>
-                  <img src={packageData.image_url} alt={packageData.name} className={styles.packageImage} />
-                  <div className={styles.imageOverlay} />
+              <motion.div 
+                className={styles.imageWrapper}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6 }}
+              >
+                {packageData.image_url ? (
+                  <>
+                    <img src={packageData.image_url} alt={packageData.name} className={styles.packageImage} />
+                    <div className={styles.imageOverlay} />
+                    <div className={styles.imageGlow} style={{ background: theme.accent }} />
+                  </>
+                ) : (
+                  <div className={styles.placeholderImage} style={{ background: theme.primary + '40' }}>
+                    <GraduationCap className={styles.placeholderIcon} />
+                  </div>
+                )}
+                <div className={styles.floatingBadge} style={{ background: theme.accent }}>
+                  <Star size={16} fill="white" />
+                  <span>مميز</span>
                 </div>
-              ) : (
-                <div className={styles.placeholderImage} style={{ background: theme.primary + '40' }}>
-                  <GraduationCap className={styles.placeholderIcon} />
-                </div>
-              )}
+              </motion.div>
             </div>
 
             <div className={styles.packageDetails}>
-              <h1 className={styles.packageTitle}>{packageData.name}</h1>
-              <p className={styles.packageDescription}>{packageData.description}</p>
-              
-              <div className={styles.packageStats}>
-                <div className={styles.statItem}>
-                  <PlayCircle className={styles.statIcon} />
-                  <span className={styles.statValue}>{lectures.length}</span>
-                  <span className={styles.statLabel}>محاضرة</span>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className={styles.packageTag} style={{ background: theme.accent + '20', color: theme.accent }}>
+                  {packageData.type === 'weekly' ? 'أسبوعي' : packageData.type === 'monthly' ? 'شهري' : packageData.type === 'term' ? 'ترم كامل' : 'عرض خاص'}
                 </div>
-                <div className={styles.statItem}>
-                  <Clock className={styles.statIcon} />
-                  <span className={styles.statValue}>{packageData.duration_days}</span>
-                  <span className={styles.statLabel}>يوم</span>
-                </div>
-                <div className={styles.statItem}>
-                  <Calendar className={styles.statIcon} />
-                  <span className={styles.statValue}>
-                    {packageData.type === 'weekly' ? 'أسبوعي' : packageData.type === 'monthly' ? 'شهري' : packageData.type === 'term' ? 'ترم كامل' : 'عرض خاص'}
-                  </span>
-                </div>
-              </div>
-
-              {contents.length > 0 && (
-                <div className={styles.progressContainer}>
-                  <div className={styles.progressHeader}>
-                    <div className={styles.progressLabel}>
-                      <BarChart3 className={styles.progressIcon} />
-                      <span>نسبة الإتمام</span>
+                <h1 className={styles.packageTitle}>{packageData.name}</h1>
+                <p className={styles.packageDescription}>{packageData.description}</p>
+                
+                <div className={styles.packageStats}>
+                  <div className={styles.statItem} style={{ background: 'rgba(255,255,255,0.15)' }}>
+                    <div className={styles.statIconWrapper} style={{ background: theme.accent }}>
+                      <PlayCircle size={20} />
                     </div>
-                    <span className={styles.progressPercentage}>{completion}%</span>
+                    <div className={styles.statInfo}>
+                      <span className={styles.statValue}>{lectures.length}</span>
+                      <span className={styles.statLabel}>محاضرة</span>
+                    </div>
                   </div>
-                  <div className={styles.progressBar}>
-                    <motion.div 
-                      initial={{ width: 0 }} 
-                      animate={{ width: `${completion}%` }} 
-                      className={styles.progressFill} 
-                      style={{ background: theme.accent }} 
-                    />
+                  <div className={styles.statItem} style={{ background: 'rgba(255,255,255,0.15)' }}>
+                    <div className={styles.statIconWrapper} style={{ background: theme.accent }}>
+                      <Clock size={20} />
+                    </div>
+                    <div className={styles.statInfo}>
+                      <span className={styles.statValue}>{packageData.duration_days}</span>
+                      <span className={styles.statLabel}>يوم</span>
+                    </div>
                   </div>
-                  <div className={styles.progressStats}>
-                    <span className={styles.progressStat}>
-                      مكتمل: {userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
-                    </span>
-                    <span className={styles.progressStat}>
-                      المتبقي: {contents.length - userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
-                    </span>
-                    <span className={styles.progressStat}>الإجمالي: {contents.length}</span>
+                  <div className={styles.statItem} style={{ background: 'rgba(255,255,255,0.15)' }}>
+                    <div className={styles.statIconWrapper} style={{ background: theme.accent }}>
+                      <BookOpen size={20} />
+                    </div>
+                    <div className={styles.statInfo}>
+                      <span className={styles.statValue}>{contents.length}</span>
+                      <span className={styles.statLabel}>محتوى</span>
+                    </div>
                   </div>
                 </div>
-              )}
+
+                {contents.length > 0 && (
+                  <div className={styles.progressContainer}>
+                    <div className={styles.progressHeader}>
+                      <div className={styles.progressLabel}>
+                        <BarChart3 className={styles.progressIcon} />
+                        <span>نسبة الإتمام</span>
+                      </div>
+                      <span className={styles.progressPercentage}>{completion}%</span>
+                    </div>
+                    <div className={styles.progressBar}>
+                      <motion.div 
+                        initial={{ width: 0 }} 
+                        animate={{ width: `${completion}%` }} 
+                        transition={{ duration: 1.2, ease: "easeOut" }}
+                        className={styles.progressFill} 
+                        style={{ background: `linear-gradient(90deg, ${theme.accent}, ${theme.primary})` }} 
+                      />
+                    </div>
+                    <div className={styles.progressStats}>
+                      <span className={styles.progressStat}>
+                        <CheckCircle size={14} /> مكتمل: {userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
+                      </span>
+                      <span className={styles.progressStat}>
+                        <Clock size={14} /> المتبقي: {contents.length - userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
             </div>
           </div>
         </div>
@@ -429,119 +490,177 @@ function PackageContent() {
         <section className={styles.lecturesSection}>
           <div className={styles.sectionHeader}>
             <div className={styles.sectionTitleContainer}>
-              <BookOpen className={styles.sectionIcon} />
-              <h2 className={styles.sectionTitle}>محاضرات الباقة</h2>
+              <div className={styles.sectionIconWrapper} style={{ background: theme.primary + '20' }}>
+                <BookOpen className={styles.sectionIcon} style={{ color: theme.primary }} />
+              </div>
+              <div>
+                <h2 className={styles.sectionTitle}>محاضرات الباقة</h2>
+                <p className={styles.sectionSubtitle}>ابدأ رحلتك التعليمية الآن وحقق التفوق</p>
+              </div>
             </div>
-            <p className={styles.sectionSubtitle}>ابدأ رحلتك التعليمية الآن</p>
           </div>
 
           {lectures.length === 0 ? (
-            <div className={styles.emptyState}>
-              <BookOpen className={styles.emptyIcon} />
+            <motion.div 
+              className={styles.emptyState}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className={styles.emptyIconWrapper}>
+                <BookOpen className={styles.emptyIcon} />
+              </div>
               <p className={styles.emptyText}>لا توجد محاضرات متاحة حالياً</p>
               <p className={styles.emptySubtext}>سيتم إضافة المحاضرات قريباً</p>
-            </div>
+            </motion.div>
           ) : (
             <div className={styles.lecturesList}>
               {lectures.map((lecture, lectureIndex) => {
                 const lectureContents = contents.filter(c => c.lecture_id === lecture.id)
                 const isExpanded = activeSection === lecture.id
+                const completedContents = lectureContents.filter(c => {
+                  const status = getContentStatus(c.id)
+                  return status === 'completed' || status === 'passed'
+                }).length
                 
                 return (
                   <motion.div 
                     key={lecture.id} 
-                    initial={{ opacity: 0, y: 20 }} 
-                    animate={{ opacity: 1, y: 0 }} 
-                    className={styles.lectureCard}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: lectureIndex * 0.1 }}
+                    className={`${styles.lectureCard} ${isExpanded ? styles.expanded : ''}`}
                   >
                     <div className={styles.lectureHeader} onClick={() => toggleSection(lecture.id)}>
                       <div className={styles.lectureInfo}>
-                        <div className={styles.lectureNumber}>المحاضرة {lectureIndex + 1}</div>
+                        <div className={styles.lectureNumberBadge} style={{ background: theme.primary + '15', color: theme.primary }}>
+                          <span>المحاضرة {lectureIndex + 1}</span>
+                        </div>
                         <h3 className={styles.lectureTitle}>{lecture.title}</h3>
                         {lecture.description && <p className={styles.lectureDescription}>{lecture.description}</p>}
+                        <div className={styles.lectureMeta}>
+                          <span className={styles.contentCount}>
+                            <FileText size={14} /> {lectureContents.length} محتوى
+                          </span>
+                          <span className={styles.completionBadge}>
+                            <CheckCircle size={14} /> {completedContents}/{lectureContents.length}
+                          </span>
+                        </div>
                       </div>
                       <div className={styles.lectureControls}>
-                        <div className={styles.contentsCount}>{lectureContents.length} محتوى</div>
-                        <div className={`${styles.expandIcon} ${isExpanded ? styles.expanded : ''}`}>
-                          <ChevronRight className={styles.chevronIcon} />
+                        <div className={styles.progressCircle} style={{ 
+                          background: `conic-gradient(${theme.primary} ${(completedContents/lectureContents.length)*360}deg, #e2e8f0 0deg)` 
+                        }}>
+                          <span>{Math.round((completedContents/lectureContents.length)*100)}%</span>
                         </div>
+                        <motion.div 
+                          className={styles.expandIcon}
+                          animate={{ rotate: isExpanded ? 90 : 0 }}
+                          style={{ background: isExpanded ? theme.primary : '#f1f5f9' }}
+                        >
+                          <ChevronRight className={styles.chevronIcon} style={{ color: isExpanded ? 'white' : '#64748b' }} />
+                        </motion.div>
                       </div>
                     </div>
 
-                    <motion.div 
-                      initial={false} 
-                      animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }} 
-                      transition={{ duration: 0.3 }} 
-                      className={styles.contentsContainer}
-                      style={{ overflow: 'hidden' }}
-                    >
-                      <div className={styles.contentsList}>
-                        {lectureContents.map((content, contentIndex) => {
-                          const isAccessible = isContentAccessible(lectureIndex, contentIndex, content)
-                          const status = getContentStatus(content.id)
-                          
-                          return (
-                            <div 
-                              key={content.id} 
-                              className={`${styles.contentItem} ${isAccessible ? styles.accessible : styles.locked}`} 
-                              onClick={() => isAccessible && handleContentClick(content, lectureIndex, contentIndex)}
-                            >
-                              <div className={styles.contentInfo}>
-                                <div className={styles.contentIcon}>{getContentIcon(content.type)}</div>
-                                <div className={styles.contentDetails}>
-                                  <h4 className={styles.contentTitle}>{content.title}</h4>
-                                  {content.description && <p className={styles.contentDescription}>{content.description}</p>}
-                                  <div className={styles.contentMeta}>
-                                    <span className={styles.contentType}>
-                                      {content.type === 'video' ? 'فيديو' : content.type === 'pdf' ? 'ملف PDF' : content.type === 'exam' ? 'امتحان' : 'نص'}
-                                    </span>
-                                    {content.duration_minutes > 0 && (
-                                      <span className={styles.contentDuration}>
-                                        <Clock className={styles.metaIcon} size={14} /> {content.duration_minutes} دقيقة
-                                      </span>
-                                    )}
-                                    {content.type === 'exam' && (
-                                      <span className={styles.examInfo}><Target className={styles.metaIcon} size={14} /> النجاح: {content.pass_score}%</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className={styles.contentActions}>
-                                {status === 'completed' || status === 'passed' ? (
-                                  <div className={`${styles.statusBadge} ${styles.completed}`}>
-                                    <CheckCircle size={16} />
-                                    <span>{status === 'passed' ? 'ناجح' : 'مكتمل'}</span>
-                                  </div>
-                                ) : status === 'failed' ? (
-                                  <div className={`${styles.statusBadge} ${styles.failed}`}><XCircle size={16} /><span>فاشل</span></div>
-                                ) : status === 'in_progress' ? (
-                                  <div className={`${styles.statusBadge} ${styles.inProgress}`}><Clock size={16} /><span>قيد التقدم</span></div>
-                                ) : null}
-
-                                <button 
-                                  className={`${styles.actionButton} ${isAccessible ? styles.activeButton : styles.disabledButton}`} 
-                                  style={isAccessible ? { background: theme.primary } : {}} 
-                                  disabled={!isAccessible}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div 
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className={styles.contentsContainer}
+                        >
+                          <div className={styles.contentsList}>
+                            {lectureContents.map((content, contentIndex) => {
+                              const isAccessible = isContentAccessible(lectureIndex, contentIndex, content)
+                              const status = getContentStatus(content.id)
+                              
+                              return (
+                                <motion.div 
+                                  key={content.id}
+                                  initial={{ opacity: 0, x: -20 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: contentIndex * 0.05 }}
+                                  className={`${styles.contentItem} ${isAccessible ? styles.accessible : styles.locked} ${status === 'completed' || status === 'passed' ? styles.completed : ''}`} 
+                                  onClick={() => isAccessible && handleContentClick(content, lectureIndex, contentIndex)}
                                 >
-                                  {isAccessible ? (
-                                    <>{status === 'not_started' ? 'بدء' : 'استكمال'}<ArrowRight size={16} /></>
-                                  ) : (
-                                    <><Lock size={16} />مقفل</>
-                                  )}
-                                </button>
-                              </div>
-                              {!isAccessible && (
-                                <div className={styles.lockMessage}>
-                                  <AlertCircle size={14} />
-                                  <span>يجب إتمام المحتوى السابق أولاً</span>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </motion.div>
+                                  <div className={styles.contentMain}>
+                                    <div className={styles.contentIconWrapper} style={{ 
+                                      background: status === 'completed' || status === 'passed' ? '#10b98120' : 
+                                                 status === 'failed' ? '#ef444420' :
+                                                 status === 'in_progress' ? '#f59e0b20' :
+                                                 isAccessible ? theme.primary + '20' : '#f1f5f9',
+                                      color: status === 'completed' || status === 'passed' ? '#10b981' : 
+                                             status === 'failed' ? '#ef4444' :
+                                             status === 'in_progress' ? '#f59e0b' :
+                                             isAccessible ? theme.primary : '#94a3b8'
+                                    }}>
+                                      {getContentIcon(content.type)}
+                                      {status === 'completed' || status === 'passed' ? (
+                                        <div className={styles.statusIconOverlay}>
+                                          <CheckCircle size={12} />
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                    
+                                    <div className={styles.contentDetails}>
+                                      <h4 className={styles.contentTitle}>{content.title}</h4>
+                                      {content.description && <p className={styles.contentDescription}>{content.description}</p>}
+                                      <div className={styles.contentMeta}>
+                                        <span className={styles.contentType}>
+                                          {content.type === 'video' ? 'فيديو' : content.type === 'pdf' ? 'ملف PDF' : content.type === 'exam' ? 'امتحان' : 'نص'}
+                                        </span>
+                                        {content.duration_minutes > 0 && (
+                                          <span className={styles.contentDuration}>
+                                            <Clock size={12} /> {content.duration_minutes} دقيقة
+                                          </span>
+                                        )}
+                                        {content.type === 'exam' && (
+                                          <span className={styles.examInfo}>
+                                            <Target size={12} /> النجاح: {content.pass_score}%
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className={styles.contentActions}>
+                                    {!isAccessible ? (
+                                      <div className={styles.lockBadge}>
+                                        <Lock size={14} />
+                                        <span>مقفل</span>
+                                      </div>
+                                    ) : (
+                                      <motion.button 
+                                        className={styles.actionButton}
+                                        style={{ 
+                                          background: status === 'completed' || status === 'passed' ? '#10b981' : 
+                                                     status === 'failed' ? '#ef4444' :
+                                                     theme.primary
+                                        }}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                      >
+                                        {status === 'completed' || status === 'passed' ? (
+                                          <><CheckCircle size={16} /> مكتمل</>
+                                        ) : status === 'failed' ? (
+                                          <><XCircle size={16} /> إعادة المحاولة</>
+                                        ) : status === 'in_progress' ? (
+                                          <><Play size={16} /> استكمال</>
+                                        ) : (
+                                          <><Play size={16} /> بدء</>
+                                        )}
+                                      </motion.button>
+                                    )}
+                                  </div>
+                                </motion.div>
+                              )
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 )
               })}
@@ -549,38 +668,63 @@ function PackageContent() {
           )}
         </section>
 
-        <section className={styles.notesSection}>
-          <div className={styles.notesContainer}>
+        <motion.section 
+          className={styles.notesSection}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <div className={styles.notesContainer} style={{ background: theme.primary + '08' }}>
             <div className={styles.notesHeader}>
-              <Award className={styles.notesIcon} />
+              <div className={styles.notesIconWrapper} style={{ background: theme.primary + '20' }}>
+                <Award className={styles.notesIcon} style={{ color: theme.primary }} />
+              </div>
               <h3 className={styles.notesTitle}>ملاحظات هامة</h3>
             </div>
             <ul className={styles.notesList}>
               {packageData.type === 'monthly' || packageData.type === 'term' ? (
                 <>
-                  <li className={styles.noteItem}><Shield size={16} />يجب إتمام كل محتوى قبل الانتقال للذي يليه</li>
-                  <li className={styles.noteItem}><Target size={16} />لابد من اجتياز الامتحان قبل الانتقال للمحاضرة التالية</li>
+                  <li className={styles.noteItem}>
+                    <div className={styles.noteIconWrapper} style={{ background: theme.accent + '20' }}>
+                      <Shield size={16} style={{ color: theme.accent }} />
+                    </div>
+                    <span>يجب إتمام كل محتوى قبل الانتقال للذي يليه</span>
+                  </li>
+                  <li className={styles.noteItem}>
+                    <div className={styles.noteIconWrapper} style={{ background: theme.accent + '20' }}>
+                      <Target size={16} style={{ color: theme.accent }} />
+                    </div>
+                    <span>لابد من اجتياز الامتحان قبل الانتقال للمحاضرة التالية</span>
+                  </li>
                 </>
-              ) : (
-                <>
-                </>
-              )}
+              ) : null}
               {userPackage?.expires_at && (
-                <li className={styles.noteItem}><Calendar size={16} />مدة الاشتراك تنتهي في: {new Date(userPackage.expires_at).toLocaleDateString('ar-EG')}</li>
+                <li className={styles.noteItem}>
+                  <div className={styles.noteIconWrapper} style={{ background: theme.accent + '20' }}>
+                    <Calendar size={16} style={{ color: theme.accent }} />
+                  </div>
+                  <span>مدة الاشتراك تنتهي في: <strong>{new Date(userPackage.expires_at).toLocaleDateString('ar-EG')}</strong></span>
+                </li>
               )}
             </ul>
           </div>
-        </section>
+        </motion.section>
 
-        <div className={styles.backSection}>
+        <motion.div 
+          className={styles.backSection}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
           <button 
             onClick={() => router.push(`/grades/${gradeSlug}`)} 
-            className={styles.backActionButton} 
-            style={{ borderColor: theme.primary, color: theme.primary }}
+            className={styles.backActionButton}
+            style={{ color: theme.primary, borderColor: theme.primary + '40' }}
           >
-            <ArrowRight size={18} />العودة إلى الباقات
+            <ArrowRight size={18} />
+            <span>العودة إلى الباقات</span>
           </button>
-        </div>
+        </motion.div>
       </main>
     </div>
   )
