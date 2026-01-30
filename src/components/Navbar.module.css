@@ -326,8 +326,7 @@ body {
 /* القائمة المنسدلة */
 .dropdownMenu {
   position: absolute;
-    font-family: 'GE SS Two';
-  top:calc(100% + 1rem);
+  top:calc(100% + 10rem);
   left: 0;
   width: 280px;
   background: rgb(255, 255, 255);

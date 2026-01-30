@@ -63,9 +63,9 @@ const themes: Record<string, ThemeType> = {
     light: '#eff6ff'
   },
   second: {
-    primary: '#8b5cf6',
-    secondary: '#6d28d9',
-    accent: '#ec4899',
+    primary: '#00ff04',
+    secondary: '#007a16',
+    accent: '#8cec48',
     gradient: 'from-violet-500 via-purple-600 to-pink-500',
     light: '#f5f3ff'
   },
