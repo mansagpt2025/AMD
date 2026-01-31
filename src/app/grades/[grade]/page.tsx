@@ -19,6 +19,7 @@ import {
   validateCode,
   getWalletBalance 
 } from './actions'
+import './GradePage.module.css'
 
 // الأنواع (تبقى كما هي)
 interface Package {
