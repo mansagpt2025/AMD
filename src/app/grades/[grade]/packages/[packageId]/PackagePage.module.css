@@ -1438,16 +1438,6 @@
   --primary-rgb: 245, 158, 11;
 }
 
-/* --------------------------
-   تحسينات الوصولية
---------------------------- */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
 
 /* تحسينات للوضع الداكن */
 @media (prefers-color-scheme: dark) {
