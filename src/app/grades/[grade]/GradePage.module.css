@@ -39,28 +39,6 @@
 }
 
 /* ============================================
-   إعادة الضبط والأساسيات
-   ============================================ */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-  direction: rtl;
-}
-
-body {
-  font-family: 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', sans-serif;
-  background-color: #ffffff;
-  color: var(--color-gray-800);
-  line-height: 1.6;
-  overflow-x: hidden;
-}
-
-/* ============================================
    الحاوية الرئيسية والخلفية
    ============================================ */
 .container {
