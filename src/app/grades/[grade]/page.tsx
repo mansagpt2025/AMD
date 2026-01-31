@@ -63,9 +63,9 @@ const themes: Record<string, ThemeType> = {
     light: '#eff6ff'
   },
   second: {
-    primary: '#00ff04',
-    secondary: '#007a16',
-    accent: '#8cec48',
+    primary: '#8b5cf6',
+    secondary: '#7c3aed',
+    accent: '#ec4899',
     gradient: 'from-violet-500 via-purple-600 to-pink-500',
     light: '#f5f3ff'
   },
@@ -134,7 +134,6 @@ export default function GradePage() {
 
       if (packagesError) throw packagesError
       
-      // إضافة بيانات تجريبية للمميزات إذا لم تكن موجودة
       const enhancedPackages = packagesData?.map(pkg => ({
         ...pkg,
         features: pkg.features || [
@@ -175,7 +174,6 @@ export default function GradePage() {
     fetchData()
   }, [fetchData])
 
-  // Real-time updates
   useEffect(() => {
     if (!user?.id) return
     
@@ -196,7 +194,6 @@ export default function GradePage() {
     return () => { supabase.removeChannel(channel) }
   }, [user?.id, supabase])
 
-  // تصنيف الباقات
   const { purchased, available, offers } = useMemo(() => {
     const purchasedIds = userPackages.map(up => up.package_id)
     
@@ -305,7 +302,6 @@ export default function GradePage() {
 
   return (
     <div className={styles.container} ref={containerRef}>
-      {/* شريط التقدم العلوي */}
       <motion.div 
         className={styles.progressBar}
         style={{ 
@@ -314,17 +310,14 @@ export default function GradePage() {
         }}
       />
 
-      {/* تأثيرات الخلفية */}
       <div className={styles.backgroundEffects}>
         <div className={styles.gradientOrb1} style={{ background: theme.primary }} />
         <div className={styles.gradientOrb2} style={{ background: theme.accent }} />
         <div className={styles.gridPattern} />
       </div>
 
-      {/* الهيدر */}
       <header className={styles.header}>
         <div className={styles.headerContent}>
-          {/* الشعار */}
           <motion.div 
             initial={{ x: -50, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
@@ -339,7 +332,6 @@ export default function GradePage() {
             </div>
           </motion.div>
 
-          {/* المحفظة أو تسجيل الدخول */}
           {user ? (
             <motion.div 
               initial={{ x: 50, opacity: 0 }}
@@ -387,7 +379,6 @@ export default function GradePage() {
           )}
         </div>
 
-        {/* بطاقة الصف الدراسي */}
         <motion.div 
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -401,7 +392,6 @@ export default function GradePage() {
           <p>اختر باقتك وابدأ رحلة التميز</p>
         </motion.div>
 
-        {/* التبويبات */}
         <motion.nav 
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -459,7 +449,6 @@ export default function GradePage() {
         </motion.nav>
       </header>
 
-      {/* المحتوى الرئيسي */}
       <main className={styles.main}>
         <AnimatePresence mode="wait">
           {error && (
@@ -476,7 +465,6 @@ export default function GradePage() {
           )}
         </AnimatePresence>
 
-        {/* قسم الإحصائيات السريعة */}
         {user && (
           <motion.div 
             initial={{ y: 20, opacity: 0 }}
@@ -513,7 +501,6 @@ export default function GradePage() {
           </motion.div>
         )}
 
-        {/* شبكة الباقات */}
         <motion.div 
           layout
           className={styles.packagesGrid}
@@ -548,7 +535,6 @@ export default function GradePage() {
         )}
       </main>
 
-      {/* مودال الشراء */}
       <AnimatePresence>
         {showPurchaseModal && selectedPackage && user && (
           <PurchaseModal 
@@ -571,7 +557,6 @@ export default function GradePage() {
         )}
       </AnimatePresence>
 
-      {/* تأثير الاحتفال */}
       <AnimatePresence>
         {showConfetti && <ConfettiEffect />}
       </AnimatePresence>
@@ -579,7 +564,6 @@ export default function GradePage() {
   )
 }
 
-// مكون بطاقة الباقة
 function PackageCard({ 
   pkg, 
   isPurchased, 
@@ -618,7 +602,6 @@ function PackageCard({
       whileHover={{ y: -8, transition: { type: "spring", stiffness: 400 } }}
       className={`${styles.packageCard} ${isPurchased ? styles.purchased : ''} ${pkg.type === 'offer' ? styles.offer : ''}`}
     >
-      {/* شريط التميز */}
       <div 
         className={styles.cardAccent}
         style={{ 
@@ -630,7 +613,6 @@ function PackageCard({
         }}
       />
 
-      {/* شارة الحالة */}
       {(isPurchased || pkg.type === 'offer') && (
         <div className={styles.badge}>
           {isPurchased ? (
@@ -647,14 +629,12 @@ function PackageCard({
         </div>
       )}
 
-      {/* الخصم */}
       {pkg.original_price && (
         <div className={styles.discountBadge}>
           <span>خصم {Math.round((1 - pkg.price/pkg.original_price) * 100)}%</span>
         </div>
       )}
 
-      {/* الصورة */}
       <div className={styles.cardImageWrapper}>
         {pkg.image_url ? (
           <img src={pkg.image_url} alt={pkg.name} loading="lazy" />
@@ -674,12 +654,10 @@ function PackageCard({
         </div>
       </div>
 
-      {/* المحتوى */}
       <div className={styles.cardBody}>
         <h3 className={styles.cardTitle}>{pkg.name}</h3>
         <p className={styles.cardDescription}>{pkg.description}</p>
 
-        {/* المميزات */}
         <ul className={styles.featuresList}>
           {pkg.features?.slice(0, 3).map((feature: string, i: number) => (
             <li key={i}>
@@ -689,7 +667,6 @@ function PackageCard({
           ))}
         </ul>
 
-        {/* الإحصائيات */}
         <div className={styles.cardStats}>
           <div className={styles.stat}>
             <PlayCircle size={16} style={{ color: theme.primary }} />
@@ -701,7 +678,6 @@ function PackageCard({
           </div>
         </div>
 
-        {/* تاريخ الانتهاء */}
         {pkg.expires_at && (
           <div className={styles.expiryDate}>
             <Calendar size={14} />
@@ -709,7 +685,6 @@ function PackageCard({
           </div>
         )}
 
-        {/* السعر والزر */}
         <div className={styles.cardFooter}>
           <div className={styles.priceWrapper}>
             {pkg.original_price && (
@@ -753,7 +728,6 @@ function PackageCard({
   )
 }
 
-// مكون مودال الشراء
 function PurchaseModal({ 
   pkg, 
   user, 
@@ -982,7 +956,6 @@ function PurchaseModal({
   )
 }
 
-// تأثير الاحتفال
 function ConfettiEffect() {
   return (
     <div className={styles.confettiContainer}>
