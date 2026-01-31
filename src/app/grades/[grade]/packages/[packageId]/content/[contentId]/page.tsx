@@ -1,21 +1,18 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import {
   Video, FileText, BookOpen, Clock, CheckCircle,
   X, ArrowRight, AlertCircle, Loader2, Download,
-  Target, Lock, Eye, Home, ChevronRight, Shield,
+  Target, Lock, Eye, Home, ChevronRight, Shield, 
   Award, Zap, Play, Pause, Volume2, Maximize,
   ExternalLink, Trophy, ArrowLeft, RefreshCw, XCircle,
-  ChevronLeft, Info, BarChart3, FileCheck, Users,
-  Calendar, BarChart, TrendingUp, EyeOff, Copy,
-  Bookmark, Star, Share2, Settings, Bell, HelpCircle,
-  MessageSquare, ThumbsUp, Flag, MoreVertical
+  ChevronLeft, Info, BarChart3, FileCheck
 } from 'lucide-react'
 import styles from './ContentPage.module.css'
-import { motion, AnimatePresence } from 'framer-motion'
 
 // ==========================================
 // SUPABASE CLIENT
@@ -50,8 +47,6 @@ interface Theme {
   primary: string
   primaryLight: string
   success: string
-  warning: string
-  danger: string
   background: string
   card: string
   text: string
@@ -59,171 +54,14 @@ interface Theme {
   border: string
 }
 
-interface ContentData {
-  id: string
-  title: string
-  description: string
-  type: 'video' | 'pdf' | 'exam' | 'text'
-  content_url: string
-  created_at: string
-  lecture_id: string
-  duration_minutes?: number
-  pass_score?: number
-}
-
-interface UserProgress {
-  id: string
-  status: 'not_started' | 'in_progress' | 'completed' | 'passed' | 'failed'
-  score?: number
-  last_accessed_at: string
-  completed_at?: string
-}
-
 // ==========================================
-// ENHANCED LOADING COMPONENT
+// VIDEO PLAYER - تصميم جديد
 // ==========================================
-function EnhancedLoadingState({ theme }: { theme: Theme }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className={styles.loadingContainer}
-    >
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", damping: 15 }}
-        className={styles.loadingContent}
-      >
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className={styles.loadingSpinnerContainer}
-        >
-          <Loader2 
-            className={styles.loadingSpinner} 
-            style={{ 
-              color: theme.primary,
-              filter: `drop-shadow(0 0 8px ${theme.primary}40)`
-            }} 
-            size={48}
-          />
-        </motion.div>
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className={styles.loadingText}
-        >
-          جاري تحميل المحتوى...
-        </motion.p>
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: "60%" }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className={styles.loadingBar}
-          style={{ background: `linear-gradient(90deg, transparent, ${theme.primary}, transparent)` }}
-        />
-      </motion.div>
-    </motion.div>
-  )
-}
-
-// ==========================================
-// ENHANCED ERROR COMPONENT
-// ==========================================
-function EnhancedErrorState({ 
-  error, 
-  theme, 
-  onRetry 
+function ProtectedVideoPlayer({ 
+  videoUrl, contentId, userId, packageId, onProgress, theme 
 }: { 
-  error: string; 
-  theme: Theme; 
-  onRetry: () => void 
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className={styles.errorContainer}
-    >
-      <motion.div
-        initial={{ y: 20, scale: 0.9 }}
-        animate={{ y: 0, scale: 1 }}
-        transition={{ type: "spring", damping: 15 }}
-        className={styles.errorContent}
-      >
-        <motion.div
-          animate={{ 
-            rotate: [0, 10, -10, 0],
-            scale: [1, 1.1, 1]
-          }}
-          transition={{ duration: 0.5 }}
-        >
-          <AlertCircle 
-            className={styles.errorIcon} 
-            size={64}
-            style={{ color: theme.danger || '#ef4444' }}
-          />
-        </motion.div>
-        <motion.h2
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className={styles.errorTitle}
-        >
-          حدث خطأ
-        </motion.h2>
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className={styles.errorMessage}
-        >
-          {error}
-        </motion.p>
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className={styles.errorActions}
-        >
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onRetry}
-            className={styles.backBtn}
-            style={{ 
-              background: `linear-gradient(135deg, ${theme.primary} 0%, #8b5cf6 100%)` 
-            }}
-          >
-            <RefreshCw size={16} />
-            <span>إعادة المحاولة</span>
-          </motion.button>
-        </motion.div>
-      </motion.div>
-    </motion.div>
-  )
-}
-
-// ==========================================
-// ENHANCED VIDEO PLAYER
-// ==========================================
-function EnhancedVideoPlayer({ 
-  videoUrl, 
-  contentId, 
-  userId, 
-  packageId, 
-  onProgress, 
-  theme 
-}: { 
-  videoUrl: string; 
-  contentId: string; 
-  userId: string; 
-  packageId: string;
-  onProgress: (progress: number) => void; 
-  theme: Theme 
+  videoUrl: string; contentId: string; userId: string; packageId: string
+  onProgress: (progress: number) => void; theme: Theme
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -241,7 +79,6 @@ function EnhancedVideoPlayer({
   const [availableQualities, setAvailableQualities] = useState<string[]>([])
   const [currentQuality, setCurrentQuality] = useState('auto')
   const [isYouTubeReady, setIsYouTubeReady] = useState(false)
-  const [hoveredControl, setHoveredControl] = useState<string | null>(null)
 
   const isYouTube = videoUrl?.includes('youtube.com') || videoUrl?.includes('youtu.be')
   const getYouTubeId = (url: string) => {
@@ -251,7 +88,7 @@ function EnhancedVideoPlayer({
   }
   const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null
 
-  // YouTube API
+  // تحميل YouTube API والمشغل
   useEffect(() => {
     if (!isYouTube || !youtubeId) return
 
@@ -319,7 +156,7 @@ function EnhancedVideoPlayer({
     }
   }
 
-  // Update progress for YouTube
+  // تحديث التقدم والوقت لليوتيوب
   useEffect(() => {
     if (!isYouTube || !isPlaying) return
     
@@ -414,6 +251,7 @@ function EnhancedVideoPlayer({
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
+  // منع القائمة اليمنى والنسخ
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
     return false
@@ -425,47 +263,206 @@ function EnhancedVideoPlayer({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Control buttons configuration
-  const controlButtons = [
-    { 
-      icon: <RefreshCw size={18} style={{ transform: 'scaleX(-1)' }} />, 
-      action: () => skip(-10), 
-      label: 'تأخير 10 ثواني' 
-    },
-    { 
-      icon: isPlaying ? <Pause size={22} fill="white" /> : <Play size={22} fill="white" />, 
-      action: togglePlay, 
-      label: isPlaying ? 'إيقاف' : 'تشغيل',
-      primary: true 
-    },
-    { 
-      icon: <RefreshCw size={18} />, 
-      action: () => skip(10), 
-      label: 'تقديم 10 ثواني' 
-    },
-    { 
-      icon: <Volume2 size={18} />, 
-      action: null, 
-      label: 'الصوت' 
-    },
-    { 
-      icon: <Zap size={16} />, 
-      action: changeSpeed, 
-      label: `${playbackRate}x` 
-    },
-    { 
-      icon: <Maximize size={18} />, 
-      action: toggleFullscreen, 
-      label: 'ملء الشاشة' 
-    }
-  ]
+  // واجهة التحكم الموحدة
+  const renderControls = () => (
+    <div style={{
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      background: 'linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.6), transparent)',
+      padding: '20px 16px 16px',
+      transition: 'opacity 0.3s',
+      opacity: showControls ? 1 : 0,
+      pointerEvents: showControls ? 'auto' : 'none',
+      zIndex: 20,
+      direction: 'rtl'
+    }}>
+      {/* شريط التقدم */}
+      <div style={{ marginBottom: '12px' }}>
+        <input
+          type="range"
+          min={0}
+          max={duration || 100}
+          value={currentTime}
+          onChange={handleSeek}
+          style={{
+            width: '100%',
+            height: '6px',
+            cursor: 'pointer',
+            accentColor: theme.primary,
+            background: 'rgba(255,255,255,0.3)',
+            borderRadius: '3px',
+            outline: 'none',
+            direction: 'ltr'
+          }}
+        />
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          color: 'white', 
+          fontSize: '0.8rem',
+          marginTop: '4px',
+          fontFamily: 'monospace',
+          direction: 'ltr'
+        }}>
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+      </div>
+
+      {/* أزرار التحكم */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '12px',
+        justifyContent: 'center',
+        flexWrap: 'wrap'
+      }}>
+        {/* تأخير 10 ثواني */}
+        <button 
+          onClick={() => skip(-10)}
+          style={buttonStyle}
+          title="تأخير 10 ثواني"
+        >
+          <RefreshCw size={20} style={{ transform: 'scaleX(-1)' }} />
+        </button>
+
+        {/* تشغيل/إيقاف */}
+        <button 
+          onClick={togglePlay}
+          style={{
+            ...buttonStyle,
+            background: 'rgba(255,255,255,0.2)',
+            borderRadius: '50%',
+            padding: '12px',
+            transform: 'scale(1.1)'
+          }}
+        >
+          {isPlaying ? <Pause size={28} fill="white" /> : <Play size={28} fill="white" />}
+        </button>
+
+        {/* تقديم 10 ثواني */}
+        <button 
+          onClick={() => skip(10)}
+          style={buttonStyle}
+          title="تقديم 10 ثواني"
+        >
+          <RefreshCw size={20} />
+        </button>
+
+        {/* فاصل */}
+        <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.3)', margin: '0 8px' }} />
+
+        {/* الصوت */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Volume2 size={20} color="white" />
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.1}
+            value={volume}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value)
+              setVolume(v)
+              if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+                youtubePlayerRef.current.setVolume(v * 100)
+              } else if (videoRef.current) {
+                videoRef.current.volume = v
+              }
+            }}
+            style={{ width: '80px', accentColor: 'white', cursor: 'pointer' }}
+          />
+        </div>
+
+        {/* السرعة */}
+        <button 
+          onClick={changeSpeed}
+          style={{ ...buttonStyle, fontSize: '0.85rem', fontWeight: 'bold', minWidth: '48px' }}
+          title="سرعة التشغيل"
+        >
+          {playbackRate}x
+        </button>
+
+        {/* الجودة - لليوتيوب فقط */}
+        {isYouTube && (
+          <div style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setShowQualityMenu(!showQualityMenu)}
+              style={{ ...buttonStyle, fontSize: '0.8rem', fontWeight: 'bold', minWidth: '50px' }}
+              title="جودة الفيديو"
+            >
+              {currentQuality === 'auto' ? 'جودة' : currentQuality}
+            </button>
+            {showQualityMenu && (
+              <div style={{
+                position: 'absolute',
+                bottom: '40px',
+                right: '50%',
+                transform: 'translateX(50%)',
+                background: 'rgba(0,0,0,0.95)',
+                borderRadius: '8px',
+                padding: '8px',
+                minWidth: '100px',
+                zIndex: 30,
+                border: '1px solid rgba(255,255,255,0.2)'
+              }}>
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.7rem', padding: '4px 8px', textAlign: 'center' }}>
+                  الجودة
+                </div>
+                {['auto', ...availableQualities].map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => changeQuality(q)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '6px 12px',
+                      color: 'white',
+                      background: currentQuality === q ? theme.primary : 'transparent',
+                      border: 'none',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      borderRadius: '4px',
+                      marginBottom: '2px'
+                    }}
+                  >
+                    {q === 'auto' ? 'تلقائي' : q}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ملء الشاشة */}
+        <button 
+          onClick={toggleFullscreen}
+          style={buttonStyle}
+          title={isFullscreen ? 'إخراج من ملء الشاشة' : 'ملء الشاشة'}
+        >
+          <Maximize size={20} />
+        </button>
+      </div>
+    </div>
+  )
 
   return (
-    <motion.div 
+    <div 
       ref={containerRef}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className={styles.videoContainer}
+      style={{ 
+        position: 'relative', 
+        background: '#000', 
+        borderRadius: '12px', 
+        overflow: 'hidden',
+        aspectRatio: '16/9',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        msUserSelect: 'none',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
+      }}
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => isPlaying && setShowControls(false)}
       onContextMenu={handleContextMenu}
@@ -478,7 +475,7 @@ function EnhancedVideoPlayer({
             ref={youtubeContainerRef}
             style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
           />
-          {/* Protection layer */}
+          {/* طبقة حماية لليوتيوب */}
           <div 
             onClick={togglePlay}
             onContextMenu={handleContextMenu}
@@ -528,7 +525,7 @@ function EnhancedVideoPlayer({
         />
       )}
 
-      {/* Protection overlay */}
+      {/* طبقة حماية إضافية */}
       <div 
         style={{
           position: 'absolute',
@@ -542,123 +539,80 @@ function EnhancedVideoPlayer({
         onContextMenu={handleContextMenu}
       />
 
-      {/* Enhanced Controls */}
-      <AnimatePresence>
-        {showControls && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className={styles.videoControls}
-          >
-            {/* Progress Bar */}
-            <motion.div 
-              className={styles.progressSection}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <input
-                type="range"
-                min={0}
-                max={duration || 100}
-                value={currentTime}
-                onChange={handleSeek}
-                className={styles.progressSlider}
-                style={{ '--progress-color': theme.primary } as React.CSSProperties}
-              />
-              <div className={styles.timeDisplay}>
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-            </motion.div>
+      {renderControls()}
 
-            {/* Control Buttons */}
-            <div className={styles.controlButtons}>
-              {controlButtons.map((btn, index) => (
-                <motion.button
-                  key={index}
-                  whileHover={{ scale: 1.1, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  onMouseEnter={() => setHoveredControl(btn.label)}
-                  onMouseLeave={() => setHoveredControl(null)}
-onClick={btn.action ?? undefined}
-                  className={`${styles.controlBtn} ${btn.primary ? styles.primaryBtn : ''}`}
-                  title={btn.label}
-                >
-                  {btn.icon}
-                  {hoveredControl === btn.label && (
-                    <motion.span
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={styles.tooltip}
-                    >
-                      {btn.label}
-                    </motion.span>
-                  )}
-                </motion.button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Play button overlay */}
+      {/* أيقونة التشغيل في المنتصف */}
       {!isPlaying && (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
+        <div 
           onClick={togglePlay}
-          className={styles.playOverlay}
-          style={{ 
-            background: `radial-gradient(circle, ${theme.primary}40 0%, transparent 70%)`,
-            border: `2px solid ${theme.primary}80`
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(0,0,0,0.7)',
+            borderRadius: '50%',
+            padding: '24px',
+            cursor: 'pointer',
+            zIndex: 15,
+            border: '2px solid rgba(255,255,255,0.3)'
           }}
         >
           <Play size={40} color="white" fill="white" />
-        </motion.div>
+        </div>
       )}
 
-      {/* Protected badge */}
-      <motion.div 
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.5 }}
-        className={styles.protectedBadge}
-        style={{ 
-          background: 'rgba(0,0,0,0.8)',
-          border: `1px solid ${theme.primary}30`
-        }}
-      >
+      {/* شارة المحتوى المحمي */}
+      <div style={{
+        position: 'absolute',
+        top: '12px',
+        left: '12px',
+        background: 'rgba(0,0,0,0.8)',
+        color: '#fbbf24',
+        padding: '6px 12px',
+        borderRadius: '20px',
+        fontSize: '0.75rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        zIndex: 15,
+        userSelect: 'none',
+        pointerEvents: 'none',
+        fontWeight: 'bold',
+        border: '1px solid rgba(251, 191, 36, 0.3)'
+      }}>
         <Shield size={14} />
         <span>محمي من النسخ</span>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   )
 }
 
+// style للأزرار
+const buttonStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  color: 'white',
+  cursor: 'pointer',
+  padding: '8px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: '8px',
+  transition: 'all 0.2s'
+}
+
 // ==========================================
-// ENHANCED PDF VIEWER
+// PDF VIEWER - تصميم جديد
 // ==========================================
-function EnhancedPDFViewer({ 
-  pdfUrl, 
-  contentId, 
-  userId, 
-  packageId, 
-  theme, 
-  onProgress 
-}: { 
-  pdfUrl: string; 
-  contentId: string; 
-  userId: string; 
-  packageId: string;
-  theme: Theme; 
-  onProgress?: (progress: number) => void 
+function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: { 
+  pdfUrl: string; contentId: string; userId: string; packageId: string
+  theme: Theme; onProgress?: (progress: number) => void
 }) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [timeSpent, setTimeSpent] = useState(0)
   const [progressSaved, setProgressSaved] = useState(false)
-  const [isFavorite, setIsFavorite] = useState(false)
 
   const isGoogleDrive = pdfUrl?.includes('drive.google.com') || pdfUrl?.includes('docs.google.com')
   const getGoogleDriveId = (url: string) => {
@@ -698,95 +652,61 @@ function EnhancedPDFViewer({
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (pdfUrl) { 
-        setIsLoading(false); 
-        saveProgress() 
-      } else { 
-        setError('رابط الملف غير متوفر'); 
-        setIsLoading(false) 
-      }
+      if (pdfUrl) { setIsLoading(false); saveProgress() }
+      else { setError('رابط الملف غير متوفر'); setIsLoading(false) }
     }, 1000)
-    
-    const interval = setInterval(() => { 
-      if (document.hasFocus()) setTimeSpent(prev => prev + 1) 
-    }, 1000)
-    
-    return () => { 
-      clearTimeout(timer); 
-      clearInterval(interval) 
-    }
+    const interval = setInterval(() => { if (document.hasFocus()) setTimeSpent(prev => prev + 1) }, 1000)
+    return () => { clearTimeout(timer); clearInterval(interval) }
   }, [pdfUrl, saveProgress])
 
   const handleDownload = () => {
     if (!pdfUrl) return
-    if (isGoogleDrive && driveId) {
-      window.open(`https://drive.google.com/uc?export=download&id=${driveId}`, '_blank')
-    } else {
+    if (isGoogleDrive && driveId) window.open(`https://drive.google.com/uc?export=download&id=${driveId}`, '_blank')
+    else {
       const link = document.createElement('a')
-      link.href = pdfUrl
-      link.download = `document-${contentId}.pdf`
-      link.target = '_blank'
-      link.click()
+      link.href = pdfUrl; link.download = `document-${contentId}.pdf`; link.target = '_blank'; link.click()
     }
     saveProgress()
   }
 
   const handleOpenOriginal = () => window.open(pdfUrl, '_blank')
-  const toggleFavorite = () => setIsFavorite(!isFavorite)
 
   if (error) {
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className={styles.pdfViewerContainer}
-      >
+      <div className={styles.pdfViewerContainer}>
         <div className={styles.pdfErrorContainer}>
           <AlertCircle className={styles.errorIcon} size={48} color="#ef4444" />
           <h3>حدث خطأ في تحميل الملف</h3>
           <div className={styles.errorActions}>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <button 
               onClick={handleOpenOriginal} 
               className={styles.openButton}
               style={{ borderColor: theme.primary, color: theme.primary }}
             >
               <ExternalLink size={18} /> فتح الرابط الأصلي
-            </motion.button>
+            </button>
             {isGoogleDrive && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <button 
                 onClick={handleDownload} 
                 className={styles.downloadButton}
                 style={{ background: theme.primary }}
               >
                 <Download size={18} /> تحميل
-              </motion.button>
+              </button>
             )}
           </div>
         </div>
-      </motion.div>
+      </div>
     )
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={styles.pdfViewerContainer}
-    >
+    <div className={styles.pdfViewerContainer}>
       <div className={styles.pdfHeader}>
         <div className={styles.headerLeft}>
-          <motion.div 
-            className={styles.iconContainer}
-            initial={{ rotate: -180 }}
-            animate={{ rotate: 0 }}
-            style={{ background: theme.primary }}
-          >
+          <div className={styles.iconContainer} style={{ background: theme.primary }}>
             <BookOpen size={24} color="white" />
-          </motion.div>
+          </div>
           <div>
             <h3 className={styles.title}>ملف PDF</h3>
             <p className={styles.subtitle}>
@@ -796,45 +716,27 @@ function EnhancedPDFViewer({
           </div>
         </div>
         <div className={styles.headerActionsPdf}>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={toggleFavorite}
-            className={styles.favoriteButton}
-            style={{ color: isFavorite ? theme.primary : 'var(--text-secondary)' }}
-          >
-            <Star size={18} fill={isFavorite ? theme.primary : 'none'} />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <button 
             onClick={handleOpenOriginal} 
             className={styles.openButton}
             style={{ borderColor: theme.primary, color: theme.primary }}
           >
             <ExternalLink size={18} /><span>فتح في Drive</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          </button>
+          <button 
             onClick={handleDownload} 
             className={styles.downloadButton}
             style={{ background: theme.primary }}
           >
             <Download size={18} /><span>تحميل</span>
-          </motion.button>
+          </button>
         </div>
       </div>
       <div className={styles.viewerContainer}>
         {isLoading ? (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className={styles.pdfLoadingContainer}
-          >
+          <div className={styles.pdfLoadingContainer}>
             <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
-            <p>جاري تحميل الملف...</p>
-          </motion.div>
+          </div>
         ) : (
           <div className={styles.iframeContainer}>
             <iframe 
@@ -847,51 +749,28 @@ function EnhancedPDFViewer({
           </div>
         )}
       </div>
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className={styles.pdfFooter}
-      >
+      <div className={styles.pdfFooter}>
         <div className={styles.progressBarContainer}>
-          <motion.div 
-            className={styles.progressBarFill} 
-            initial={{ width: 0 }}
-            animate={{ width: '100%' }}
-            transition={{ duration: 1 }}
-            style={{ background: theme.success }} 
-          />
+          <div className={styles.progressBarFill} style={{ width: '100%', background: theme.success }} />
         </div>
-        <div className={styles.progressText}>
-          {progressSaved ? '✓ تم التحميل' : 'جاري التحميل...'}
-        </div>
+        <div className={styles.progressText}>{progressSaved ? '✓ تم التحميل' : 'جاري التحميل...'}</div>
         {isGoogleDrive && (
           <p className={styles.driveNotice}>
             <AlertCircle size={14} /> قد تحتاج لتسجيل الدخول في Google
           </p>
         )}
         <p className={styles.watermark}>منصة التعلم الذكي © 2024</p>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   )
 }
 
 // ==========================================
-// ENHANCED EXAM VIEWER
+// EXAM VIEWER - تصميم جديد
 // ==========================================
-function EnhancedExamViewer({ 
-  examContent, 
-  contentId, 
-  packageId, 
-  userId, 
-  theme, 
-  onComplete 
-}: {
-  examContent: any; 
-  contentId: string; 
-  packageId: string; 
-  userId: string;
-  theme: Theme; 
-  onComplete: () => void
+function ExamViewer({ examContent, contentId, packageId, userId, theme, onComplete }: {
+  examContent: any; contentId: string; packageId: string; userId: string
+  theme: Theme; onComplete: () => void
 }) {
   const router = useRouter()
   const [questions, setQuestions] = useState<Question[]>([])
@@ -904,12 +783,14 @@ function EnhancedExamViewer({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [results, setResults] = useState<{correct: number, wrong: number} | null>(null)
-  const [showExplanation, setShowExplanation] = useState<number | null>(null)
 
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
+        // البحث عن الأسئلة في content_url أو description
         const contentText = examContent?.content_url || examContent?.description || '';
+        
+        // البحث عن النمط [EXAM_QUESTIONS]:{...}
         const match = contentText.match(/\[EXAM_QUESTIONS\]:(\{[\s\S]*\})/);
         
         if (match && match[1]) {
@@ -921,10 +802,10 @@ function EnhancedExamViewer({
                 id: index + 1,
                 text: q.question,
                 options: q.options.map((opt: string, optIndex: number) => ({
-                  id: String.fromCharCode(65 + optIndex),
+                  id: String.fromCharCode(65 + optIndex), // A, B, C, D
                   text: opt
                 })),
-                correctAnswer: q.correct
+                correctAnswer: q.correct // يجب أن تطابق نص أحد الخيارات
               }));
               
               setQuestions(formattedQuestions);
@@ -942,6 +823,7 @@ function EnhancedExamViewer({
           }
         }
         
+        // Fallback: محاولة الجلب من قاعدة البيانات إذا لم يوجد JSON
         const supabase = getSupabase()
         if (!supabase) {
           setError('لا توجد أسئلة متاحة');
@@ -1022,7 +904,7 @@ function EnhancedExamViewer({
     const finalScore = Math.round((correctCount / questions.length) * 100)
     
     setScore(finalScore)
-    setResults({ correct: correctCount, wrong: wrongCount })
+    setResults({ correct: correctCount, wrong: wrongCount }) // 👈 حفظ النتيجة
     setShowResults(true)
     setIsSubmitting(false)
     
@@ -1049,143 +931,65 @@ function EnhancedExamViewer({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const toggleExplanation = (questionId: number) => {
-    setShowExplanation(showExplanation === questionId ? null : questionId)
-  }
-
   if (loading) return (
-    <EnhancedLoadingState theme={theme} />
+    <div className={styles.examLoadingContainer}>
+      <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
+      <p>جاري تحميل الامتحان...</p>
+    </div>
   )
 
   if (error) return (
-    <EnhancedErrorState error={error} theme={theme} onRetry={() => window.location.reload()} />
+    <div className={styles.examErrorContainer}>
+      <div className={styles.examErrorContent}>
+        <AlertCircle className={styles.errorIcon} size={48} />
+        <h3 className={styles.errorTitle}>خطأ</h3>
+        <p className={styles.errorMessage}>{error}</p>
+        <button 
+          onClick={() => router.back()} 
+          className={styles.backButtonExam}
+          style={{ background: theme.primary }}
+        >
+          العودة
+        </button>
+      </div>
+    </div>
   )
 
   if (showResults) {
     const passed = score >= (examContent?.pass_score || 50)
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className={styles.examResultsContainer}
-      >
-        <motion.div
-          initial={{ scale: 0.8, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          transition={{ type: "spring", damping: 15 }}
-          className={`${styles.resultCard} ${passed ? styles.passed : styles.failed}`}
+      <div className={styles.examResultsContainer}>
+        <div 
+          className={`${styles.resultCard} ${passed ? styles.passed : styles.failed}`} 
         >
-          <motion.div
-            animate={{ 
-              rotate: [0, 360],
-              scale: [1, 1.2, 1]
-            }}
-            transition={{ duration: 0.8 }}
-            className={styles.resultIcon}
-          >
-            {passed ? (
-              <Trophy 
-                size={56} 
-                style={{ 
-                  color: theme.success,
-                  filter: `drop-shadow(0 0 12px ${theme.success}40)`
-                }} 
-              />
-            ) : (
-              <AlertCircle 
-                size={56} 
-                style={{ 
-                  color: theme.danger || '#ef4444',
-                  filter: `drop-shadow(0 0 12px ${theme.danger || '#ef4444'}40)`
-                }} 
-              />
-            )}
-          </motion.div>
-          
-          <motion.h2
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            {passed ? '🎉 مبروك! لقد نجحت' : '😔 للأسف، لم تنجح'}
-          </motion.h2>
-          
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.3, type: "spring" }}
-            className={styles.scoreCircle}
-            style={{ 
-              borderColor: passed ? theme.success : (theme.danger || '#ef4444'),
-              background: `conic-gradient(
-                ${passed ? theme.success : (theme.danger || '#ef4444')} ${score}%, 
-                ${passed ? `${theme.success}20` : `${theme.danger || '#ef4444'}20`} ${score}%
-              )`
-            }}
-          >
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.4 }}
-              className={styles.scoreText}
-            >
-              {score}%
-            </motion.span>
-          </motion.div>
-          
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className={styles.passScoreText}
-          >
-            درجة النجاح: {examContent?.pass_score || 50}%
-          </motion.p>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className={styles.stats}
-          >
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              className={styles.stat}
-            >
-              <CheckCircle color={theme.success} />
-              <span>صحيحة: {results?.correct ?? 0}</span>
-            </motion.div>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              className={styles.stat}
-            >
-              <XCircle color={theme.danger || '#ef4444'} />
-              <span>خاطئة: {results?.wrong ?? 0}</span>
-            </motion.div>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            className={styles.resultButtons}
-          >
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.back()}
+          <div className={styles.resultIcon}>
+            {passed ? <Trophy size={64} color="#10b981" /> : <AlertCircle size={64} color="#ef4444" />}
+          </div>
+          <h2>{passed ? 'مبروك! لقد نجحت' : 'للأسف، لم تنجح'}</h2>
+          <div className={styles.scoreCircle} style={{ borderColor: passed ? theme.success : '#ef4444' }}>
+            <span className={styles.scoreText}>{score}%</span>
+          </div>
+          <p className={styles.passScoreText}>درجة النجاح: {examContent?.pass_score || 50}%</p>
+          <div className={styles.stats}>
+            <div className={styles.stat}>
+              <CheckCircle color="#10b981" />
+              <span>صحيحة: {results?.correct ?? 0}</span>  {/* 👈 استخدم results */}
+            </div>
+            <div className={styles.stat}>
+              <XCircle color="#ef4444" />
+              <span>خاطئة: {results?.wrong ?? 0}</span>    {/* 👈 استخدم results */}
+            </div>
+          </div>
+          <div className={styles.resultButtons}>
+            <button 
+              onClick={() => router.back()} 
               className={styles.backButtonExam}
-              style={{ 
-                background: `linear-gradient(135deg, ${theme.primary} 0%, #8b5cf6 100%)` 
-              }}
+              style={{ background: theme.primary }}
             >
-              <ArrowLeft size={16} />
-              <span>العودة للباقة</span>
-            </motion.button>
+              العودة للباقة
+            </button>
             {!passed && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <button 
                 onClick={() => { 
                   setShowResults(false); 
                   setAnswers({}); 
@@ -1193,17 +997,14 @@ function EnhancedExamViewer({
                   setTimeLeft((examContent?.duration_minutes || 10) * 60) 
                 }} 
                 className={styles.retryButton}
-                style={{ 
-                  borderColor: theme.primary, 
-                  color: theme.primary 
-                }}
+                style={{ borderColor: theme.primary, color: theme.primary }}
               >
-                <RefreshCw size={16} /> إعادة المحاولة
-              </motion.button>
+                <RefreshCw size={18} /> إعادة المحاولة
+              </button>
             )}
-          </motion.div>
-        </motion.div>
-      </motion.div>
+          </div>
+        </div>
+      </div>
     )
   }
 
@@ -1213,30 +1014,19 @@ function EnhancedExamViewer({
   if (!currentQ) return null
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={styles.examContainer}
-    >
+    <div className={styles.examContainer}>
       <div className={styles.examHeader}>
         <div className={styles.examInfo}>
-          <motion.div 
-            className={styles.examIconContainer}
-            animate={{ rotate: [0, 360] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            style={{ background: theme.primaryLight }}
-          >
+          <div className={styles.examIconContainer} style={{ background: theme.primaryLight }}>
             <Target style={{ color: theme.primary }} />
-          </motion.div>
+          </div>
           <div>
             <h3>{examContent?.title || 'امتحان'}</h3>
             <p>سؤال {currentQuestion + 1} من {questions.length}</p>
           </div>
         </div>
-        <motion.div 
-          className={styles.timer}
-          animate={timeLeft < 60 ? { scale: [1, 1.05, 1] } : {}}
-          transition={timeLeft < 60 ? { duration: 1, repeat: Infinity } : {}}
+        <div 
+          className={styles.timer} 
           style={{ 
             background: timeLeft < 60 ? '#fee2e2' : timeLeft < 300 ? '#fef3c7' : '#d1fae5', 
             color: timeLeft < 60 ? '#dc2626' : timeLeft < 300 ? '#d97706' : '#059669' 
@@ -1244,16 +1034,10 @@ function EnhancedExamViewer({
         >
           <Clock size={20} />
           <span>{formatTime(timeLeft)}</span>
-        </motion.div>
+        </div>
       </div>
       
-      <motion.div 
-        key={currentQuestion}
-        initial={{ opacity: 0, x: 50 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -50 }}
-        className={styles.questionCard}
-      >
+      <div className={styles.questionCard}>
         <div className={styles.questionHeader}>
           <span className={styles.questionNumber}>سؤال {currentQuestion + 1}</span>
           <div className={styles.questionProgress}>
@@ -1263,211 +1047,67 @@ function EnhancedExamViewer({
         <h4 className={styles.questionText}>{currentQ.text}</h4>
         <div className={styles.options}>
           {currentQ.options.map(option => (
-            <motion.button
-              key={option.id}
-              whileHover={{ scale: 1.02, x: -5 }}
-              whileTap={{ scale: 0.98 }}
+            <button 
+              key={option.id} 
               onClick={() => handleAnswer(currentQ.id, option.id)} 
               className={`${styles.option} ${answers[currentQ.id] === option.id ? styles.selected : ''}`}
-              style={answers[currentQ.id] === option.id ? { 
-                borderColor: theme.primary, 
-                background: `linear-gradient(135deg, ${theme.primaryLight} 0%, #ffffff 100%)` 
-              } : {}}
+              style={answers[currentQ.id] === option.id ? { borderColor: theme.primary, background: theme.primaryLight } : {}}
             >
               <span className={styles.optionLabel}>{option.id}</span>
               <span className={styles.optionText}>{option.text}</span>
               <div className={styles.radio}>
-                {answers[currentQ.id] === option.id && (
-                  <motion.div 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className={styles.radioInner} 
-                    style={{ background: theme.primary }} 
-                  />
-                )}
+                {answers[currentQ.id] === option.id && <div className={styles.radioInner} style={{ background: theme.primary }} />}
               </div>
-            </motion.button>
+            </button>
           ))}
         </div>
-        
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          onClick={() => toggleExplanation(currentQ.id)}
-          className={styles.explanationButton}
-          style={{ color: theme.primary }}
-        >
-          <Info size={16} />
-          <span>شرح السؤال</span>
-        </motion.button>
-        
-        <AnimatePresence>
-          {showExplanation === currentQ.id && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className={styles.explanation}
-              style={{ borderColor: theme.primaryLight }}
-            >
-              <p>شرح مفصل للسؤال سيكون هنا...</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+      </div>
       
       <div className={styles.navigation}>
-        <motion.button
-          whileHover={{ x: -5 }}
-          whileTap={{ scale: 0.95 }}
+        <button 
           onClick={() => setCurrentQuestion(prev => prev - 1)} 
           disabled={currentQuestion === 0} 
           className={styles.navButton}
-          style={{ 
-            opacity: currentQuestion === 0 ? 0.5 : 1,
-            background: currentQuestion === 0 ? '#f3f4f6' : 'white'
-          }}
+          style={{ opacity: currentQuestion === 0 ? 0.5 : 1 }}
         >
-          <ArrowRight size={16} />
-          <span>السابق</span>
-        </motion.button>
+          <ArrowRight size={20} /> السابق
+        </button>
         
         <div className={styles.progressDots}>
           {questions.map((_, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: idx * 0.05 }}
+            <div 
+              key={idx} 
               className={`${styles.dot} ${idx === currentQuestion ? styles.active : ''} ${answers[questions[idx].id] ? styles.answered : ''}`} 
               style={{ 
-                background: idx === currentQuestion ? theme.primary : 
-                          answers[questions[idx].id] ? theme.success : '#e5e7eb' 
+                background: idx === currentQuestion ? theme.primary : answers[questions[idx].id] ? theme.success : '#e5e7eb' 
               }}
             />
           ))}
         </div>
         
         {isLastQuestion ? (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <button 
             onClick={handleSubmit} 
             disabled={isSubmitting || Object.keys(answers).length < questions.length} 
             className={styles.submitButton}
             style={{ 
-              background: `linear-gradient(135deg, ${theme.success} 0%, #34d399 100%)`,
+              background: isSubmitting || Object.keys(answers).length < questions.length ? '#9ca3af' : theme.success,
               opacity: Object.keys(answers).length < questions.length ? 0.5 : 1 
             }}
           >
-            {isSubmitting ? (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              >
-                <Loader2 size={16} />
-              </motion.div>
-            ) : 'تسليم الإجابات'}
-          </motion.button>
+            {isSubmitting ? <Loader2 className={styles.loadingSpinner} /> : 'تسليم الإجابات'}
+          </button>
         ) : (
-          <motion.button
-            whileHover={{ x: 5 }}
-            whileTap={{ scale: 0.95 }}
+          <button 
             onClick={() => setCurrentQuestion(prev => prev + 1)} 
             className={styles.navButton}
-            style={{ 
-              background: `linear-gradient(135deg, ${theme.primary} 0%, #8b5cf6 100%)`, 
-              color: 'white', 
-              border: 'none' 
-            }}
+            style={{ background: theme.primary, color: 'white', border: 'none' }}
           >
-            <span>التالي</span>
-            <ArrowLeft size={16} />
-          </motion.button>
+            التالي <ArrowLeft size={20} />
+          </button>
         )}
       </div>
-    </motion.div>
-  )
-}
-
-// ==========================================
-// ENHANCED TEXT CONTENT
-// ==========================================
-function EnhancedTextContent({ 
-  content, 
-  theme 
-}: { 
-  content: any; 
-  theme: Theme 
-}) {
-  const [isFavorite, setIsFavorite] = useState(false)
-  const [showActions, setShowActions] = useState(false)
-
-  const toggleFavorite = () => setIsFavorite(!isFavorite)
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content.content_url || '')
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={styles.textContent}
-    >
-      <div className={styles.textContentHeader}>
-        <FileText size={24} color={theme.primary} />
-        <h3>المحتوى النصي</h3>
-        <div className={styles.textActions}>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={toggleFavorite}
-            className={styles.textActionButton}
-            style={{ color: isFavorite ? theme.primary : 'var(--text-secondary)' }}
-          >
-            <Star size={18} fill={isFavorite ? theme.primary : 'none'} />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={handleCopy}
-            className={styles.textActionButton}
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            <Copy size={18} />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setShowActions(!showActions)}
-            className={styles.textActionButton}
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            <MoreVertical size={18} />
-          </motion.button>
-        </div>
-      </div>
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className={styles.textContentInner}
-        dangerouslySetInnerHTML={{ 
-          __html: content.content_url || 'لا يوجد محتوى' 
-        }} 
-      />
-      {showActions && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={styles.extraActions}
-          style={{ borderColor: theme.primaryLight }}
-        >
-          <button><Share2 size={16} /> مشاركة</button>
-          <button><Bookmark size={16} /> حفظ</button>
-          <button><Flag size={16} /> إبلاغ</button>
-        </motion.div>
-      )}
-    </motion.div>
+    </div>
   )
 }
 
@@ -1480,8 +1120,6 @@ function getGradeTheme(gradeSlug: string): Theme {
       primary: '#3b82f6', 
       primaryLight: '#dbeafe',
       success: '#10b981', 
-      warning: '#f59e0b',
-      danger: '#ef4444',
       background: '#f8fafc',
       card: '#ffffff',
       text: '#1e293b',
@@ -1492,8 +1130,6 @@ function getGradeTheme(gradeSlug: string): Theme {
       primary: '#8b5cf6', 
       primaryLight: '#ede9fe',
       success: '#10b981', 
-      warning: '#f59e0b',
-      danger: '#ef4444',
       background: '#f8fafc',
       card: '#ffffff',
       text: '#1e293b',
@@ -1504,8 +1140,6 @@ function getGradeTheme(gradeSlug: string): Theme {
       primary: '#f59e0b', 
       primaryLight: '#fef3c7',
       success: '#10b981', 
-      warning: '#f59e0b',
-      danger: '#ef4444',
       background: '#f8fafc',
       card: '#ffffff',
       text: '#1e293b',
@@ -1517,137 +1151,19 @@ function getGradeTheme(gradeSlug: string): Theme {
 }
 
 // ==========================================
-// STATUS CARD COMPONENT
+// MAIN PAGE - تصميم جديد كليًا
 // ==========================================
-function StatusCard({ 
-  userProgress, 
-  content, 
-  markAsCompleted, 
-  theme 
-}: { 
-  userProgress: UserProgress | null; 
-  content: ContentData | null; 
-  markAsCompleted: () => void; 
-  theme: Theme 
-}) {
+function LoadingState() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
-      className={styles.statusCard}
-    >
-      <h4 className={styles.cardTitle}>حالة المحتوى</h4>
-      <motion.div 
-        initial={{ scale: 0.9 }}
-        animate={{ scale: 1 }}
-        className={`${styles.statusContent} ${
-          userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.completed :
-          userProgress?.status === 'failed' ? styles.failed :
-          userProgress?.status === 'in_progress' ? styles.inProgress : styles.notStarted
-        }`}
-      >
-        {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 0.5 }}
-          >
-            <CheckCircle size={28} />
-          </motion.div> : 
-          userProgress?.status === 'failed' ? 
-            <X size={28} /> : 
-          userProgress?.status === 'in_progress' ? 
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            >
-              <Loader2 size={28} />
-            </motion.div> : 
-            <BookOpen size={28} />
-        }
-        <div className={styles.statusInfo}>
-          <div className={styles.statusText}>
-            {userProgress?.status === 'completed' ? 'مكتمل' : 
-             userProgress?.status === 'passed' ? 'ناجح' : 
-             userProgress?.status === 'failed' ? 'فاشل' : 
-             userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}
-          </div>
-          <p className={styles.statusSubtext}>
-            {userProgress?.last_accessed_at ? 
-              `آخر زيارة: ${new Date(userProgress.last_accessed_at).toLocaleDateString('ar-EG')}` : 
-              'لم يتم البدء بعد'}
-          </p>
-        </div>
-      </motion.div>
-      
-      {content?.type !== 'exam' && (
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={markAsCompleted} 
-          disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'} 
-          className={`${styles.completeButton} ${
-            userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.disabled : ''
-          }`}
-          style={
-            userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
-              { background: theme.primaryLight, color: theme.primary } : 
-              { background: `linear-gradient(135deg, ${theme.success} 0%, #34d399 100%)` }
-          }
-        >
-          {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
-            <>
-              <CheckCircle size={16} />
-              <span>تم إكمال المحتوى</span>
-            </> : 
-            <>
-              <CheckCircle size={16} />
-              <span>تمييز كمكتمل</span>
-            </>
-          }
-        </motion.button>
-      )}
-    </motion.div>
-  )
-}
-
-// ==========================================
-// PROGRESS BAR COMPONENT
-// ==========================================
-function ProgressBar({ progress, theme }: { progress: number; theme: Theme }) {
-  return (
-    <div className={styles.progressTracking}>
-      <div className={styles.progressHeader}>
-        <h4>تقدم المشاهدة</h4>
-        <motion.span
-          key={progress}
-          initial={{ scale: 1.2 }}
-          animate={{ scale: 1 }}
-        >
-          {progress}%
-        </motion.span>
-      </div>
-      <div className={styles.progressBar}>
-        <motion.div 
-          className={styles.progressFill} 
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          style={{ 
-            background: `linear-gradient(90deg, ${theme.primary} 0%, #8b5cf6 100%)` 
-          }} 
-        />
-      </div>
-      <div className={styles.progressHint}>
-        سيتم وضع علامة كمكتمل تلقائيًا عند إكمال 80% من المحتوى
+    <div className={styles.loadingContainer}>
+      <div className={styles.loadingContent}>
+        <Loader2 className={styles.loadingSpinner} />
+        <p className={styles.loadingText}>جاري تحميل المحتوى...</p>
       </div>
     </div>
   )
 }
 
-// ==========================================
-// MAIN CONTENT VIEWER COMPONENT
-// ==========================================
 function ContentViewer() {
   const router = useRouter()
   const params = useParams()
@@ -1656,12 +1172,12 @@ function ContentViewer() {
   const packageId = params?.packageId as string
   const contentId = params?.contentId as string
   
-  const theme = getGradeTheme(gradeSlug)
+  const theme = getGradeTheme(gradeSlug as any)
 
-  const [content, setContent] = useState<ContentData | null>(null)
+  const [content, setContent] = useState<any>(null)
   const [lecture, setLecture] = useState<any>(null)
   const [packageData, setPackageData] = useState<any>(null)
-  const [userProgress, setUserProgress] = useState<UserProgress | null>(null)
+  const [userProgress, setUserProgress] = useState<any>(null)
   const [userPackage, setUserPackage] = useState<any>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -1810,6 +1326,55 @@ function ContentViewer() {
     router.push(`/grades/${gradeSlug}/packages/${packageId}`)
   }, [router, gradeSlug, packageId])
 
+  const renderContent = useCallback(() => {
+    if (!content) return null
+    
+    const commonProps = {
+      contentId,
+      userId: currentUser?.id,
+      packageId,
+      theme
+    }
+    
+    switch (content.type) {
+      case 'video': 
+        return (
+          <ProtectedVideoPlayer 
+            videoUrl={content.content_url || ''} 
+            {...commonProps}
+            onProgress={handleVideoProgress}
+          />
+        )
+      case 'pdf': 
+        return <PDFViewer pdfUrl={content.content_url || ''} {...commonProps} />
+      case 'exam': 
+        return <ExamViewer examContent={content} {...commonProps} onComplete={markAsCompleted} />
+      case 'text': 
+        return (
+          <div className={styles.textContent}>
+            <div className={styles.textContentHeader}>
+              <FileText size={24} color={theme.primary} />
+              <h3>المحتوى النصي</h3>
+            </div>
+            <div 
+              className={styles.textContentInner}
+              dangerouslySetInnerHTML={{ 
+                __html: content.content_url || 'لا يوجد محتوى' 
+              }} 
+            />
+          </div>
+        )
+      default: 
+        return (
+          <div className={styles.unsupportedContent}>
+            <AlertCircle className={styles.unsupportedIcon} size={48} />
+            <h3>نوع المحتوى غير مدعوم</h3>
+            <p>عذرًا، نوع المحتوى هذا غير متاح حاليًا للعرض.</p>
+          </div>
+        )
+    }
+  }, [content, currentUser, contentId, packageId, theme, handleVideoProgress, markAsCompleted])
+
   const getContentTypeLabel = useCallback(() => {
     switch (content?.type) {
       case 'video': return 'فيديو'
@@ -1830,118 +1395,71 @@ function ContentViewer() {
     }
   }, [content])
 
-  const renderContent = useCallback(() => {
-    if (!content) return null
-    
-    const commonProps = {
-      contentId,
-      userId: currentUser?.id,
-      packageId,
-      theme
-    }
-    
-    switch (content.type) {
-      case 'video': 
-        return (
-          <>
-            <EnhancedVideoPlayer 
-              videoUrl={content.content_url || ''} 
-              {...commonProps}
-              onProgress={handleVideoProgress}
-            />
-            <ProgressBar progress={videoProgress} theme={theme} />
-          </>
-        )
-      case 'pdf': 
-        return <EnhancedPDFViewer pdfUrl={content.content_url || ''} {...commonProps} />
-      case 'exam': 
-        return <EnhancedExamViewer examContent={content} {...commonProps} onComplete={markAsCompleted} />
-      case 'text': 
-        return <EnhancedTextContent content={content} theme={theme} />
-      default: 
-        return (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={styles.unsupportedContent}
-          >
-            <AlertCircle className={styles.unsupportedIcon} size={48} />
-            <h3>نوع المحتوى غير مدعوم</h3>
-            <p>عذرًا، نوع المحتوى هذا غير متاح حاليًا للعرض.</p>
-          </motion.div>
-        )
-    }
-  }, [content, currentUser, contentId, packageId, theme, handleVideoProgress, videoProgress, markAsCompleted])
-
-  if (loading) return <EnhancedLoadingState theme={theme} />
+  if (loading) return <LoadingState />
   
   if (error) {
-    return <EnhancedErrorState error={error} theme={theme} onRetry={() => window.location.reload()} />
+    return (
+      <div className={styles.errorContainer}>
+        <div className={styles.errorContent}>
+          <AlertCircle className={styles.errorIcon} size={64} />
+          <h2 className={styles.errorTitle}>حدث خطأ</h2>
+          <p className={styles.errorMessage}>{error}</p>
+          <button onClick={handleBack} className={styles.backBtn} style={{ background: theme.primary }}>
+            العودة للباقة
+          </button>
+        </div>
+      </div>
+    )
   }
   
   if (!content) {
-    return <EnhancedErrorState error="المحتوى غير موجود" theme={theme} onRetry={handleBack} />
+    return (
+      <div className={styles.errorContainer}>
+        <div className={styles.errorContent}>
+          <AlertCircle className={styles.errorIcon} size={64} />
+          <h2 className={styles.errorTitle}>حدث خطأ</h2>
+          <p className={styles.errorMessage}>المحتوى غير موجود</p>
+          <button onClick={handleBack} className={styles.backBtn} style={{ background: theme.primary }}>
+            العودة للباقة
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className={styles.pageContainer} 
-      style={{ background: theme.background }}
-    >
-      {/* Header */}
+    <div className={styles.pageContainer} style={{ background: theme.background }}>
       <header className={styles.header}>
         <div className={styles.headerContainer}>
           <div className={styles.breadcrumb}>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.push('/')} 
-              className={styles.breadcrumbItem}
-            >
+            <button onClick={() => router.push('/')} className={styles.breadcrumbItem}>
               <Home size={16} /> الرئيسية
-            </motion.button>
+            </button>
             <ChevronRight size={16} className={styles.breadcrumbSeparator} />
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <button 
               onClick={() => router.push(`/grades/${gradeSlug}`)} 
               className={styles.breadcrumbItem}
             >
               {gradeSlug === 'first' ? 'الصف الأول الثانوي' : gradeSlug === 'second' ? 'الصف الثاني الثانوي' : 'الصف الثالث الثانوي'}
-            </motion.button>
+            </button>
             <ChevronRight size={16} className={styles.breadcrumbSeparator} />
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <button 
               onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)} 
               className={styles.breadcrumbItem}
             >
               {packageData?.name || 'الباقة'}
-            </motion.button>
+            </button>
             <ChevronRight size={16} className={styles.breadcrumbSeparator} />
             <span className={styles.currentPage}>{content.title}</span>
           </div>
           
           <div className={styles.contentHeader}>
             <div className={styles.contentInfo}>
-              <motion.div 
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className={styles.contentTypeBadge} 
-                style={{ background: theme.primaryLight, color: theme.primary }}
-              >
+              <div className={styles.contentTypeBadge} style={{ background: theme.primaryLight, color: theme.primary }}>
                 {getContentTypeIcon()}
                 <span>{getContentTypeLabel()}</span>
-              </motion.div>
-              <motion.h1 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={styles.contentTitle}
-              >
-                {content.title}
-              </motion.h1>
+              </div>
+              <h1 className={styles.contentTitle}>{content.title}</h1>
               <div className={styles.contentMeta}>
                 <span className={styles.metaItem}>
                   <BookOpen size={14} />
@@ -1955,40 +1473,23 @@ function ContentViewer() {
               </div>
             </div>
             <div className={styles.headerActions}>
-              <motion.button
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <button 
                 onClick={handleBack} 
                 className={styles.backActionBtn}
-                style={{ 
-                  borderColor: theme.primary, 
-                  color: theme.primary,
-                  background: `linear-gradient(135deg, ${theme.primaryLight} 0%, white 100%)`
-                }}
+                style={{ borderColor: theme.primary, color: theme.primary }}
               >
-                <ChevronLeft size={16} />
-                <span>العودة للباقة</span>
-              </motion.button>
+                <ChevronLeft size={18} /> العودة للباقة
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className={styles.mainContent}>
         <div className={styles.contentLayout}>
-          {/* Left Column */}
           <div className={styles.leftColumn}>
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={styles.tabs}
-            >
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+            <div className={styles.tabs}>
+              <button 
                 onClick={() => setActiveTab('viewer')} 
                 className={`${styles.tabButton} ${activeTab === 'viewer' ? styles.activeTab : ''}`}
                 style={activeTab === 'viewer' ? { 
@@ -1998,10 +1499,8 @@ function ContentViewer() {
                 } : {}}
               >
                 <Eye size={18} /><span>عرض المحتوى</span>
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              </button>
+              <button 
                 onClick={() => setActiveTab('info')} 
                 className={`${styles.tabButton} ${activeTab === 'info' ? styles.activeTab : ''}`}
                 style={activeTab === 'info' ? { 
@@ -2011,119 +1510,133 @@ function ContentViewer() {
                 } : {}}
               >
                 <Info size={18} /><span>معلومات المحتوى</span>
-              </motion.button>
-            </motion.div>
+              </button>
+            </div>
             
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={styles.contentArea}
-            >
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeTab}
-                  initial={{ opacity: 0, x: activeTab === 'viewer' ? -50 : 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: activeTab === 'viewer' ? 50 : -50 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {activeTab === 'viewer' ? (
-                    renderContent()
-                  ) : (
-                    <div className={styles.infoContainer}>
-                      <div className={styles.infoHeader}>
-                        <h3 className={styles.infoTitle}>معلومات المحتوى</h3>
-                        <div className={styles.infoBadge} style={{ background: theme.primaryLight, color: theme.primary }}>
-                          {getContentTypeIcon()}
-                          <span>{getContentTypeLabel()}</span>
-                        </div>
+            <div className={styles.contentArea}>
+              {activeTab === 'viewer' ? (
+                <>
+                  {renderContent()}
+                  
+                  {content.type === 'video' && (
+                    <div className={styles.progressTracking}>
+                      <div className={styles.progressHeader}>
+                        <h4>تقدم المشاهدة</h4>
+                        <span>{videoProgress}%</span>
                       </div>
-                      <div className={styles.infoContent}>
-                        <div className={styles.infoSection}>
-                          <h4>الوصف</h4>
-                          <p>{content.description || 'لا يوجد وصف'}</p>
-                        </div>
-                        
-                        <div className={styles.infoGrid}>
-                          <motion.div
-                            whileHover={{ scale: 1.02, y: -2 }}
-                            className={styles.infoCard}
-                          >
-                            <div className={styles.infoIcon} style={{ background: theme.primaryLight }}>
-                              <Calendar color={theme.primary} size={20} />
-                            </div>
-                            <div>
-                              <h5>تاريخ الإنشاء</h5>
-                              <p>{new Date(content.created_at || Date.now()).toLocaleDateString('ar-EG')}</p>
-                            </div>
-                          </motion.div>
-                          
-                          <motion.div
-                            whileHover={{ scale: 1.02, y: -2 }}
-                            className={styles.infoCard}
-                          >
-                            <div className={styles.infoIcon} style={{ background: theme.primaryLight }}>
-                              <BarChart color={theme.primary} size={20} />
-                            </div>
-                            <div>
-                              <h5>الحالة</h5>
-                              <p>{userProgress?.status === 'completed' ? 'مكتمل' : 
-                                  userProgress?.status === 'passed' ? 'ناجح' : 
-                                  userProgress?.status === 'failed' ? 'فاشل' : 
-                                  userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}</p>
-                            </div>
-                          </motion.div>
-
-                          <motion.div
-                            whileHover={{ scale: 1.02, y: -2 }}
-                            className={styles.infoCard}
-                          >
-                            <div className={styles.infoIcon} style={{ background: theme.primaryLight }}>
-                              <Clock color={theme.primary} size={20} />
-                            </div>
-                            <div>
-                              <h5>المدة</h5>
-                              <p>{content.duration_minutes ? `${content.duration_minutes} دقيقة` : 'غير محددة'}</p>
-                            </div>
-                          </motion.div>
-
-                          <motion.div
-                            whileHover={{ scale: 1.02, y: -2 }}
-                            className={styles.infoCard}
-                          >
-                            <div className={styles.infoIcon} style={{ background: theme.primaryLight }}>
-                              <Target color={theme.primary} size={20} />
-                            </div>
-                            <div>
-                              <h5>درجة النجاح</h5>
-                              <p>{content.pass_score ? `${content.pass_score}%` : 'غير محددة'}</p>
-                            </div>
-                          </motion.div>
-                        </div>
+                      <div className={styles.progressBar}>
+                        <div 
+                          className={styles.progressFill} 
+                          style={{ width: `${videoProgress}%`, background: theme.primary }} 
+                        />
+                      </div>
+                      <div className={styles.progressHint}>
+                        سيتم وضع علامة كمكتمل تلقائيًا عند إكمال 80% من المحتوى
                       </div>
                     </div>
                   )}
-                </motion.div>
-              </AnimatePresence>
-            </motion.div>
+                </>
+              ) : (
+                <div className={styles.infoContainer}>
+                  <div className={styles.infoHeader}>
+                    <h3 className={styles.infoTitle}>معلومات المحتوى</h3>
+                    <div className={styles.infoBadge} style={{ background: theme.primaryLight, color: theme.primary }}>
+                      {getContentTypeIcon()}
+                      <span>{getContentTypeLabel()}</span>
+                    </div>
+                  </div>
+                  <div className={styles.infoContent}>
+                    <div className={styles.infoSection}>
+                      <h4>الوصف</h4>
+                      <p>{content.description || 'لا يوجد وصف'}</p>
+                    </div>
+                    
+                    <div className={styles.infoGrid}>
+                      <div className={styles.infoCard}>
+                        <div className={styles.infoIcon} style={{ background: theme.primaryLight }}>
+                          <Clock color={theme.primary} size={20} />
+                        </div>
+                        <div>
+                          <h5>تاريخ الإنشاء</h5>
+                          <p>{new Date(content.created_at || Date.now()).toLocaleDateString('ar-EG')}</p>
+                        </div>
+                      </div>
+                      
+                      <div className={styles.infoCard}>
+                        <div className={styles.infoIcon} style={{ background: theme.primaryLight }}>
+                          <BarChart3 color={theme.primary} size={20} />
+                        </div>
+                        <div>
+                          <h5>الحالة</h5>
+                          <p>{userProgress?.status === 'completed' ? 'مكتمل' : 
+                              userProgress?.status === 'passed' ? 'ناجح' : 
+                              userProgress?.status === 'failed' ? 'فاشل' : 
+                              userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Right Column */}
           <div className={styles.rightColumn}>
             <div className={styles.sidebar}>
-              <StatusCard 
-                userProgress={userProgress} 
-                content={content} 
-                markAsCompleted={markAsCompleted} 
-                theme={theme} 
-              />
+              <div className={styles.statusCard}>
+                <h4 className={styles.cardTitle}>حالة المحتوى</h4>
+                <div 
+                  className={`${styles.statusContent} ${
+                    userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.completed :
+                    userProgress?.status === 'failed' ? styles.failed :
+                    userProgress?.status === 'in_progress' ? styles.inProgress : styles.notStarted
+                  }`}
+                >
+                  {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                    <CheckCircle size={32} /> : 
+                    userProgress?.status === 'failed' ? 
+                      <X size={32} /> : 
+                    userProgress?.status === 'in_progress' ? 
+                      <Loader2 className={styles.loadingSpinner} size={32} /> : 
+                      <BookOpen size={32} />
+                  }
+                  <div className={styles.statusInfo}>
+                    <div className={styles.statusText}>
+                      {userProgress?.status === 'completed' ? 'مكتمل' : 
+                       userProgress?.status === 'passed' ? 'ناجح' : 
+                       userProgress?.status === 'failed' ? 'فاشل' : 
+                       userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}
+                    </div>
+                    <p className={styles.statusSubtext}>
+                      {userProgress?.last_accessed_at ? 
+                        `آخر زيارة: ${new Date(userProgress.last_accessed_at).toLocaleDateString('ar-EG')}` : 
+                        'لم يتم البدء بعد'}
+                    </p>
+                  </div>
+                </div>
+                
+                {content.type !== 'exam' && (
+                  <button 
+                    onClick={markAsCompleted} 
+                    disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'} 
+                    className={`${styles.completeButton} ${
+                      userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.disabled : ''
+                    }`}
+                    style={
+                      userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                        {} : 
+                        { background: theme.success }
+                    }
+                  >
+                    {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                      <><CheckCircle size={18} />تم إكمال المحتوى</> : 
+                      <><CheckCircle size={18} />تمييز كمكتمل</>
+                    }
+                  </button>
+                )}
+              </div>
               
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className={styles.lectureInfo}
-              >
+              <div className={styles.lectureInfo}>
                 <h4 className={styles.cardTitle}>المحاضرة</h4>
                 <div className={styles.lectureContent}>
                   <div className={styles.lectureIcon} style={{ background: theme.primaryLight }}>
@@ -2134,14 +1647,9 @@ function ContentViewer() {
                     <p>{lecture?.description || 'لا يوجد وصف'}</p>
                   </div>
                 </div>
-              </motion.div>
+              </div>
               
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className={styles.packageInfo}
-              >
+              <div className={styles.packageInfo}>
                 <h4 className={styles.cardTitle}>الباقة</h4>
                 <div className={styles.packageContent}>
                   <div className={styles.packageIcon} style={{ background: theme.primaryLight }}>
@@ -2152,68 +1660,18 @@ function ContentViewer() {
                     <p>تاريخ الانتهاء: {new Date(userPackage?.expires_at || Date.now()).toLocaleDateString('ar-EG')}</p>
                   </div>
                 </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className={styles.statsInfo}
-              >
-                <h4 className={styles.cardTitle}>إحصائيات</h4>
-                <div className={styles.statsGrid}>
-                  <div className={styles.statItem}>
-                    <div className={styles.statIcon} style={{ background: theme.primaryLight }}>
-                      <Eye size={16} color={theme.primary} />
-                    </div>
-                    <div>
-                      <div className={styles.statValue}>{videoProgress}%</div>
-                      <div className={styles.statLabel}>التقدم</div>
-                    </div>
-                  </div>
-                  <div className={styles.statItem}>
-                    <div className={styles.statIcon} style={{ background: theme.primaryLight }}>
-                      <Clock size={16} color={theme.primary} />
-                    </div>
-                    <div>
-                      <div className={styles.statValue}>{content.duration_minutes || '--'}</div>
-                      <div className={styles.statLabel}>دقيقة</div>
-                    </div>
-                  </div>
-                  <div className={styles.statItem}>
-                    <div className={styles.statIcon} style={{ background: theme.primaryLight }}>
-                      <TrendingUp size={16} color={theme.primary} />
-                    </div>
-                    <div>
-                      <div className={styles.statValue}>{userProgress?.score || '--'}</div>
-                      <div className={styles.statLabel}>الدرجة</div>
-                    </div>
-                  </div>
-                  <div className={styles.statItem}>
-                    <div className={styles.statIcon} style={{ background: theme.primaryLight }}>
-                      <Users size={16} color={theme.primary} />
-                    </div>
-                    <div>
-                      <div className={styles.statValue}>--</div>
-                      <div className={styles.statLabel}>المشاهدات</div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
+              </div>
             </div>
           </div>
         </div>
       </main>
-    </motion.div>
+    </div>
   )
 }
 
-// ==========================================
-// MAIN EXPORT
-// ==========================================
 export default function ContentPage() {
   return (
-    <Suspense fallback={<EnhancedLoadingState theme={getGradeTheme('first')} />}>
+    <Suspense fallback={<LoadingState />}>
       <ContentViewer />
     </Suspense>
   )
