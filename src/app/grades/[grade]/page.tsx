@@ -11,7 +11,8 @@ import {
   Ticket, CreditCard, X, Shield, Gift, Zap, Star,
   ChevronLeft, TrendingUp, Award, BookMarked, 
   Users, Target, Brain, Rocket, ShieldCheck, Globe,
-  BarChart3, Video, FileText, Headphones, BadgeCheck
+  BarChart3, Video, FileText, Headphones, BadgeCheck,
+  Search, Filter, Clock3, BookCheck, UserCheck
 } from 'lucide-react'
 import styles from './GradePage.module.css'
 import { 
@@ -122,6 +123,7 @@ export default function GradePage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'price' | 'lectures' | 'duration'>('price')
 
   // جلب البيانات
   const fetchData = useCallback(async () => {
@@ -248,8 +250,22 @@ export default function GradePage() {
       )
     }
     
+    // الترتيب
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'price':
+          return a.price - b.price
+        case 'lectures':
+          return b.lecture_count - a.lecture_count
+        case 'duration':
+          return b.duration_days - a.duration_days
+        default:
+          return a.price - b.price
+      }
+    })
+    
     return filtered
-  }, [purchased, available, offers, activeTab, searchQuery])
+  }, [purchased, available, offers, activeTab, searchQuery, sortBy])
 
   const handlePurchaseClick = (pkg: Package) => {
     if (!user) {
@@ -417,15 +433,15 @@ export default function GradePage() {
           )}
         </div>
 
-        {/* شريط البحث */}
+        {/* شريط البحث والتصفية */}
         <motion.div 
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className={styles.searchContainer}
+          className={styles.searchFilterContainer}
         >
           <div className={styles.searchBox}>
-            <BookOpen size={20} color="#94a3b8" />
+            <Search size={20} color="#94a3b8" />
             <input 
               type="text" 
               placeholder="ابحث عن باقة معينة..." 
@@ -441,6 +457,27 @@ export default function GradePage() {
                 <X size={16} />
               </button>
             )}
+          </div>
+          
+          <div className={styles.filterGroup}>
+            <div className={styles.filterSelect}>
+              <Filter size={16} color="#64748b" />
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                style={{ color: theme.text }}
+              >
+                <option value="price">الترتيب حسب السعر</option>
+                <option value="lectures">الترتيب حسب عدد المحاضرات</option>
+                <option value="duration">الترتيب حسب المدة</option>
+              </select>
+            </div>
+            
+            <div className={styles.resultCount}>
+              <span style={{ color: '#64748b' }}>عرض </span>
+              <strong style={{ color: theme.primary }}>{filteredPackages.length}</strong>
+              <span style={{ color: '#64748b' }}> باقة</span>
+            </div>
           </div>
         </motion.div>
 
@@ -661,6 +698,49 @@ export default function GradePage() {
             )}
           </motion.div>
         )}
+
+        {/* دليل المساعدة */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className={styles.helpSection}
+          style={{ background: theme.light }}
+        >
+          <div className={styles.helpHeader}>
+            <BookCheck size={24} color={theme.primary} />
+            <h3 style={{ color: theme.text }}>كيف تختار الباقة المناسبة؟</h3>
+          </div>
+          <div className={styles.helpTips}>
+            <div className={styles.helpTip}>
+              <div className={styles.tipIcon} style={{ background: theme.primary }}>
+                <Clock3 size={16} color="white" />
+              </div>
+              <div>
+                <span style={{ color: theme.text }}>المدة الزمنية</span>
+                <small style={{ color: '#64748b' }}>اختر الباقة التي تناسب جدولك الدراسي</small>
+              </div>
+            </div>
+            <div className={styles.helpTip}>
+              <div className={styles.tipIcon} style={{ background: theme.primary }}>
+                <Video size={16} color="white" />
+              </div>
+              <div>
+                <span style={{ color: theme.text }}>عدد المحاضرات</span>
+                <small style={{ color: '#64748b' }}>تحقق من عدد المحاضرات المضمنة</small>
+              </div>
+            </div>
+            <div className={styles.helpTip}>
+              <div className={styles.tipIcon} style={{ background: theme.primary }}>
+                <UserCheck size={16} color="white" />
+              </div>
+              <div>
+                <span style={{ color: theme.text }}>المميزات الإضافية</span>
+                <small style={{ color: '#64748b' }}>راجع المميزات الخاصة بكل باقة</small>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </main>
 
       {/* مودال الشراء */}
@@ -690,6 +770,26 @@ export default function GradePage() {
       <AnimatePresence>
         {showConfetti && <ConfettiEffect />}
       </AnimatePresence>
+
+      {/* الفوتر */}
+      <footer className={styles.footer}>
+        <div className={styles.footerContent}>
+          <div className={styles.footerBrand}>
+            <div className={styles.footerLogo} style={{ background: theme.light }}>
+              <Crown size={24} color={theme.primary} />
+            </div>
+            <div>
+              <span style={{ color: theme.text, fontWeight: 600 }}>البارع محمود الديب</span>
+              <small style={{ color: '#64748b' }}>منارة العلم والتميز</small>
+            </div>
+          </div>
+          <div className={styles.footerLinks}>
+            <a href="#" style={{ color: '#64748b' }}>الشروط والأحكام</a>
+            <a href="#" style={{ color: '#64748b' }}>سياسة الخصوصية</a>
+            <a href="#" style={{ color: '#64748b' }}>اتصل بنا</a>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
@@ -720,6 +820,16 @@ function PackageCard({
       case 'term': return '#10b981'
       case 'offer': return '#f59e0b'
       default: return '#94a3b8'
+    }
+  }
+
+  const getTypeName = () => {
+    switch (pkg.type) {
+      case 'weekly': return 'أسبوعي'
+      case 'monthly': return 'شهري'
+      case 'term': return 'ترم كامل'
+      case 'offer': return 'عرض خاص'
+      default: return 'عام'
     }
   }
 
@@ -781,10 +891,7 @@ function PackageCard({
         <div className={styles.cardTitleSection}>
           <h3 className={styles.cardTitle} style={{ color: theme.text }}>{pkg.name}</h3>
           <div className={styles.cardSubtitle} style={{ color: getTypeColor() }}>
-            {pkg.type === 'weekly' && 'أسبوعي'}
-            {pkg.type === 'monthly' && 'شهري'}
-            {pkg.type === 'term' && 'ترم كامل'}
-            {pkg.type === 'offer' && 'عرض خاص'}
+            {getTypeName()}
           </div>
         </div>
       </div>
