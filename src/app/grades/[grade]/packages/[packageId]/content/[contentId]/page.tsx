@@ -8,7 +8,8 @@ import {
   X, ArrowRight, AlertCircle, Loader2, Download,
   Target, Lock, Eye, Home, ChevronRight, Shield, 
   Award, Zap, Play, Pause, Volume2, Maximize,
-  ExternalLink, Trophy, ArrowLeft, RefreshCw, XCircle
+  ExternalLink, Trophy, ArrowLeft, RefreshCw, XCircle,
+  ChevronLeft, Info, BarChart3, FileCheck
 } from 'lucide-react'
 import styles from './ContentPage.module.css'
 
@@ -43,11 +44,17 @@ interface Question {
 
 interface Theme {
   primary: string
+  primaryLight: string
   success: string
+  background: string
+  card: string
+  text: string
+  textLight: string
+  border: string
 }
 
 // ==========================================
-// VIDEO PLAYER - محسن بعناصر تحكم كاملة
+// VIDEO PLAYER - تصميم جديد
 // ==========================================
 function ProtectedVideoPlayer({ 
   videoUrl, contentId, userId, packageId, onProgress, theme 
@@ -447,12 +454,13 @@ function ProtectedVideoPlayer({
       style={{ 
         position: 'relative', 
         background: '#000', 
-        borderRadius: '0.75rem', 
+        borderRadius: '12px', 
         overflow: 'hidden',
         aspectRatio: '16/9',
         userSelect: 'none',
         WebkitUserSelect: 'none',
-        msUserSelect: 'none'
+        msUserSelect: 'none',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
       }}
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => isPlaying && setShowControls(false)}
@@ -591,8 +599,10 @@ const buttonStyle: React.CSSProperties = {
   justifyContent: 'center',
   borderRadius: '8px',
   transition: 'all 0.2s'
-}// ==========================================
-// PDF VIEWER
+}
+
+// ==========================================
+// PDF VIEWER - تصميم جديد
 // ==========================================
 function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: { 
   pdfUrl: string; contentId: string; userId: string; packageId: string
@@ -662,26 +672,28 @@ function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: 
 
   if (error) {
     return (
-      <div className={styles.pdfViewerContainer} style={{ padding: '2rem', textAlign: 'center' }}>
-        <AlertCircle size={48} color="#ef4444" />
-        <h3>حدث خطأ في تحميل الملف</h3>
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
-          <button 
-            onClick={handleOpenOriginal} 
-            className={styles.openButton}
-            style={{ borderColor: theme.primary, color: theme.primary }}
-          >
-            <ExternalLink size={18} /> فتح الرابط الأصلي
-          </button>
-          {isGoogleDrive && (
+      <div className={styles.pdfViewerContainer}>
+        <div className={styles.pdfErrorContainer}>
+          <AlertCircle className={styles.errorIcon} size={48} color="#ef4444" />
+          <h3>حدث خطأ في تحميل الملف</h3>
+          <div className={styles.errorActions}>
             <button 
-              onClick={handleDownload} 
-              className={styles.downloadButton}
-              style={{ background: theme.primary }}
+              onClick={handleOpenOriginal} 
+              className={styles.openButton}
+              style={{ borderColor: theme.primary, color: theme.primary }}
             >
-              <Download size={18} /> تحميل
+              <ExternalLink size={18} /> فتح الرابط الأصلي
             </button>
-          )}
+            {isGoogleDrive && (
+              <button 
+                onClick={handleDownload} 
+                className={styles.downloadButton}
+                style={{ background: theme.primary }}
+              >
+                <Download size={18} /> تحميل
+              </button>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -721,7 +733,7 @@ function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: 
       </div>
       <div className={styles.viewerContainer}>
         {isLoading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+          <div className={styles.pdfLoadingContainer}>
             <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
           </div>
         ) : (
@@ -746,14 +758,14 @@ function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: 
             <AlertCircle size={14} /> قد تحتاج لتسجيل الدخول في Google
           </p>
         )}
-        <p className={styles.watermark}>الأبــارع محمود الـديــب © 2024</p>
+        <p className={styles.watermark}>منصة التعلم الذكي © 2024</p>
       </div>
     </div>
   )
 }
 
 // ==========================================
-// EXAM VIEWER - معدل ليقرأ من JSON في الوصف
+// EXAM VIEWER - تصميم جديد
 // ==========================================
 function ExamViewer({ examContent, contentId, packageId, userId, theme, onComplete }: {
   examContent: any; contentId: string; packageId: string; userId: string
@@ -769,7 +781,7 @@ function ExamViewer({ examContent, contentId, packageId, userId, theme, onComple
   const [score, setScore] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-const [results, setResults] = useState<{correct: number, wrong: number} | null>(null)
+  const [results, setResults] = useState<{correct: number, wrong: number} | null>(null)
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -919,18 +931,25 @@ const [results, setResults] = useState<{correct: number, wrong: number} | null>(
   }
 
   if (loading) return (
-    <div className={styles.loadingContainer} style={{ minHeight: '400px' }}>
+    <div className={styles.examLoadingContainer}>
       <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
-      <p>جاري التحميل...</p>
+      <p>جاري تحميل الامتحان...</p>
     </div>
   )
 
   if (error) return (
-    <div className={styles.errorContainer} style={{ minHeight: '400px' }}>
-      <div className={styles.errorContent}>
-        <AlertCircle className={styles.errorIcon} />
+    <div className={styles.examErrorContainer}>
+      <div className={styles.examErrorContent}>
+        <AlertCircle className={styles.errorIcon} size={48} />
         <h3 className={styles.errorTitle}>خطأ</h3>
         <p className={styles.errorMessage}>{error}</p>
+        <button 
+          onClick={() => router.back()} 
+          className={styles.backButtonExam}
+          style={{ background: theme.primary }}
+        >
+          العودة
+        </button>
       </div>
     </div>
   )
@@ -938,16 +957,17 @@ const [results, setResults] = useState<{correct: number, wrong: number} | null>(
   if (showResults) {
     const passed = score >= (examContent?.pass_score || 50)
     return (
-      <div className={styles.resultsContainer}>
+      <div className={styles.examResultsContainer}>
         <div 
-          className={styles.resultCard} 
-          style={passed ? { background: '#d1fae5', border: '2px solid #059669' } : { background: '#fee2e2', border: '2px solid #dc2626' }}
+          className={`${styles.resultCard} ${passed ? styles.passed : styles.failed}`} 
         >
           <div className={styles.resultIcon}>
             {passed ? <Trophy size={64} color="#10b981" /> : <AlertCircle size={64} color="#ef4444" />}
           </div>
           <h2>{passed ? 'مبروك! لقد نجحت' : 'للأسف، لم تنجح'}</h2>
-          <p className={styles.scoreText}>{score}%</p>
+          <div className={styles.scoreCircle} style={{ borderColor: passed ? theme.success : '#ef4444' }}>
+            <span className={styles.scoreText}>{score}%</span>
+          </div>
           <p className={styles.passScoreText}>درجة النجاح: {examContent?.pass_score || 50}%</p>
           <div className={styles.stats}>
             <div className={styles.stat}>
@@ -976,6 +996,7 @@ const [results, setResults] = useState<{correct: number, wrong: number} | null>(
                   setTimeLeft((examContent?.duration_minutes || 10) * 60) 
                 }} 
                 className={styles.retryButton}
+                style={{ borderColor: theme.primary, color: theme.primary }}
               >
                 <RefreshCw size={18} /> إعادة المحاولة
               </button>
@@ -995,7 +1016,9 @@ const [results, setResults] = useState<{correct: number, wrong: number} | null>(
     <div className={styles.examContainer}>
       <div className={styles.examHeader}>
         <div className={styles.examInfo}>
-          <Target style={{ color: theme.primary }} />
+          <div className={styles.examIconContainer} style={{ background: theme.primaryLight }}>
+            <Target style={{ color: theme.primary }} />
+          </div>
           <div>
             <h3>{examContent?.title || 'امتحان'}</h3>
             <p>سؤال {currentQuestion + 1} من {questions.length}</p>
@@ -1016,6 +1039,9 @@ const [results, setResults] = useState<{correct: number, wrong: number} | null>(
       <div className={styles.questionCard}>
         <div className={styles.questionHeader}>
           <span className={styles.questionNumber}>سؤال {currentQuestion + 1}</span>
+          <div className={styles.questionProgress}>
+            {Math.round(((currentQuestion + 1) / questions.length) * 100)}%
+          </div>
         </div>
         <h4 className={styles.questionText}>{currentQ.text}</h4>
         <div className={styles.options}>
@@ -1024,11 +1050,12 @@ const [results, setResults] = useState<{correct: number, wrong: number} | null>(
               key={option.id} 
               onClick={() => handleAnswer(currentQ.id, option.id)} 
               className={`${styles.option} ${answers[currentQ.id] === option.id ? styles.selected : ''}`}
+              style={answers[currentQ.id] === option.id ? { borderColor: theme.primary, background: theme.primaryLight } : {}}
             >
               <span className={styles.optionLabel}>{option.id}</span>
               <span className={styles.optionText}>{option.text}</span>
               <div className={styles.radio}>
-                {answers[currentQ.id] === option.id && <div className={styles.radioInner} />}
+                {answers[currentQ.id] === option.id && <div className={styles.radioInner} style={{ background: theme.primary }} />}
               </div>
             </button>
           ))}
@@ -1050,6 +1077,9 @@ const [results, setResults] = useState<{correct: number, wrong: number} | null>(
             <div 
               key={idx} 
               className={`${styles.dot} ${idx === currentQuestion ? styles.active : ''} ${answers[questions[idx].id] ? styles.answered : ''}`} 
+              style={{ 
+                background: idx === currentQuestion ? theme.primary : answers[questions[idx].id] ? theme.success : '#e5e7eb' 
+              }}
             />
           ))}
         </div>
@@ -1059,9 +1089,12 @@ const [results, setResults] = useState<{correct: number, wrong: number} | null>(
             onClick={handleSubmit} 
             disabled={isSubmitting || Object.keys(answers).length < questions.length} 
             className={styles.submitButton}
-            style={{ background: theme.success, opacity: Object.keys(answers).length < questions.length ? 0.5 : 1 }}
+            style={{ 
+              background: isSubmitting || Object.keys(answers).length < questions.length ? '#9ca3af' : theme.success,
+              opacity: Object.keys(answers).length < questions.length ? 0.5 : 1 
+            }}
           >
-            {isSubmitting ? <Loader2 className={styles.loadingSpinner} /> : 'تسليم'}
+            {isSubmitting ? <Loader2 className={styles.loadingSpinner} /> : 'تسليم الإجابات'}
           </button>
         ) : (
           <button 
@@ -1082,21 +1115,50 @@ const [results, setResults] = useState<{correct: number, wrong: number} | null>(
 // ==========================================
 function getGradeTheme(gradeSlug: string): Theme {
   const themes: Record<string, Theme> = {
-    first: { primary: '#3b82f6', success: '#10b981' },
-    second: { primary: '#8b5cf6', success: '#10b981' },
-    third: { primary: '#f59e0b', success: '#10b981' }
+    first: { 
+      primary: '#3b82f6', 
+      primaryLight: '#dbeafe',
+      success: '#10b981', 
+      background: '#f8fafc',
+      card: '#ffffff',
+      text: '#1e293b',
+      textLight: '#64748b',
+      border: '#e2e8f0'
+    },
+    second: { 
+      primary: '#8b5cf6', 
+      primaryLight: '#ede9fe',
+      success: '#10b981', 
+      background: '#f8fafc',
+      card: '#ffffff',
+      text: '#1e293b',
+      textLight: '#64748b',
+      border: '#e2e8f0'
+    },
+    third: { 
+      primary: '#f59e0b', 
+      primaryLight: '#fef3c7',
+      success: '#10b981', 
+      background: '#f8fafc',
+      card: '#ffffff',
+      text: '#1e293b',
+      textLight: '#64748b',
+      border: '#e2e8f0'
+    }
   }
   return themes[gradeSlug] || themes.first
 }
 
 // ==========================================
-// MAIN PAGE
+// MAIN PAGE - تصميم جديد كليًا
 // ==========================================
 function LoadingState() {
   return (
     <div className={styles.loadingContainer}>
-      <Loader2 className={styles.loadingSpinner} />
-      <p className={styles.loadingText}>جاري تحميل المحتوى...</p>
+      <div className={styles.loadingContent}>
+        <Loader2 className={styles.loadingSpinner} />
+        <p className={styles.loadingText}>جاري تحميل المحتوى...</p>
+      </div>
     </div>
   )
 }
@@ -1289,6 +1351,10 @@ function ContentViewer() {
       case 'text': 
         return (
           <div className={styles.textContent}>
+            <div className={styles.textContentHeader}>
+              <FileText size={24} color={theme.primary} />
+              <h3>المحتوى النصي</h3>
+            </div>
             <div 
               className={styles.textContentInner}
               dangerouslySetInnerHTML={{ 
@@ -1300,8 +1366,9 @@ function ContentViewer() {
       default: 
         return (
           <div className={styles.unsupportedContent}>
-            <AlertCircle className={styles.unsupportedIcon} />
-            <p>نوع المحتوى غير مدعوم</p>
+            <AlertCircle className={styles.unsupportedIcon} size={48} />
+            <h3>نوع المحتوى غير مدعوم</h3>
+            <p>عذرًا، نوع المحتوى هذا غير متاح حاليًا للعرض.</p>
           </div>
         )
     }
@@ -1317,16 +1384,26 @@ function ContentViewer() {
     }
   }, [content])
 
+  const getContentTypeIcon = useCallback(() => {
+    switch (content?.type) {
+      case 'video': return <Video size={20} />
+      case 'pdf': return <FileText size={20} />
+      case 'exam': return <Target size={20} />
+      case 'text': return <BookOpen size={20} />
+      default: return <FileText size={20} />
+    }
+  }, [content])
+
   if (loading) return <LoadingState />
   
   if (error) {
     return (
       <div className={styles.errorContainer}>
         <div className={styles.errorContent}>
-          <AlertCircle className={styles.errorIcon} />
+          <AlertCircle className={styles.errorIcon} size={64} />
           <h2 className={styles.errorTitle}>حدث خطأ</h2>
           <p className={styles.errorMessage}>{error}</p>
-          <button onClick={handleBack} className={styles.backBtn}>
+          <button onClick={handleBack} className={styles.backBtn} style={{ background: theme.primary }}>
             العودة للباقة
           </button>
         </div>
@@ -1338,10 +1415,10 @@ function ContentViewer() {
     return (
       <div className={styles.errorContainer}>
         <div className={styles.errorContent}>
-          <AlertCircle className={styles.errorIcon} />
+          <AlertCircle className={styles.errorIcon} size={64} />
           <h2 className={styles.errorTitle}>حدث خطأ</h2>
           <p className={styles.errorMessage}>المحتوى غير موجود</p>
-          <button onClick={handleBack} className={styles.backBtn}>
+          <button onClick={handleBack} className={styles.backBtn} style={{ background: theme.primary }}>
             العودة للباقة
           </button>
         </div>
@@ -1350,19 +1427,19 @@ function ContentViewer() {
   }
 
   return (
-    <div className={styles.pageContainer}>
-      <div className={styles.header}>
-        <div className={styles.headerContent}>
+    <div className={styles.pageContainer} style={{ background: theme.background }}>
+      <header className={styles.header}>
+        <div className={styles.headerContainer}>
           <div className={styles.breadcrumb}>
             <button onClick={() => router.push('/')} className={styles.breadcrumbItem}>
-              <Home size={16} />الرئيسية
+              <Home size={16} /> الرئيسية
             </button>
             <ChevronRight size={16} className={styles.breadcrumbSeparator} />
             <button 
               onClick={() => router.push(`/grades/${gradeSlug}`)} 
               className={styles.breadcrumbItem}
             >
-              {gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}
+              {gradeSlug === 'first' ? 'الصف الأول الثانوي' : gradeSlug === 'second' ? 'الصف الثاني الثانوي' : 'الصف الثالث الثانوي'}
             </button>
             <ChevronRight size={16} className={styles.breadcrumbSeparator} />
             <button 
@@ -1377,13 +1454,21 @@ function ContentViewer() {
           
           <div className={styles.contentHeader}>
             <div className={styles.contentInfo}>
+              <div className={styles.contentTypeBadge} style={{ background: theme.primaryLight, color: theme.primary }}>
+                {getContentTypeIcon()}
+                <span>{getContentTypeLabel()}</span>
+              </div>
               <h1 className={styles.contentTitle}>{content.title}</h1>
               <div className={styles.contentMeta}>
-                <span className={styles.contentType}>{getContentTypeLabel()}</span>
-                <span className={styles.contentSeparator}>•</span>
-                <span>{lecture?.title}</span>
-                <span className={styles.contentSeparator}>•</span>
-                <span>{packageData?.name}</span>
+                <span className={styles.metaItem}>
+                  <BookOpen size={14} />
+                  <span>{lecture?.title}</span>
+                </span>
+                <span className={styles.metaSeparator}>•</span>
+                <span className={styles.metaItem}>
+                  <Award size={14} />
+                  <span>{packageData?.name}</span>
+                </span>
               </div>
             </div>
             <div className={styles.headerActions}>
@@ -1392,52 +1477,103 @@ function ContentViewer() {
                 className={styles.backActionBtn}
                 style={{ borderColor: theme.primary, color: theme.primary }}
               >
-                <ArrowRight size={18} />العودة
+                <ChevronLeft size={18} /> العودة للباقة
               </button>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className={styles.mainContent}>
+      <main className={styles.mainContent}>
         <div className={styles.contentLayout}>
           <div className={styles.leftColumn}>
             <div className={styles.tabs}>
               <button 
                 onClick={() => setActiveTab('viewer')} 
                 className={`${styles.tabButton} ${activeTab === 'viewer' ? styles.activeTab : ''}`}
-                style={activeTab === 'viewer' ? { borderColor: theme.primary, color: theme.primary } : {}}
+                style={activeTab === 'viewer' ? { 
+                  borderBottomColor: theme.primary, 
+                  color: theme.primary,
+                  background: theme.primaryLight 
+                } : {}}
               >
-                <Eye size={18} /><span>العرض</span>
+                <Eye size={18} /><span>عرض المحتوى</span>
               </button>
               <button 
                 onClick={() => setActiveTab('info')} 
                 className={`${styles.tabButton} ${activeTab === 'info' ? styles.activeTab : ''}`}
-                style={activeTab === 'info' ? { borderColor: theme.primary, color: theme.primary } : {}}
+                style={activeTab === 'info' ? { 
+                  borderBottomColor: theme.primary, 
+                  color: theme.primary,
+                  background: theme.primaryLight 
+                } : {}}
               >
-                <BookOpen size={18} /><span>المعلومات</span>
+                <Info size={18} /><span>معلومات المحتوى</span>
               </button>
             </div>
             
             <div className={styles.contentArea}>
-              {activeTab === 'viewer' ? renderContent() : (
+              {activeTab === 'viewer' ? (
+                <>
+                  {renderContent()}
+                  
+                  {content.type === 'video' && (
+                    <div className={styles.progressTracking}>
+                      <div className={styles.progressHeader}>
+                        <h4>تقدم المشاهدة</h4>
+                        <span>{videoProgress}%</span>
+                      </div>
+                      <div className={styles.progressBar}>
+                        <div 
+                          className={styles.progressFill} 
+                          style={{ width: `${videoProgress}%`, background: theme.primary }} 
+                        />
+                      </div>
+                      <div className={styles.progressHint}>
+                        سيتم وضع علامة كمكتمل تلقائيًا عند إكمال 80% من المحتوى
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
                 <div className={styles.infoContainer}>
-                  <h3 className={styles.infoTitle}>معلومات المحتوى</h3>
-                  <p>{content.description || 'لا يوجد وصف'}</p>
-                </div>
-              )}
-              
-              {content.type === 'video' && (
-                <div className={styles.progressTracking}>
-                  <div className={styles.progressHeader}>
-                    <h4>تقدم المشاهدة</h4>
-                    <span>{videoProgress}%</span>
+                  <div className={styles.infoHeader}>
+                    <h3 className={styles.infoTitle}>معلومات المحتوى</h3>
+                    <div className={styles.infoBadge} style={{ background: theme.primaryLight, color: theme.primary }}>
+                      {getContentTypeIcon()}
+                      <span>{getContentTypeLabel()}</span>
+                    </div>
                   </div>
-                  <div className={styles.progressBar}>
-                    <div 
-                      className={styles.progressFill} 
-                      style={{ width: `${videoProgress}%`, background: theme.primary }} 
-                    />
+                  <div className={styles.infoContent}>
+                    <div className={styles.infoSection}>
+                      <h4>الوصف</h4>
+                      <p>{content.description || 'لا يوجد وصف'}</p>
+                    </div>
+                    
+                    <div className={styles.infoGrid}>
+                      <div className={styles.infoCard}>
+                        <div className={styles.infoIcon} style={{ background: theme.primaryLight }}>
+                          <Clock color={theme.primary} size={20} />
+                        </div>
+                        <div>
+                          <h5>تاريخ الإنشاء</h5>
+                          <p>{new Date(content.created_at || Date.now()).toLocaleDateString('ar-EG')}</p>
+                        </div>
+                      </div>
+                      
+                      <div className={styles.infoCard}>
+                        <div className={styles.infoIcon} style={{ background: theme.primaryLight }}>
+                          <BarChart3 color={theme.primary} size={20} />
+                        </div>
+                        <div>
+                          <h5>الحالة</h5>
+                          <p>{userProgress?.status === 'completed' ? 'مكتمل' : 
+                              userProgress?.status === 'passed' ? 'ناجح' : 
+                              userProgress?.status === 'failed' ? 'فاشل' : 
+                              userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1445,59 +1581,89 @@ function ContentViewer() {
           </div>
 
           <div className={styles.rightColumn}>
-            <div className={styles.statusCard}>
-              <h4 className={styles.cardTitle}>الحالة</h4>
-              <div 
-                className={styles.statusContent}
-                style={
-                  userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
-                    { background: '#d1fae5', color: '#065f46' } : 
-                  userProgress?.status === 'failed' ? 
-                    { background: '#fee2e2', color: '#991b1b' } : 
-                  userProgress?.status === 'in_progress' ? 
-                    { background: '#dbeafe', color: '#1e40af' } : 
-                    { background: '#f3f4f6', color: '#4b5563' }
-                }
-              >
-                {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
-                  <CheckCircle size={24} /> : 
-                  userProgress?.status === 'failed' ? 
-                    <X size={24} /> : 
-                  userProgress?.status === 'in_progress' ? 
-                    <Loader2 className={styles.loadingSpinner} size={24} /> : 
-                    <BookOpen size={24} />
-                }
-                <div className={styles.statusInfo}>
-                  <div className={styles.statusText}>
-                    {userProgress?.status === 'completed' ? 'مكتمل' : 
-                     userProgress?.status === 'passed' ? 'ناجح' : 
-                     userProgress?.status === 'failed' ? 'فاشل' : 
-                     userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}
+            <div className={styles.sidebar}>
+              <div className={styles.statusCard}>
+                <h4 className={styles.cardTitle}>حالة المحتوى</h4>
+                <div 
+                  className={`${styles.statusContent} ${
+                    userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.completed :
+                    userProgress?.status === 'failed' ? styles.failed :
+                    userProgress?.status === 'in_progress' ? styles.inProgress : styles.notStarted
+                  }`}
+                >
+                  {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                    <CheckCircle size={32} /> : 
+                    userProgress?.status === 'failed' ? 
+                      <X size={32} /> : 
+                    userProgress?.status === 'in_progress' ? 
+                      <Loader2 className={styles.loadingSpinner} size={32} /> : 
+                      <BookOpen size={32} />
+                  }
+                  <div className={styles.statusInfo}>
+                    <div className={styles.statusText}>
+                      {userProgress?.status === 'completed' ? 'مكتمل' : 
+                       userProgress?.status === 'passed' ? 'ناجح' : 
+                       userProgress?.status === 'failed' ? 'فاشل' : 
+                       userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}
+                    </div>
+                    <p className={styles.statusSubtext}>
+                      {userProgress?.last_accessed_at ? 
+                        `آخر زيارة: ${new Date(userProgress.last_accessed_at).toLocaleDateString('ar-EG')}` : 
+                        'لم يتم البدء بعد'}
+                    </p>
+                  </div>
+                </div>
+                
+                {content.type !== 'exam' && (
+                  <button 
+                    onClick={markAsCompleted} 
+                    disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'} 
+                    className={`${styles.completeButton} ${
+                      userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.disabled : ''
+                    }`}
+                    style={
+                      userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                        {} : 
+                        { background: theme.success }
+                    }
+                  >
+                    {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                      <><CheckCircle size={18} />تم إكمال المحتوى</> : 
+                      <><CheckCircle size={18} />تمييز كمكتمل</>
+                    }
+                  </button>
+                )}
+              </div>
+              
+              <div className={styles.lectureInfo}>
+                <h4 className={styles.cardTitle}>المحاضرة</h4>
+                <div className={styles.lectureContent}>
+                  <div className={styles.lectureIcon} style={{ background: theme.primaryLight }}>
+                    <BookOpen color={theme.primary} size={20} />
+                  </div>
+                  <div>
+                    <h5>{lecture?.title}</h5>
+                    <p>{lecture?.description || 'لا يوجد وصف'}</p>
                   </div>
                 </div>
               </div>
               
-              {content.type !== 'exam' && (
-                <button 
-                  onClick={markAsCompleted} 
-                  disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'} 
-                  className={styles.completeButton}
-                  style={
-                    userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
-                      { background: '#9ca3af', cursor: 'not-allowed' } : 
-                      { background: theme.success }
-                  }
-                >
-                  {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
-                    <><CheckCircle size={18} />تم</> : 
-                    <><CheckCircle size={18} />تمييز كمكتمل</>
-                  }
-                </button>
-              )}
+              <div className={styles.packageInfo}>
+                <h4 className={styles.cardTitle}>الباقة</h4>
+                <div className={styles.packageContent}>
+                  <div className={styles.packageIcon} style={{ background: theme.primaryLight }}>
+                    <Award color={theme.primary} size={20} />
+                  </div>
+                  <div>
+                    <h5>{packageData?.name}</h5>
+                    <p>تاريخ الانتهاء: {new Date(userPackage?.expires_at || Date.now()).toLocaleDateString('ar-EG')}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }
