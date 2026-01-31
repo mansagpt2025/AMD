@@ -119,19 +119,6 @@
 /* ============================================
    الأساسيات
    ============================================ */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'IBM Plex Sans Arabic', system-ui, -apple-system, sans-serif;
-  background: var(--gray-50);
-  color: var(--gray-800);
-  direction: rtl;
-}
-
 .container {
   min-height: 100vh;
   position: relative;
