@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { createClient } from '@/lib/supabase/25client';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import {
@@ -154,10 +155,8 @@ function VideoPlayer({
   packageId: string;
   onComplete?: () => void;
 }) {
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = createClient();
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -184,23 +183,23 @@ const supabase = createBrowserClient(
   const checkAccess = async () => {
     setIsCheckingAccess(true);
     try {
-      const { data: videoView, error: viewError } = await supabase
-        .from('video_views')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('content_id', content.id)
-        .single();
+const { data: videoView, error: viewError } = await supabase
+  .from('video_views')
+  .select('*')
+  .eq('user_id', userId)
+  .eq('content_id', content.id)
+  .maybeSingle(); // ✅ غيّرها من single()
 
       if (viewError && viewError.code !== 'PGRST116') {
         throw viewError;
       }
 
-      const { data: progress, error: progressError } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('lecture_content_id', content.id)
-        .single();
+const { data: progress, error: progressError } = await supabase
+  .from('user_progress')
+  .select('*')
+  .eq('user_id', userId)
+  .eq('lecture_content_id', content.id)
+  .maybeSingle(); // ✅ غيّرها من single()
 
       if (progressError && progressError.code !== 'PGRST116') {
         throw progressError;
@@ -263,7 +262,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('content_id', content.id)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       const now = new Date().toISOString();
 
@@ -289,8 +288,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('lecture_content_id', content.id)
-        .single();
-
+  .maybeSingle(); // ✅ غيّرها من single()
       if (progress) {
         await supabase
           .from('user_progress')
@@ -322,7 +320,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('lecture_content_id', content.id)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       const now = new Date().toISOString();
 
@@ -721,10 +719,8 @@ function ExamViewer({
   packageId: string;
   onComplete?: () => void;
 }) {
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = createClient();
+
 
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [accessCheck, setAccessCheck] = useState<AccessCheckResult | null>(null);
@@ -803,7 +799,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('lecture_content_id', content.id)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       if (progressError && progressError.code !== 'PGRST116') {
         throw progressError;
@@ -883,7 +879,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('lecture_content_id', content.id)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       if (progress) {
         await supabase
@@ -1001,7 +997,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('lecture_content_id', content.id)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       const now = new Date().toISOString();
 
@@ -1396,10 +1392,8 @@ function PDFViewer({
   userId: string;
   packageId: string;
 }) {
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = createClient();
+
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [accessCheck, setAccessCheck] = useState<AccessCheckResult | null>(null);
   const [viewRecorded, setViewRecorded] = useState(false);
@@ -1416,7 +1410,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('lecture_content_id', content.id)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       if (progressError && progressError.code !== 'PGRST116') {
         throw progressError;
@@ -1427,7 +1421,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('content_id', content.id)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       const currentAttempts = (viewCount as { view_count?: number } | null)?.view_count || 0;
       const contentMaxAttempts = content.max_attempts || 1;
@@ -1493,7 +1487,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('content_id', content.id)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       const now = new Date().toISOString();
 
@@ -1519,7 +1513,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('lecture_content_id', content.id)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       if (progress) {
         await supabase
@@ -1633,10 +1627,8 @@ function TextViewer({
   userId: string;
   packageId: string;
 }) {
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = createClient();
+
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [accessCheck, setAccessCheck] = useState<AccessCheckResult | null>(null);
   const [viewRecorded, setViewRecorded] = useState(false);
@@ -1653,7 +1645,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('lecture_content_id', content.id)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       if (progressError && progressError.code !== 'PGRST116') {
         throw progressError;
@@ -1664,7 +1656,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('content_id', content.id)
-        .single();
+        .maybeSingle();
 
       const currentAttempts = (viewCount as { view_count?: number } | null)?.view_count || 0;
       const contentMaxAttempts = content.max_attempts || 1;
@@ -1730,7 +1722,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('content_id', content.id)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       const now = new Date().toISOString();
 
@@ -1756,7 +1748,7 @@ const supabase = createBrowserClient(
         .select('*')
         .eq('user_id', userId)
         .eq('lecture_content_id', content.id)
-        .single();
+        .maybeSingle();
 
       if (progress) {
         await supabase
@@ -1855,10 +1847,8 @@ const supabase = createBrowserClient(
 export default function ContentPage() {
   const params = useParams();
   const router = useRouter();
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = createClient();
+
 
   const { contentId } = params;
 
@@ -1901,7 +1891,7 @@ const supabase = createBrowserClient(
         `)
         .eq('id', contentId)
         .eq('is_active', true)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       if (contentError || !contentData) {
         setError('المحتوى غير موجود أو غير متاح');
@@ -1918,7 +1908,7 @@ const supabase = createBrowserClient(
         .eq('user_id', user.id)
         .eq('package_id', packageIdFromLecture)
         .eq('is_active', true)
-        .single();
+  .maybeSingle(); // ✅ غيّرها من single()
 
       if (packageError || !userPackage) {
         setError('ليس لديك صلاحية الوصول إلى هذا المحتوى');
