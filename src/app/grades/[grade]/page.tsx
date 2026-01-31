@@ -1,18 +1,17 @@
-
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion'
 import { createBrowserClient } from '@supabase/ssr'
 import { 
   Wallet, BookOpen, GraduationCap, Loader2, AlertCircle,
   Crown, Sparkles, Clock, Calendar, Medal, PlayCircle,
   CheckCircle2, ArrowRight, ShoppingCart, RefreshCw, 
   Ticket, CreditCard, X, Shield, Gift, Zap, Star,
-  ChevronLeft, TrendingUp, Award, BookMarked
+  ChevronLeft, TrendingUp, Award, BookMarked, 
+  Hexagon, Layers, Play, ArrowUpRight, Lock, Unlock
 } from 'lucide-react'
-import styles from './GradePage.module.css'
 import { 
   deductWalletBalance, 
   markCodeAsUsed, 
@@ -21,7 +20,7 @@ import {
   getWalletBalance 
 } from './actions'
 
-// أنواع البيانات
+// الأنواع (تبقى كما هي)
 interface Package {
   id: string
   name: string
@@ -54,21 +53,20 @@ interface ThemeType {
   light: string
 }
 
-// الألوان الخاصة بكل صف
 const themes: Record<string, ThemeType> = {
   first: {
     primary: '#3b82f6',
-    secondary: '#1e40af',
+    secondary: '#1d4ed8',
     accent: '#06b6d4',
-    gradient: 'from-blue-500 via-blue-600 to-cyan-500',
+    gradient: 'from-blue-500 via-indigo-500 to-cyan-500',
     light: '#eff6ff'
   },
   second: {
-    primary: '#00ff04',
-    secondary: '#007a16',
-    accent: '#8cec48',
+    primary: '#8b5cf6',
+    secondary: '#6d28d9',
+    accent: '#ec4899',
     gradient: 'from-violet-500 via-purple-600 to-pink-500',
-    light: '#f5f3ff'
+    light: '#faf5ff'
   },
   third: {
     primary: '#f59e0b',
@@ -90,6 +88,9 @@ export default function GradePage() {
   const theme = themes[gradeSlug] || themes.first
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const mouseX = useMotionValue(0)
+  const mouseY = useMotionValue(0)
+
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
@@ -97,6 +98,7 @@ export default function GradePage() {
     restDelta: 0.001
   })
 
+  // كل الـ states تبقى كما هي
   const [packages, setPackages] = useState<Package[]>([])
   const [userPackages, setUserPackages] = useState<UserPackage[]>([])
   const [user, setUser] = useState<any>(null)
@@ -109,7 +111,17 @@ export default function GradePage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
 
-  // جلب البيانات
+  // تأثير الماوس المتحرك
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX.set(e.clientX)
+      mouseY.set(e.clientY)
+    }
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [mouseX, mouseY])
+
+  // كل الدوال تبقى كما هي بدون أي تغيير
   const fetchData = useCallback(async () => {
     try {
       if (!isRefreshing) setLoading(true)
@@ -135,7 +147,6 @@ export default function GradePage() {
 
       if (packagesError) throw packagesError
       
-      // إضافة بيانات تجريبية للمميزات إذا لم تكن موجودة
       const enhancedPackages = packagesData?.map(pkg => ({
         ...pkg,
         features: pkg.features || [
@@ -176,7 +187,6 @@ export default function GradePage() {
     fetchData()
   }, [fetchData])
 
-  // Real-time updates
   useEffect(() => {
     if (!user?.id) return
     
@@ -197,7 +207,6 @@ export default function GradePage() {
     return () => { supabase.removeChannel(channel) }
   }, [user?.id, supabase])
 
-  // تصنيف الباقات
   const { purchased, available, offers } = useMemo(() => {
     const purchasedIds = userPackages.map(up => up.package_id)
     
@@ -257,47 +266,30 @@ export default function GradePage() {
 
   if (loading) {
     return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loadingContent}>
+      <div className="min-h-screen bg-white flex items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.03),transparent_50%)]" />
+        <div className="relative z-10 flex flex-col items-center gap-8">
           <motion.div 
-            animate={{ 
-              rotate: 360,
-              scale: [1, 1.2, 1]
-            }} 
-            transition={{ 
-              rotate: { duration: 2, repeat: Infinity, ease: "linear" },
-              scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
-            }}
-            className={styles.loadingIcon}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="relative"
           >
-            <GraduationCap size={64} color={theme.primary} />
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 blur-xl opacity-30" />
+            <GraduationCap size={80} className="text-slate-800 relative z-10" />
           </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className={styles.loadingText}
-          >
-            <h3>جاري تحميل البيانات...</h3>
-            <p>نحضر لك أفضل المحتوى التعليمي</p>
-          </motion.div>
-          <div className={styles.loadingBars}>
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className={styles.loadingBar}
-                animate={{ 
-                  height: ["20%", "80%", "20%"],
-                  backgroundColor: [theme.primary, theme.accent, theme.primary]
-                }}
-                transition={{
-                  duration: 1,
-                  repeat: Infinity,
-                  delay: i * 0.2,
-                  ease: "easeInOut"
-                }}
+          <div className="flex flex-col items-center gap-2">
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="h-1 w-32 bg-gradient-to-r from-transparent via-slate-300 to-transparent rounded-full overflow-hidden"
+            >
+              <motion.div 
+                animate={{ x: [-128, 128] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                className="h-full w-1/2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full"
               />
-            ))}
+            </motion.div>
+            <p className="text-slate-400 text-sm font-medium">جاري التحميل...</p>
           </div>
         </div>
       </div>
@@ -305,249 +297,261 @@ export default function GradePage() {
   }
 
   return (
-    <div className={styles.container} ref={containerRef}>
+    <div ref={containerRef} className="min-h-screen bg-white text-slate-800 relative overflow-x-hidden">
       {/* شريط التقدم العلوي */}
       <motion.div 
-        className={styles.progressBar}
-        style={{ 
-          scaleX,
-          background: `linear-gradient(90deg, ${theme.primary}, ${theme.accent})`
-        }}
+        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-500 origin-left z-50"
+        style={{ scaleX }}
       />
 
-      {/* تأثيرات الخلفية */}
-      <div className={styles.backgroundEffects}>
-        <div className={styles.gradientOrb1} style={{ background: theme.primary }} />
-        <div className={styles.gradientOrb2} style={{ background: theme.accent }} />
-        <div className={styles.gridPattern} />
+      {/* خلفية متقدمة */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br from-blue-100/40 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-to-tl from-indigo-100/40 to-transparent rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_100%_200px,#e0f2fe,transparent)]" />
       </div>
 
-      {/* الهيدر */}
-      <header className={styles.header}>
-        <div className={styles.headerContent}>
-          {/* الشعار */}
-          <motion.div 
-            initial={{ x: -50, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            className={styles.brand}
-          >
-            <div className={styles.logoWrapper} style={{ background: theme.light }}>
-              <Crown size={28} color={theme.primary} />
-            </div>
-            <div className={styles.brandText}>
-              <h1>البارع محمود الديب</h1>
-              <span>منارة العلم والتميز</span>
-            </div>
-          </motion.div>
-
-          {/* المحفظة أو تسجيل الدخول */}
-          {user ? (
-            <motion.div 
-              initial={{ x: 50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              className={styles.walletCard}
-              style={{ 
-                borderColor: `${theme.primary}20`,
-                boxShadow: `0 4px 20px ${theme.primary}20`
-              }}
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <div className={styles.walletIcon} style={{ background: theme.primary }}>
-                <Wallet size={20} color="white" />
-              </div>
-              <div className={styles.walletDetails}>
-                <span className={styles.walletLabel}>رصيدك الحالي</span>
-                <span className={styles.walletAmount} style={{ color: theme.primary }}>
-                  {walletBalance.toLocaleString()} ج.م
-                </span>
-              </div>
-              <motion.button 
-                className={styles.refreshBtn}
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                whileHover={{ rotate: 180 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <RefreshCw size={16} className={isRefreshing ? styles.spinning : ''} />
-              </motion.button>
-            </motion.div>
-          ) : (
-            <motion.button
-              initial={{ x: 50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              className={styles.loginBtn}
-              style={{ background: theme.primary }}
-              whileHover={{ scale: 1.05, boxShadow: `0 10px 30px ${theme.primary}40` }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.push(`/login?returnUrl=/grades/${gradeSlug}`)}
-            >
-              <span>تسجيل الدخول</span>
-              <ArrowRight size={18} />
-            </motion.button>
-          )}
-        </div>
-
-        {/* بطاقة الصف الدراسي */}
-        <motion.div 
-          initial={{ y: 30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className={styles.gradeHero}
-        >
-          <div className={styles.gradeBadge} style={{ background: theme.light }}>
-            <GraduationCap size={40} color={theme.primary} />
-          </div>
-          <h2 style={{ color: theme.primary }}>{getGradeName()}</h2>
-          <p>اختر باقتك وابدأ رحلة التميز</p>
-        </motion.div>
-
-        {/* التبويبات */}
-        <motion.nav 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className={styles.tabsContainer}
-        >
-          <div className={styles.tabs}>
-            <button 
-              className={`${styles.tab} ${activeTab === 'all' ? styles.active : ''}`}
-              onClick={() => setActiveTab('all')}
-              style={{ 
-                '--active-color': theme.primary,
-                '--active-bg': theme.light 
-              } as any}
-            >
-              <BookOpen size={18} />
-              <span>الكل</span>
-              <span className={styles.tabCount}>{purchased.length + available.length + offers.length}</span>
-            </button>
-            
-            {purchased.length > 0 && (
-              <button 
-                className={`${styles.tab} ${activeTab === 'purchased' ? styles.active : ''}`}
-                onClick={() => setActiveTab('purchased')}
-                style={{ 
-                  '--active-color': '#059669',
-                  '--active-bg': '#ecfdf5'
-                } as any}
-              >
-                <CheckCircle2 size={18} />
-                <span>اشتراكاتي</span>
-                <span className={styles.tabCount} style={{ background: '#10b981', color: 'white' }}>
-                  {purchased.length}
-                </span>
-              </button>
-            )}
-            
-            {offers.length > 0 && (
-              <button 
-                className={`${styles.tab} ${activeTab === 'offers' ? styles.active : ''}`}
-                onClick={() => setActiveTab('offers')}
-                style={{ 
-                  '--active-color': '#d97706',
-                  '--active-bg': '#fffbeb'
-                } as any}
-              >
-                <Sparkles size={18} />
-                <span>عروض خاصة</span>
-                <span className={styles.tabCount} style={{ background: '#f59e0b', color: 'white' }}>
-                  {offers.length}
-                </span>
-              </button>
-            )}
-          </div>
-        </motion.nav>
-      </header>
-
       {/* المحتوى الرئيسي */}
-      <main className={styles.main}>
-        <AnimatePresence mode="wait">
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className={styles.errorAlert}
-            >
-              <AlertCircle size={20} />
-              <span>{error}</span>
-              <button onClick={fetchData}>إعادة المحاولة</button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="relative z-10">
+        {/* الهيدر */}
+        <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-20">
+              {/* الشعار */}
+              <motion.div 
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className="flex items-center gap-3"
+              >
+                <div className="relative group cursor-pointer" onClick={() => router.push('/')}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity" />
+                  <div className="relative bg-white border border-slate-200 p-2.5 rounded-2xl shadow-sm">
+                    <Hexagon className="w-8 h-8 text-blue-600" strokeWidth={1.5} />
+                  </div>
+                </div>
+                <div className="hidden sm:block">
+                  <h1 className="text-lg font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                    البارع محمود الديب
+                  </h1>
+                  <p className="text-xs text-slate-500">منارة العلم والتميز</p>
+                </div>
+              </motion.div>
 
-        {/* قسم الإحصائيات السريعة */}
-        {user && (
+              {/* المحفظة أو تسجيل الدخول */}
+              {user ? (
+                <motion.div 
+                  initial={{ x: 20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  className="flex items-center gap-4"
+                >
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                  >
+                    <RefreshCw size={20} className={`text-slate-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </motion.button>
+                  
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity" />
+                    <div className="relative flex items-center gap-3 bg-white border border-slate-200 px-4 py-2.5 rounded-2xl shadow-sm">
+                      <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
+                        <Wallet size={18} className="text-white" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider">الرصيد</span>
+                        <span className="text-sm font-bold text-slate-800 tabular-nums">
+                          {walletBalance.toLocaleString()} <span className="text-xs font-normal text-slate-500">ج.م</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.button
+                  initial={{ x: 20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => router.push(`/login?returnUrl=/grades/${gradeSlug}`)}
+                  className="flex items-center gap-2 bg-slate-900 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-colors"
+                >
+                  <span>تسجيل الدخول</span>
+                  <ArrowRight size={18} />
+                </motion.button>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+          {/* بطاقة الصف الدراسي */}
           <motion.div 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className={styles.statsGrid}
+            className="relative overflow-hidden"
           >
-            <div className={styles.statCard} style={{ borderColor: `${theme.primary}20` }}>
-              <div className={styles.statIcon} style={{ background: theme.light, color: theme.primary }}>
-                <BookMarked size={24} />
-              </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statValue}>{purchased.length}</span>
-                <span className={styles.statLabel}>باقة نشطة</span>
-              </div>
-            </div>
-            <div className={styles.statCard} style={{ borderColor: `${theme.primary}20` }}>
-              <div className={styles.statIcon} style={{ background: theme.light, color: theme.primary }}>
-                <TrendingUp size={24} />
-              </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statValue}>{purchased.reduce((acc, p) => acc + (p.lecture_count || 0), 0)}</span>
-                <span className={styles.statLabel}>محاضرة متاحة</span>
-              </div>
-            </div>
-            <div className={styles.statCard} style={{ borderColor: `${theme.primary}20` }}>
-              <div className={styles.statIcon} style={{ background: theme.light, color: theme.primary }}>
-                <Award size={24} />
-              </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statValue}>{userPackages.filter(up => new Date(up.expires_at) > new Date()).length}</span>
-                <span className={styles.statLabel}>يوم متبقي</span>
+            <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-5 rounded-3xl`} />
+            <div className="relative bg-white/60 backdrop-blur-xl border border-slate-200/60 rounded-3xl p-8 md:p-12">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div className="space-y-4">
+                  <motion.div 
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-slate-200 shadow-sm"
+                  >
+                    <Sparkles size={16} className="text-amber-500" />
+                    <span className="text-sm font-medium text-slate-600">أهلاً بك في رحلة التميز</span>
+                  </motion.div>
+                  <h2 className="text-4xl md:text-5xl font-bold text-slate-900">
+                    {getGradeName()}
+                  </h2>
+                  <p className="text-lg text-slate-500 max-w-xl">
+                    اختر باقتك المناسبة وابدأ رحلتك نحو التفوق العلمي مع أفضل المحتوى التعليمي المتاح
+                  </p>
+                </div>
+                <motion.div 
+                  whileHover={{ rotate: 5, scale: 1.05 }}
+                  className="relative"
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} opacity-20 blur-2xl rounded-full`} />
+                  <div className="relative bg-white p-6 rounded-3xl shadow-xl border border-slate-100">
+                    <GraduationCap size={64} style={{ color: theme.primary }} />
+                  </div>
+                </motion.div>
               </div>
             </div>
           </motion.div>
-        )}
 
-        {/* شبكة الباقات */}
-        <motion.div 
-          layout
-          className={styles.packagesGrid}
-        >
-          <AnimatePresence mode="popLayout">
-            {filteredPackages.map((pkg: any, index) => (
-              <PackageCard 
-                key={pkg.id}
-                pkg={pkg}
-                isPurchased={purchased.some(p => p.id === pkg.id)}
-                theme={theme}
-                index={index}
-                onPurchase={() => handlePurchaseClick(pkg)}
-                onEnter={() => handleEnterPackage(pkg.id)}
-              />
-            ))}
-          </AnimatePresence>
-        </motion.div>
-
-        {filteredPackages.length === 0 && (
+          {/* التبويبات */}
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={styles.emptyState}
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/80 backdrop-blur-sm rounded-2xl w-fit"
           >
-            <div className={styles.emptyIcon} style={{ background: theme.light }}>
-              <BookOpen size={48} color={theme.primary} />
-            </div>
-            <h3>لا توجد باقات متاحة</h3>
-            <p>سيتم إضافة باقات جديدة قريباً</p>
+            {[
+              { id: 'all', label: 'الكل', icon: Layers, count: purchased.length + available.length + offers.length },
+              { id: 'purchased', label: 'اشتراكاتي', icon: CheckCircle2, count: purchased.length, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { id: 'offers', label: 'عروض خاصة', icon: Zap, count: offers.length, color: 'text-amber-600', bg: 'bg-amber-50' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`relative flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                  activeTab === tab.id 
+                    ? 'bg-white text-slate-900 shadow-lg shadow-slate-200/50' 
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                }`}
+              >
+                <tab.icon size={18} className={activeTab === tab.id ? tab.color : ''} />
+                <span>{tab.label}</span>
+                {tab.count > 0 && (
+                  <span className={`ml-2 text-xs px-2.5 py-1 rounded-full ${
+                    activeTab === tab.id ? tab.bg || 'bg-slate-100' : 'bg-white/50'
+                  } ${activeTab === tab.id ? tab.color || 'text-slate-600' : 'text-slate-500'}`}>
+                    {tab.count}
+                  </span>
+                )}
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className={`absolute inset-0 border-2 rounded-xl ${tab.id === 'purchased' ? 'border-emerald-200' : tab.id === 'offers' ? 'border-amber-200' : 'border-blue-200'}`}
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+              </button>
+            ))}
           </motion.div>
-        )}
-      </main>
+
+          {/* الإحصائيات */}
+          {user && (
+            <motion.div 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-4"
+            >
+              {[
+                { 
+                  icon: BookMarked, 
+                  label: 'باقة نشطة', 
+                  value: purchased.length,
+                  gradient: 'from-blue-500 to-cyan-500'
+                },
+                { 
+                  icon: Play, 
+                  label: 'محاضرة متاحة', 
+                  value: purchased.reduce((acc, p) => acc + (p.lecture_count || 0), 0),
+                  gradient: 'from-violet-500 to-purple-500'
+                },
+                { 
+                  icon: Calendar, 
+                  label: 'يوم متبقي', 
+                  value: userPackages.filter(up => new Date(up.expires_at) > new Date()).length,
+                  gradient: 'from-amber-500 to-orange-500'
+                }
+              ].map((stat, idx) => (
+                <motion.div
+                  key={idx}
+                  whileHover={{ y: -4 }}
+                  className="relative group overflow-hidden bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300"
+                >
+                  <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${stat.gradient}`} />
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-slate-500 text-sm">{stat.label}</p>
+                      <p className="text-3xl font-bold text-slate-900 tabular-nums">{stat.value}</p>
+                    </div>
+                    <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.gradient} opacity-10 group-hover:opacity-20 transition-opacity`}>
+                      <stat.icon size={24} className="text-slate-900" />
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+
+          {/* شبكة الباقات */}
+          <motion.div 
+            layout
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            <AnimatePresence mode="popLayout">
+              {filteredPackages.map((pkg: any, index) => (
+                <PackageCard 
+                  key={pkg.id}
+                  pkg={pkg}
+                  isPurchased={purchased.some(p => p.id === pkg.id)}
+                  theme={theme}
+                  index={index}
+                  onPurchase={() => handlePurchaseClick(pkg)}
+                  onEnter={() => handleEnterPackage(pkg.id)}
+                />
+              ))}
+            </AnimatePresence>
+          </motion.div>
+
+          {filteredPackages.length === 0 && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-24"
+            >
+              <div className="relative inline-flex items-center justify-center mb-6">
+                <div className="absolute inset-0 bg-slate-100 rounded-full animate-pulse" />
+                <BookOpen size={48} className="relative text-slate-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">لا توجد باقات متاحة</h3>
+              <p className="text-slate-500">سيتم إضافة باقات جديدة قريباً</p>
+            </motion.div>
+          )}
+        </main>
+      </div>
 
       {/* مودال الشراء */}
       <AnimatePresence>
@@ -580,7 +584,7 @@ export default function GradePage() {
   )
 }
 
-// مكون بطاقة الباقة
+// مكون بطاقة الباقة بتصميم جديد
 function PackageCard({ 
   pkg, 
   isPurchased, 
@@ -591,21 +595,21 @@ function PackageCard({
 }: any) {
   const getTypeIcon = () => {
     switch (pkg.type) {
-      case 'weekly': return <Clock size={18} />
-      case 'monthly': return <Calendar size={18} />
-      case 'term': return <Medal size={18} />
-      case 'offer': return <Crown size={18} />
-      default: return <BookOpen size={18} />
+      case 'weekly': return <Clock size={16} />
+      case 'monthly': return <Calendar size={16} />
+      case 'term': return <Medal size={16} />
+      case 'offer': return <Crown size={16} />
+      default: return <BookOpen size={16} />
     }
   }
 
-  const getTypeColor = () => {
+  const getTypeLabel = () => {
     switch (pkg.type) {
-      case 'weekly': return 'bg-blue-100 text-blue-700'
-      case 'monthly': return 'bg-purple-100 text-purple-700'
-      case 'term': return 'bg-emerald-100 text-emerald-700'
-      case 'offer': return 'bg-amber-100 text-amber-700'
-      default: return 'bg-gray-100 text-gray-700'
+      case 'weekly': return 'أسبوعي'
+      case 'monthly': return 'شهري'
+      case 'term': return 'ترم كامل'
+      case 'offer': return 'عرض محدود'
+      default: return 'عام'
     }
   }
 
@@ -616,136 +620,139 @@ function PackageCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ delay: index * 0.05, type: "spring", stiffness: 100 }}
-      whileHover={{ y: -8, transition: { type: "spring", stiffness: 400 } }}
-      className={`${styles.packageCard} ${isPurchased ? styles.purchased : ''} ${pkg.type === 'offer' ? styles.offer : ''}`}
+      whileHover={{ y: -8 }}
+      className={`group relative bg-white rounded-3xl overflow-hidden border transition-all duration-300 ${
+        isPurchased 
+          ? 'border-emerald-200 shadow-lg shadow-emerald-100/50' 
+          : pkg.type === 'offer'
+          ? 'border-amber-200 shadow-lg shadow-amber-100/50'
+          : 'border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50'
+      }`}
     >
-      {/* شريط التميز */}
-      <div 
-        className={styles.cardAccent}
-        style={{ 
-          background: isPurchased 
-            ? 'linear-gradient(90deg, #10b981, #059669)' 
-            : pkg.type === 'offer'
-            ? 'linear-gradient(90deg, #f59e0b, #d97706)'
-            : `linear-gradient(90deg, ${theme.primary}, ${theme.accent})`
-        }}
-      />
-
+      {/* شريط التميز العلوي */}
+      <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${theme.gradient}`} />
+      
       {/* شارة الحالة */}
       {(isPurchased || pkg.type === 'offer') && (
-        <div className={styles.badge}>
-          {isPurchased ? (
-            <>
-              <CheckCircle2 size={14} />
-              <span>مشترك</span>
-            </>
-          ) : (
-            <>
-              <Zap size={14} />
-              <span>عرض خاص</span>
-            </>
-          )}
+        <div className="absolute top-4 right-4 z-10">
+          <motion.div 
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
+              isPurchased 
+                ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                : 'bg-amber-100 text-amber-700 border border-amber-200'
+            }`}
+          >
+            {isPurchased ? <CheckCircle2 size={14} /> : <Zap size={14} />}
+            <span>{isPurchased ? 'مفعل' : 'عرض خاص'}</span>
+          </motion.div>
         </div>
       )}
 
-      {/* الخصم */}
+      {/* خصم */}
       {pkg.original_price && (
-        <div className={styles.discountBadge}>
-          <span>خصم {Math.round((1 - pkg.price/pkg.original_price) * 100)}%</span>
+        <div className="absolute top-4 left-4 z-10">
+          <div className="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg shadow-red-500/30">
+            خصم {Math.round((1 - pkg.price/pkg.original_price) * 100)}%
+          </div>
         </div>
       )}
 
       {/* الصورة */}
-      <div className={styles.cardImageWrapper}>
+      <div className="relative h-48 overflow-hidden bg-slate-50">
         {pkg.image_url ? (
-          <img src={pkg.image_url} alt={pkg.name} loading="lazy" />
+          <img 
+            src={pkg.image_url} 
+            alt={pkg.name} 
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
         ) : (
-          <div className={styles.placeholderImage} style={{ background: theme.light }}>
-            {getTypeIcon()}
-          </div>
+          <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} opacity-10`} />
         )}
-        <div className={`${styles.typeChip} ${getTypeColor()}`}>
-          {getTypeIcon()}
-          <span>
-            {pkg.type === 'weekly' && 'أسبوعي'}
-            {pkg.type === 'monthly' && 'شهري'}
-            {pkg.type === 'term' && 'ترم كامل'}
-            {pkg.type === 'offer' && 'عرض محدود'}
-          </span>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        
+        {/* نوع الباقة */}
+        <div className="absolute bottom-4 right-4 flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-slate-700">
+            {getTypeIcon()}
+            <span>{getTypeLabel()}</span>
+          </div>
         </div>
       </div>
 
       {/* المحتوى */}
-      <div className={styles.cardBody}>
-        <h3 className={styles.cardTitle}>{pkg.name}</h3>
-        <p className={styles.cardDescription}>{pkg.description}</p>
+      <div className="p-6 space-y-4">
+        <div>
+          <h3 className="text-xl font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">{pkg.name}</h3>
+          <p className="text-sm text-slate-500 line-clamp-2">{pkg.description}</p>
+        </div>
 
         {/* المميزات */}
-        <ul className={styles.featuresList}>
+        <ul className="space-y-2">
           {pkg.features?.slice(0, 3).map((feature: string, i: number) => (
-            <li key={i}>
-              <CheckCircle2 size={14} style={{ color: theme.primary }} />
+            <li key={i} className="flex items-center gap-2 text-sm text-slate-600">
+              <div className={`p-1 rounded-full bg-gradient-to-r ${theme.gradient} bg-opacity-10`}>
+                <CheckCircle2 size={12} style={{ color: theme.primary }} />
+              </div>
               <span>{feature}</span>
             </li>
           ))}
         </ul>
 
         {/* الإحصائيات */}
-        <div className={styles.cardStats}>
-          <div className={styles.stat}>
-            <PlayCircle size={16} style={{ color: theme.primary }} />
+        <div className="flex items-center gap-4 py-3 border-t border-slate-100">
+          <div className="flex items-center gap-1.5 text-sm text-slate-600">
+            <PlayCircle size={16} className="text-slate-400" />
             <span>{pkg.lecture_count} محاضرة</span>
           </div>
-          <div className={styles.stat}>
-            <Clock size={16} style={{ color: theme.primary }} />
+          <div className="flex items-center gap-1.5 text-sm text-slate-600">
+            <Clock size={16} className="text-slate-400" />
             <span>{pkg.duration_days} يوم</span>
           </div>
         </div>
 
         {/* تاريخ الانتهاء */}
         {pkg.expires_at && (
-          <div className={styles.expiryDate}>
+          <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 p-3 rounded-xl">
             <Calendar size={14} />
             <span>ينتهي: {new Date(pkg.expires_at).toLocaleDateString('ar-EG')}</span>
           </div>
         )}
 
         {/* السعر والزر */}
-        <div className={styles.cardFooter}>
-          <div className={styles.priceWrapper}>
+        <div className="flex items-center justify-between pt-2">
+          <div className="flex flex-col">
             {pkg.original_price && (
-              <span className={styles.oldPrice}>{pkg.original_price.toLocaleString()} ج.م</span>
+              <span className="text-sm text-slate-400 line-through decoration-red-300">
+                {pkg.original_price.toLocaleString()} ج.م
+              </span>
             )}
-            <span className={styles.price} style={{ color: theme.primary }}>
+            <span className="text-2xl font-bold text-slate-900">
               {pkg.price.toLocaleString()}
-              <small> ج.م</small>
+              <span className="text-sm font-normal text-slate-500 mr-1">ج.م</span>
             </span>
           </div>
 
           {isPurchased ? (
             <motion.button
-              className={styles.enterButton}
-              style={{ background: '#10b981' }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={onEnter}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-medium transition-colors shadow-lg shadow-emerald-500/25"
             >
               <span>دخول</span>
-              <ChevronLeft size={18} />
+              <ArrowUpRight size={18} />
             </motion.button>
           ) : (
             <motion.button
-              className={styles.buyButton}
-              style={{ 
-                background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
-                boxShadow: `0 4px 15px ${theme.primary}40`
-              }}
-              whileHover={{ scale: 1.05, boxShadow: `0 6px 20px ${theme.primary}60` }}
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={onPurchase}
+              className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg shadow-slate-900/25 group/btn"
             >
               <span>اشترك الآن</span>
-              <ShoppingCart size={18} />
+              <ShoppingCart size={18} className="group-hover/btn:rotate-12 transition-transform" />
             </motion.button>
           )}
         </div>
@@ -754,7 +761,7 @@ function PackageCard({
   )
 }
 
-// مكون مودال الشراء
+// مكون مودال الشراء بتصميم جديد
 function PurchaseModal({ 
   pkg, 
   user, 
@@ -827,152 +834,189 @@ function PurchaseModal({
   }
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 50 }}
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+      />
+      
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 50 }}
-        className={styles.modal}
-        onClick={e => e.stopPropagation()}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden"
       >
         {showSuccess ? (
-          <div className={styles.successState}>
+          <div className="p-12 text-center">
             <motion.div 
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className={styles.successIcon}
-              style={{ background: theme.light }}
+              transition={{ type: "spring", stiffness: 200 }}
+              className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6"
             >
-              <CheckCircle2 size={64} color={theme.primary} />
+              <CheckCircle2 size={48} className="text-emerald-600" />
             </motion.div>
-            <h3>تم الشراء بنجاح!</h3>
-            <p>يمكنك الآن الوصول إلى جميع محتويات الباقة</p>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">تم الشراء بنجاح!</h3>
+            <p className="text-slate-500">يمكنك الآن الوصول إلى جميع محتويات الباقة</p>
           </div>
         ) : (
           <>
-            <button className={styles.closeBtn} onClick={onClose}>
-              <X size={24} />
-            </button>
-
-            <div className={styles.modalHeader} style={{ background: theme.light }}>
-              <div className={styles.modalIcon} style={{ background: theme.primary }}>
-                <Gift size={32} color="white" />
+            {/* هيدر المودال */}
+            <div className="relative p-6 border-b border-slate-100">
+              <button 
+                onClick={onClose}
+                className="absolute top-6 left-6 p-2 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X size={20} className="text-slate-400" />
+              </button>
+              
+              <div className="flex items-center gap-4">
+                <div className={`p-4 rounded-2xl bg-gradient-to-br ${theme.gradient} text-white`}>
+                  <Gift size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">{pkg.name}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-2xl font-bold text-slate-900">{pkg.price.toLocaleString()}</span>
+                    <span className="text-slate-500">ج.م</span>
+                    {pkg.original_price && (
+                      <span className="text-sm text-slate-400 line-through ml-2">
+                        {pkg.original_price.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-              <h3>{pkg.name}</h3>
-              <div className={styles.priceTag}>
-                <span style={{ color: theme.primary }}>{pkg.price.toLocaleString()}</span>
-                <small>جنية مصري</small>
-              </div>
-              {pkg.original_price && (
-                <span className={styles.originalPrice}>{pkg.original_price.toLocaleString()} ج.م</span>
-              )}
             </div>
 
-            <div className={styles.modalBody}>
-              <div className={styles.methods}>
-                <button 
-                  className={`${styles.methodCard} ${method === 'wallet' ? styles.active : ''}`}
+            <div className="p-6 space-y-6">
+              {/* طرق الدفع */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
                   onClick={() => setMethod('wallet')}
-                  style={method === 'wallet' ? { borderColor: theme.primary, background: theme.light } : {}}
+                  className={`relative p-4 rounded-2xl border-2 transition-all text-right ${
+                    method === 'wallet' 
+                      ? 'border-blue-500 bg-blue-50/50' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
                 >
-                  <div className={styles.methodIcon} style={{ background: theme.primary }}>
-                    <CreditCard size={24} color="white" />
+                  <div className="flex items-start justify-between mb-2">
+                    <div className={`p-2 rounded-xl ${method === 'wallet' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      <CreditCard size={20} />
+                    </div>
+                    {walletBalance >= pkg.price ? (
+                      <CheckCircle2 size={20} className="text-emerald-500" />
+                    ) : (
+                      <AlertCircle size={20} className="text-red-500" />
+                    )}
                   </div>
-                  <div className={styles.methodInfo}>
-                    <strong>الدفع من المحفظة</strong>
-                    <span>رصيدك: {walletBalance.toLocaleString()} ج.م</span>
-                  </div>
-                  {walletBalance >= pkg.price ? (
-                    <CheckCircle2 size={20} color="#10b981" />
-                  ) : (
-                    <AlertCircle size={20} color="#ef4444" />
-                  )}
+                  <p className="font-semibold text-slate-900">المحفظة</p>
+                  <p className="text-xs text-slate-500 mt-1">رصيد: {walletBalance.toLocaleString()} ج.م</p>
                 </button>
 
-                <button 
-                  className={`${styles.methodCard} ${method === 'code' ? styles.active : ''}`}
+                <button
                   onClick={() => setMethod('code')}
-                  style={method === 'code' ? { borderColor: theme.primary, background: theme.light } : {}}
+                  className={`relative p-4 rounded-2xl border-2 transition-all text-right ${
+                    method === 'code' 
+                      ? 'border-amber-500 bg-amber-50/50' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
                 >
-                  <div className={styles.methodIcon} style={{ background: '#f59e0b' }}>
-                    <Ticket size={24} color="white" />
+                  <div className="flex items-start justify-between mb-2">
+                    <div className={`p-2 rounded-xl ${method === 'code' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      <Ticket size={20} />
+                    </div>
+                    {codeValid && <CheckCircle2 size={20} className="text-emerald-500" />}
                   </div>
-                  <div className={styles.methodInfo}>
-                    <strong>كود تفعيل</strong>
-                    <span>لديك كود خصم؟</span>
-                  </div>
+                  <p className="font-semibold text-slate-900">كود تفعيل</p>
+                  <p className="text-xs text-slate-500 mt-1">لديك كود خصم؟</p>
                 </button>
               </div>
 
-              {method === 'code' && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className={styles.codeInput}
-                >
-                  <div className={styles.inputWrapper}>
-                    <input 
-                      type="text" 
-                      value={code} 
-                      onChange={e => setCode(e.target.value.toUpperCase())} 
-                      placeholder="أدخل الكود هنا"
-                      disabled={!!codeValid}
-                      maxLength={20}
-                    />
-                    <button 
-                      onClick={handleValidateCode}
-                      disabled={loading || !code || !!codeValid}
-                      style={{ background: theme.primary }}
-                    >
-                      {loading ? <Loader2 className={styles.spinning} size={20} /> : 'تحقق'}
-                    </button>
-                  </div>
-                  {codeValid && (
-                    <div className={styles.codeSuccess}>
-                      <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                      <span>كود صالح! {codeValid.discount_percentage && `(خصم ${codeValid.discount_percentage}%)`}</span>
+              {/* حقل الكود */}
+              <AnimatePresence>
+                {method === 'code' && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.toUpperCase())}
+                        placeholder="أدخل الكود هنا"
+                        disabled={!!codeValid}
+                        className="flex-1 px-4 py-3 border border-slate-200 rounded-xl text-left font-mono tracking-wider uppercase focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                      />
+                      <button
+                        onClick={handleValidateCode}
+                        disabled={loading || !code || !!codeValid}
+                        className="px-6 py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {loading ? <Loader2 className="animate-spin" size={20} /> : 'تحقق'}
+                      </button>
                     </div>
-                  )}
-                </motion.div>
-              )}
+                    {codeValid && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center gap-2 mt-3 text-sm text-emerald-600 bg-emerald-50 p-3 rounded-xl"
+                      >
+                        <Star size={16} fill="currentColor" />
+                        <span>كود صالح! {codeValid.discount_percentage && `(خصم ${codeValid.discount_percentage}%)`}</span>
+                      </motion.div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
+              {/* خطأ الرصيد */}
               {method === 'wallet' && walletBalance < pkg.price && (
-                <div className={styles.insufficientFunds}>
-                  <AlertCircle size={20} color="#ef4444" />
+                <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm">
+                  <AlertCircle size={20} />
                   <div>
-                    <strong>رصيد غير كافٍ</strong>
-                    <span>يرجى شحن محفظتك أولاً</span>
+                    <p className="font-semibold">رصيد غير كافٍ</p>
+                    <p className="text-red-500/80 text-xs">يرجى شحن محفظتك أولاً</p>
                   </div>
                 </div>
               )}
 
+              {/* خطأ عام */}
               {error && (
-                <div className={styles.errorMessage}>
+                <div className="flex items-center gap-2 p-4 bg-red-50 text-red-600 rounded-xl text-sm">
                   <AlertCircle size={18} />
                   <span>{error}</span>
                 </div>
               )}
 
-              <motion.button 
-                className={styles.confirmButton}
-                style={{ 
-                  background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
-                  opacity: (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid) ? 0.5 : 1
-                }}
-                whileHover={{ scale: (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid) ? 1 : 1.02 }}
-                whileTap={{ scale: (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid) ? 1 : 0.98 }}
+              {/* زر التأكيد */}
+              <button
                 onClick={handlePurchase}
                 disabled={loading || (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid)}
+                className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-900/20"
               >
                 {loading ? (
-                  <><Loader2 className={styles.spinning} size={20} /> جاري المعالجة...</>
+                  <>
+                    <Loader2 className="animate-spin" size={20} />
+                    <span>جاري المعالجة...</span>
+                  </>
                 ) : (
-                  <><span>تأكيد الشراء</span><ArrowRight size={20} /></>
+                  <>
+                    <span>تأكيد الشراء</span>
+                    <ArrowRight size={20} />
+                  </>
                 )}
-              </motion.button>
+              </button>
 
-              <div className={styles.secureBadge}>
-                <Shield size={16} />
+              {/* تأمين */}
+              <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+                <Shield size={14} />
                 <span>معاملة آمنة ومشفرة 100%</span>
               </div>
             </div>
@@ -983,34 +1027,36 @@ function PurchaseModal({
   )
 }
 
-// تأثير الاحتفال
+// تأثير الاحتفال المحسن
 function ConfettiEffect() {
   return (
-    <div className={styles.confettiContainer}>
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
       {[...Array(50)].map((_, i) => (
         <motion.div
           key={i}
-          className={styles.confetti}
           initial={{ 
-            top: -10, 
-            left: Math.random() * 100 + '%',
+            top: -20, 
+            left: `${Math.random() * 100}%`,
             rotate: 0,
             scale: 0
           }}
           animate={{ 
             top: '110%', 
             rotate: Math.random() * 720,
-            scale: Math.random() * 0.5 + 0.5
+            scale: Math.random() * 0.5 + 0.5,
+            x: (Math.random() - 0.5) * 200
           }}
           transition={{ 
             duration: Math.random() * 3 + 2,
-            ease: "linear"
+            ease: "linear",
+            delay: Math.random() * 0.5
           }}
+          className="absolute"
           style={{
-            backgroundColor: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#6c5ce7'][Math.floor(Math.random() * 5)],
             width: Math.random() * 10 + 5,
             height: Math.random() * 10 + 5,
-            borderRadius: Math.random() > 0.5 ? '50%' : '0'
+            backgroundColor: ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444'][Math.floor(Math.random() * 5)],
+            borderRadius: Math.random() > 0.5 ? '50%' : '2px'
           }}
         />
       ))}
