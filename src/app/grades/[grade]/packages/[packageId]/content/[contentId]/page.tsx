@@ -1,2085 +1,1511 @@
-'use client';
+'use client'
 
-import { createClient } from '@/lib/supabase/25client';
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { createBrowserClient } from '@supabase/ssr';
+import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import { createBrowserClient } from '@supabase/ssr'
 import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Maximize,
-  Minimize,
-  SkipBack,
-  SkipForward,
-  Loader2,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  XCircle,
-  ChevronLeft,
-  ChevronRight,
-  Flag,
-  AlertTriangle,
-  RotateCcw,
-  Eye,
-  FileText,
-  Video,
-  HelpCircle,
-  ArrowRight,
-  Lock,
-} from 'lucide-react';
-import styles from './ContentPage.module.css';
+  Video, FileText, BookOpen, Clock, CheckCircle,
+  X, ArrowRight, AlertCircle, Loader2, Download,
+  Target, Lock, Eye, Home, ChevronRight, Shield, 
+  Award, Zap, Play, Pause, Volume2, Maximize,
+  ExternalLink, Trophy, ArrowLeft, RefreshCw, XCircle
+} from 'lucide-react'
+import styles from './ContentPage.module.css'
 
-// ============================================
-// Types
-// ============================================
-interface LectureContent {
-  id: string;
-  lecture_id: string;
-  type: 'video' | 'pdf' | 'exam' | 'text';
-  title: string;
-  description: string | null;
-  content_url: string | null;
-  duration_minutes: number;
-  order_number: number;
-  is_active: boolean;
-  max_attempts: number;
-  pass_score: number;
-  created_at: string;
+// ==========================================
+// SUPABASE CLIENT
+// ==========================================
+declare global {
+  var __contentPageSupabase: ReturnType<typeof createBrowserClient> | undefined
 }
 
-interface ExamQuestion {
-  id: string;
-  content_id: string;
-  question: string;
-  question_type: 'multiple_choice' | 'true_false' | 'essay';
-  options: string[] | null;
-  correct_answer: string | null;
-  points: number;
-  order_number: number;
-  is_active: boolean;
-  created_at: string;
-}
-
-interface UserProgress {
-  id: string;
-  user_id: string;
-  lecture_content_id: string;
-  package_id: string;
-  status: 'not_started' | 'in_progress' | 'completed' | 'passed' | 'failed';
-  score: number | null;
-  attempts: number;
-  last_accessed_at: string | null;
-  completed_at: string | null;
-  created_at: string;
-}
-
-interface VideoView {
-  id: string;
-  user_id: string;
-  content_id: string;
-  watch_count: number;
-  last_watched_at: string | null;
-  created_at: string;
-}
-
-interface ExamResult {
-  id: string;
-  user_id: string;
-  content_id: string;
-  attempt_number: number;
-  score: number;
-  total_questions: number;
-  correct_answers: number;
-  wrong_answers: number;
-  started_at: string | null;
-  completed_at: string;
-  created_at: string;
-}
-
-interface ExamResultData {
-  score: number;
-  totalQuestions: number;
-  correctAnswers: number;
-  wrongAnswers: number;
-  passed: boolean;
-  answers: { questionId: string; isCorrect: boolean; userAnswer: string; correctAnswer: string }[];
-}
-
-interface AccessCheckResult {
-  canAccess: boolean;
-  currentAttempts: number;
-  maxAttempts: number;
-  remainingAttempts: number;
-  isCompleted: boolean;
-  lastScore?: number;
-  message?: string;
-}
-
-// ============================================
-// Utility Functions
-// ============================================
-function shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+const getSupabase = () => {
+  if (typeof window === 'undefined') return null
+  
+  if (!globalThis.__contentPageSupabase) {
+    globalThis.__contentPageSupabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
   }
-  return shuffled;
+  return globalThis.__contentPageSupabase
 }
 
-function formatTime(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+// ==========================================
+// TYPES
+// ==========================================
+interface Question {
+  id: number
+  text: string
+  options: { id: string; text: string }[]
+  correctAnswer: string
 }
 
-// ============================================
-// Video Player Component
-// ============================================
-function VideoPlayer({
-  content,
-  userId,
-  packageId,
-  onComplete,
-}: {
-  content: LectureContent;
-  userId: string;
-  packageId: string;
-  onComplete?: () => void;
+interface Theme {
+  primary: string
+  success: string
+}
+
+// ==========================================
+// VIDEO PLAYER - محسن بعناصر تحكم كاملة
+// ==========================================
+function ProtectedVideoPlayer({ 
+  videoUrl, contentId, userId, packageId, onProgress, theme 
+}: { 
+  videoUrl: string; contentId: string; userId: string; packageId: string
+  onProgress: (progress: number) => void; theme: Theme
 }) {
-const supabase = createClient();
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const youtubePlayerRef = useRef<any>(null)
+  const youtubeContainerRef = useRef<HTMLDivElement>(null)
+  
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [volume, setVolume] = useState(1)
+  const [playbackRate, setPlaybackRate] = useState(1)
+  const [showControls, setShowControls] = useState(true)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showQualityMenu, setShowQualityMenu] = useState(false)
+  const [availableQualities, setAvailableQualities] = useState<string[]>([])
+  const [currentQuality, setCurrentQuality] = useState('auto')
+  const [isYouTubeReady, setIsYouTubeReady] = useState(false)
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const progressRef = useRef<HTMLDivElement>(null);
+  const isYouTube = videoUrl?.includes('youtube.com') || videoUrl?.includes('youtu.be')
+  const getYouTubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/|live\/)([^#\&\?]*).*/
+    const match = url.match(regExp)
+    return (match && match[2].length === 11) ? match[2] : null
+  }
+  const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showControls, setShowControls] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [accessCheck, setAccessCheck] = useState<AccessCheckResult | null>(null);
-  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
-  const [viewRecorded, setViewRecorded] = useState(false);
-  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Check access on mount
+  // تحميل YouTube API والمشغل
   useEffect(() => {
-    checkAccess();
-  }, [content.id, userId]);
+    if (!isYouTube || !youtubeId) return
 
-  const checkAccess = async () => {
-    setIsCheckingAccess(true);
-    try {
-const { data: videoView, error: viewError } = await supabase
-  .from('video_views')
-  .select('*')
-  .eq('user_id', userId)
-  .eq('content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      if (viewError && viewError.code !== 'PGRST116') {
-        throw viewError;
+    const loadYouTubeAPI = () => {
+      if ((window as any).YT && (window as any).YT.Player) {
+        initYouTubePlayer()
+        return
       }
-
-const { data: progress, error: progressError } = await supabase
-  .from('user_progress')
-  .select('*')
-  .eq('user_id', userId)
-  .eq('lecture_content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      if (progressError && progressError.code !== 'PGRST116') {
-        throw progressError;
-      }
-
-      const currentAttempts = (videoView as VideoView | null)?.watch_count || 0;
-      const contentMaxAttempts = content.max_attempts || 1;
-      const remainingAttempts = contentMaxAttempts - currentAttempts;
-      const isCompleted = (progress as UserProgress | null)?.status === 'completed';
-
-      if (isCompleted) {
-        setAccessCheck({
-          canAccess: true,
-          currentAttempts,
-          maxAttempts: contentMaxAttempts,
-          remainingAttempts: Infinity,
-          isCompleted: true,
-          message: 'لقد أكملت هذا المحتوى مسبقاً',
-        });
-        setIsCheckingAccess(false);
-        return;
-      }
-
-      if (remainingAttempts <= 0) {
-        setAccessCheck({
-          canAccess: false,
-          currentAttempts,
-          maxAttempts: contentMaxAttempts,
-          remainingAttempts: 0,
-          isCompleted: false,
-          message: 'لقد تجاوزت الحد الأقصى لعدد المشاهدات',
-        });
-        setIsCheckingAccess(false);
-        return;
-      }
-
-      setAccessCheck({
-        canAccess: true,
-        currentAttempts,
-        maxAttempts: contentMaxAttempts,
-        remainingAttempts,
-        isCompleted: false,
-      });
-
-      await recordVideoView();
-    } catch (err) {
-      console.error('Error checking access:', err);
-      setError('حدث خطأ أثناء التحقق من الصلاحية');
-    } finally {
-      setIsCheckingAccess(false);
+      
+      const tag = document.createElement('script')
+      tag.src = 'https://www.youtube.com/iframe_api'
+      const firstScriptTag = document.getElementsByTagName('script')[0]
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag)
+      
+      ;(window as any).onYouTubeIframeAPIReady = initYouTubePlayer
     }
-  };
 
-  const recordVideoView = async () => {
-    if (viewRecorded) return;
+    const initYouTubePlayer = () => {
+      if (!youtubeContainerRef.current) return
+      
+      youtubePlayerRef.current = new (window as any).YT.Player(youtubeContainerRef.current, {
+        videoId: youtubeId,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          modestbranding: 1,
+          rel: 0,
+          showinfo: 0,
+          fs: 0,
+          iv_load_policy: 3,
+          playsinline: 1,
+          enablejsapi: 1
+        },
+        events: {
+          onReady: onPlayerReady,
+          onStateChange: onPlayerStateChange
+        }
+      })
+    }
 
-    try {
-      const { data: existing } = await supabase
-        .from('video_views')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      const now = new Date().toISOString();
-
-      if (existing) {
-        await supabase
-          .from('video_views')
-          .update({
-            watch_count: ((existing as VideoView).watch_count || 0) + 1,
-            last_watched_at: now,
-          })
-          .eq('id', (existing as VideoView).id);
-      } else {
-        await supabase.from('video_views').insert({
-          user_id: userId,
-          content_id: content.id,
-          watch_count: 1,
-          last_watched_at: now,
-        });
+    loadYouTubeAPI()
+    
+    return () => {
+      if (youtubePlayerRef.current) {
+        youtubePlayerRef.current.destroy()
       }
+    }
+  }, [isYouTube, youtubeId])
 
-      const { data: progress } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('lecture_content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-      if (progress) {
-        await supabase
-          .from('user_progress')
-          .update({
-            status: 'in_progress',
-            last_accessed_at: now,
-          })
-          .eq('id', (progress as UserProgress).id);
-      } else {
-        await supabase.from('user_progress').insert({
-          user_id: userId,
-          lecture_content_id: content.id,
-          package_id: packageId,
-          status: 'in_progress',
-          last_accessed_at: now,
-        });
+  const onPlayerReady = (event: any) => {
+    setIsYouTubeReady(true)
+    setDuration(event.target.getDuration())
+    const qualities = event.target.getAvailableQualityLevels()
+    if (qualities && qualities.length > 0) {
+      setAvailableQualities(qualities)
+    }
+    event.target.setVolume(100)
+  }
+
+  const onPlayerStateChange = (event: any) => {
+    setIsPlaying(event.data === 1)
+    if (event.data === 0) {
+      onProgress(100)
+    }
+  }
+
+  // تحديث التقدم والوقت لليوتيوب
+  useEffect(() => {
+    if (!isYouTube || !isPlaying) return
+    
+    const interval = setInterval(() => {
+      if (youtubePlayerRef.current && isYouTubeReady) {
+        const current = youtubePlayerRef.current.getCurrentTime()
+        const dur = youtubePlayerRef.current.getDuration()
+        setCurrentTime(current)
+        setDuration(dur)
+        if (dur > 0) {
+          onProgress((current / dur) * 100)
+        }
       }
+    }, 1000)
+    
+    return () => clearInterval(interval)
+  }, [isYouTube, isPlaying, isYouTubeReady, onProgress])
 
-      setViewRecorded(true);
-    } catch (err) {
-      console.error('Error recording view:', err);
-    }
-  };
-
-  const markAsCompleted = async () => {
-    try {
-      const { data: progress } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('lecture_content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      const now = new Date().toISOString();
-
-      if (progress) {
-        await supabase
-          .from('user_progress')
-          .update({
-            status: 'completed',
-            completed_at: now,
-          })
-          .eq('id', (progress as UserProgress).id);
-      }
-
-      onComplete?.();
-    } catch (err) {
-      console.error('Error marking as completed:', err);
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration);
-      setIsLoading(false);
-    }
-  };
-
-  const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
-    }
-  };
-
-  const handleEnded = () => {
-    setIsPlaying(false);
-    markAsCompleted();
-  };
-
-  const handleError = () => {
-    setError('حدث خطأ أثناء تحميل الفيديو');
-    setIsLoading(false);
-  };
-
-  const togglePlay = useCallback(() => {
-    if (videoRef.current) {
+  const togglePlay = () => {
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
       if (isPlaying) {
-        videoRef.current.pause();
+        youtubePlayerRef.current.pauseVideo()
       } else {
-        videoRef.current.play();
+        youtubePlayerRef.current.playVideo()
       }
-      setIsPlaying(!isPlaying);
+    } else if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause()
+      } else {
+        videoRef.current.play()
+      }
     }
-  }, [isPlaying]);
-
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (progressRef.current && videoRef.current) {
-      const rect = progressRef.current.getBoundingClientRect();
-      const pos = (e.clientX - rect.left) / rect.width;
-      const newTime = pos * duration;
-      videoRef.current.currentTime = newTime;
-      setCurrentTime(newTime);
-    }
-  };
+  }
 
   const skip = (seconds: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = Math.max(
-        0,
-        Math.min(duration, videoRef.current.currentTime + seconds)
-      );
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      const current = youtubePlayerRef.current.getCurrentTime()
+      youtubePlayerRef.current.seekTo(current + seconds, true)
+    } else if (videoRef.current) {
+      videoRef.current.currentTime += seconds
     }
-  };
+  }
 
-  const toggleMute = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = parseFloat(e.target.value)
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      youtubePlayerRef.current.seekTo(time, true)
+    } else if (videoRef.current) {
+      videoRef.current.currentTime = time
     }
-  };
+    setCurrentTime(time)
+  }
 
-  const handleVolumeChange = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const pos = (e.clientX - rect.left) / rect.width;
-    const newVolume = Math.max(0, Math.min(1, pos));
-    if (videoRef.current) {
-      videoRef.current.volume = newVolume;
-      setVolume(newVolume);
-      setIsMuted(newVolume === 0);
+  const changeSpeed = () => {
+    const speeds = [0.5, 1, 1.25, 1.5, 2]
+    const currentIndex = speeds.indexOf(playbackRate)
+    const next = speeds[(currentIndex + 1) % speeds.length]
+    
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      youtubePlayerRef.current.setPlaybackRate(next)
+    } else if (videoRef.current) {
+      videoRef.current.playbackRate = next
     }
-  };
+    setPlaybackRate(next)
+  }
 
-  const toggleFullscreen = async () => {
-    if (!containerRef.current) return;
-
-    try {
-      if (!isFullscreen) {
-        await containerRef.current.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch (err) {
-      console.error('Fullscreen error:', err);
+  const changeQuality = (quality: string) => {
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      youtubePlayerRef.current.setPlaybackQuality(quality)
+      setCurrentQuality(quality)
     }
-  };
+    setShowQualityMenu(false)
+  }
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return
+    
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`)
+      })
+    } else {
+      document.exitFullscreen()
+    }
+  }
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  // منع القائمة اليمنى والنسخ
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    return false
+  }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // واجهة التحكم الموحدة
+  const renderControls = () => (
+    <div style={{
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      background: 'linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.6), transparent)',
+      padding: '20px 16px 16px',
+      transition: 'opacity 0.3s',
+      opacity: showControls ? 1 : 0,
+      pointerEvents: showControls ? 'auto' : 'none',
+      zIndex: 20,
+      direction: 'rtl'
+    }}>
+      {/* شريط التقدم */}
+      <div style={{ marginBottom: '12px' }}>
+        <input
+          type="range"
+          min={0}
+          max={duration || 100}
+          value={currentTime}
+          onChange={handleSeek}
+          style={{
+            width: '100%',
+            height: '6px',
+            cursor: 'pointer',
+            accentColor: theme.primary,
+            background: 'rgba(255,255,255,0.3)',
+            borderRadius: '3px',
+            outline: 'none',
+            direction: 'ltr'
+          }}
+        />
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          color: 'white', 
+          fontSize: '0.8rem',
+          marginTop: '4px',
+          fontFamily: 'monospace',
+          direction: 'ltr'
+        }}>
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+      </div>
+
+      {/* أزرار التحكم */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '12px',
+        justifyContent: 'center',
+        flexWrap: 'wrap'
+      }}>
+        {/* تأخير 10 ثواني */}
+        <button 
+          onClick={() => skip(-10)}
+          style={buttonStyle}
+          title="تأخير 10 ثواني"
+        >
+          <RefreshCw size={20} style={{ transform: 'scaleX(-1)' }} />
+        </button>
+
+        {/* تشغيل/إيقاف */}
+        <button 
+          onClick={togglePlay}
+          style={{
+            ...buttonStyle,
+            background: 'rgba(255,255,255,0.2)',
+            borderRadius: '50%',
+            padding: '12px',
+            transform: 'scale(1.1)'
+          }}
+        >
+          {isPlaying ? <Pause size={28} fill="white" /> : <Play size={28} fill="white" />}
+        </button>
+
+        {/* تقديم 10 ثواني */}
+        <button 
+          onClick={() => skip(10)}
+          style={buttonStyle}
+          title="تقديم 10 ثواني"
+        >
+          <RefreshCw size={20} />
+        </button>
+
+        {/* فاصل */}
+        <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.3)', margin: '0 8px' }} />
+
+        {/* الصوت */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Volume2 size={20} color="white" />
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.1}
+            value={volume}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value)
+              setVolume(v)
+              if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+                youtubePlayerRef.current.setVolume(v * 100)
+              } else if (videoRef.current) {
+                videoRef.current.volume = v
+              }
+            }}
+            style={{ width: '80px', accentColor: 'white', cursor: 'pointer' }}
+          />
+        </div>
+
+        {/* السرعة */}
+        <button 
+          onClick={changeSpeed}
+          style={{ ...buttonStyle, fontSize: '0.85rem', fontWeight: 'bold', minWidth: '48px' }}
+          title="سرعة التشغيل"
+        >
+          {playbackRate}x
+        </button>
+
+        {/* الجودة - لليوتيوب فقط */}
+        {isYouTube && (
+          <div style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setShowQualityMenu(!showQualityMenu)}
+              style={{ ...buttonStyle, fontSize: '0.8rem', fontWeight: 'bold', minWidth: '50px' }}
+              title="جودة الفيديو"
+            >
+              {currentQuality === 'auto' ? 'جودة' : currentQuality}
+            </button>
+            {showQualityMenu && (
+              <div style={{
+                position: 'absolute',
+                bottom: '40px',
+                right: '50%',
+                transform: 'translateX(50%)',
+                background: 'rgba(0,0,0,0.95)',
+                borderRadius: '8px',
+                padding: '8px',
+                minWidth: '100px',
+                zIndex: 30,
+                border: '1px solid rgba(255,255,255,0.2)'
+              }}>
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.7rem', padding: '4px 8px', textAlign: 'center' }}>
+                  الجودة
+                </div>
+                {['auto', ...availableQualities].map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => changeQuality(q)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '6px 12px',
+                      color: 'white',
+                      background: currentQuality === q ? theme.primary : 'transparent',
+                      border: 'none',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      borderRadius: '4px',
+                      marginBottom: '2px'
+                    }}
+                  >
+                    {q === 'auto' ? 'تلقائي' : q}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ملء الشاشة */}
+        <button 
+          onClick={toggleFullscreen}
+          style={buttonStyle}
+          title={isFullscreen ? 'إخراج من ملء الشاشة' : 'ملء الشاشة'}
+        >
+          <Maximize size={20} />
+        </button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div 
+      ref={containerRef}
+      style={{ 
+        position: 'relative', 
+        background: '#000', 
+        borderRadius: '0.75rem', 
+        overflow: 'hidden',
+        aspectRatio: '16/9',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        msUserSelect: 'none'
+      }}
+      onMouseEnter={() => setShowControls(true)}
+      onMouseLeave={() => isPlaying && setShowControls(false)}
+      onContextMenu={handleContextMenu}
+      onCopy={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}
+    >
+      {isYouTube && youtubeId ? (
+        <>
+          <div 
+            ref={youtubeContainerRef}
+            style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
+          />
+          {/* طبقة حماية لليوتيوب */}
+          <div 
+            onClick={togglePlay}
+            onContextMenu={handleContextMenu}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 10,
+              cursor: 'pointer',
+              background: 'transparent'
+            }}
+          />
+        </>
+      ) : (
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+          onTimeUpdate={() => {
+            if (videoRef.current) {
+              setCurrentTime(videoRef.current.currentTime)
+              setDuration(videoRef.current.duration || 0)
+              if (videoRef.current.duration > 0) {
+                onProgress((videoRef.current.currentTime / videoRef.current.duration) * 100)
+              }
+            }
+          }}
+          onLoadedMetadata={() => {
+            if (videoRef.current) setDuration(videoRef.current.duration || 0)
+          }}
+          onEnded={() => setIsPlaying(false)}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onVolumeChange={() => {
+            if (videoRef.current) setVolume(videoRef.current.volume)
+          }}
+          onRateChange={() => {
+            if (videoRef.current) setPlaybackRate(videoRef.current.playbackRate)
+          }}
+          controls={false}
+          playsInline
+          disablePictureInPicture
+          controlsList="nodownload noplaybackrate nofullscreen"
+          onContextMenu={handleContextMenu}
+        />
+      )}
+
+      {/* طبقة حماية إضافية */}
+      <div 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 5,
+          pointerEvents: 'none'
+        }}
+        onContextMenu={handleContextMenu}
+      />
+
+      {renderControls()}
+
+      {/* أيقونة التشغيل في المنتصف */}
+      {!isPlaying && (
+        <div 
+          onClick={togglePlay}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(0,0,0,0.7)',
+            borderRadius: '50%',
+            padding: '24px',
+            cursor: 'pointer',
+            zIndex: 15,
+            border: '2px solid rgba(255,255,255,0.3)'
+          }}
+        >
+          <Play size={40} color="white" fill="white" />
+        </div>
+      )}
+
+      {/* شارة المحتوى المحمي */}
+      <div style={{
+        position: 'absolute',
+        top: '12px',
+        left: '12px',
+        background: 'rgba(0,0,0,0.8)',
+        color: '#fbbf24',
+        padding: '6px 12px',
+        borderRadius: '20px',
+        fontSize: '0.75rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        zIndex: 15,
+        userSelect: 'none',
+        pointerEvents: 'none',
+        fontWeight: 'bold',
+        border: '1px solid rgba(251, 191, 36, 0.3)'
+      }}>
+        <Shield size={14} />
+        <span>محمي من النسخ</span>
+      </div>
+    </div>
+  )
+}
+
+// style للأزرار
+const buttonStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  color: 'white',
+  cursor: 'pointer',
+  padding: '8px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: '8px',
+  transition: 'all 0.2s'
+}// ==========================================
+// PDF VIEWER
+// ==========================================
+function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: { 
+  pdfUrl: string; contentId: string; userId: string; packageId: string
+  theme: Theme; onProgress?: (progress: number) => void
+}) {
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [timeSpent, setTimeSpent] = useState(0)
+  const [progressSaved, setProgressSaved] = useState(false)
+
+  const isGoogleDrive = pdfUrl?.includes('drive.google.com') || pdfUrl?.includes('docs.google.com')
+  const getGoogleDriveId = (url: string) => {
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/)
+    return match ? match[1] : null
+  }
+  const driveId = isGoogleDrive ? getGoogleDriveId(pdfUrl) : null
+  
+  const getViewerUrl = () => {
+    if (!pdfUrl) return ''
+    if (isGoogleDrive && driveId) return `https://drive.google.com/file/d/${driveId}/preview`
+    if (pdfUrl.includes('dropbox.com')) return pdfUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '?dl=1')
+    if (!pdfUrl.endsWith('.pdf')) return pdfUrl
+    return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(pdfUrl)}`
+  }
+
+  const saveProgress = useCallback(async () => {
+    if (!userId || !contentId || progressSaved) return
+    try {
+      const supabase = getSupabase()
+      if (!supabase) return
+      await supabase.from('user_progress').upsert({
+        user_id: userId,
+        lecture_content_id: contentId,
+        package_id: packageId,
+        status: 'completed',
+        score: 100,
+        last_accessed_at: new Date().toISOString(),
+        completed_at: new Date().toISOString()
+      }, { onConflict: 'user_id,lecture_content_id' })
+      setProgressSaved(true)
+      if (onProgress) onProgress(100)
+    } catch (err) {
+      console.error('Error saving progress:', err)
+    }
+  }, [userId, contentId, packageId, onProgress, progressSaved])
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ([' ', 'ArrowLeft', 'ArrowRight', 'f', 'm'].includes(e.key)) {
-        e.preventDefault();
-      }
+    const timer = setTimeout(() => {
+      if (pdfUrl) { setIsLoading(false); saveProgress() }
+      else { setError('رابط الملف غير متوفر'); setIsLoading(false) }
+    }, 1000)
+    const interval = setInterval(() => { if (document.hasFocus()) setTimeSpent(prev => prev + 1) }, 1000)
+    return () => { clearTimeout(timer); clearInterval(interval) }
+  }, [pdfUrl, saveProgress])
 
-      switch (e.key) {
-        case ' ':
-        case 'k':
-          togglePlay();
-          break;
-        case 'ArrowLeft':
-          skip(-10);
-          break;
-        case 'ArrowRight':
-          skip(10);
-          break;
-        case 'f':
-          toggleFullscreen();
-          break;
-        case 'm':
-          toggleMute();
-          break;
-        case 'ArrowUp':
-          if (videoRef.current) {
-            videoRef.current.volume = Math.min(1, videoRef.current.volume + 0.1);
-            setVolume(videoRef.current.volume);
-          }
-          break;
-        case 'ArrowDown':
-          if (videoRef.current) {
-            videoRef.current.volume = Math.max(0, videoRef.current.volume - 0.1);
-            setVolume(videoRef.current.volume);
-          }
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePlay]);
-
-  const handleMouseMove = () => {
-    setShowControls(true);
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
+  const handleDownload = () => {
+    if (!pdfUrl) return
+    if (isGoogleDrive && driveId) window.open(`https://drive.google.com/uc?export=download&id=${driveId}`, '_blank')
+    else {
+      const link = document.createElement('a')
+      link.href = pdfUrl; link.download = `document-${contentId}.pdf`; link.target = '_blank'; link.click()
     }
-    if (isPlaying) {
-      controlsTimeoutRef.current = setTimeout(() => {
-        setShowControls(false);
-      }, 3000);
-    }
-  };
-
-  const formatVideoTime = (time: number) => {
-    const hours = Math.floor(time / 3600);
-    const minutes = Math.floor((time % 3600) / 60);
-    const seconds = Math.floor(time % 60);
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  if (isCheckingAccess) {
-    return (
-      <div className={styles.accessCheckContainer}>
-        <div className={styles.accessCheckCard}>
-          <div className={`${styles.accessCheckIcon} ${styles.loading}`}>
-            <Loader2 className="w-10 h-10 animate-spin" />
-          </div>
-          <h2 className={styles.accessCheckTitle}>جاري التحقق من الصلاحية...</h2>
-          <p className={styles.accessCheckMessage}>يرجى الانتظار بينما نتحقق من صلاحية الوصول</p>
-        </div>
-      </div>
-    );
+    saveProgress()
   }
 
-  if (!accessCheck?.canAccess) {
-    return (
-      <div className={styles.accessCheckContainer}>
-        <div className={styles.accessCheckCard}>
-          <div className={`${styles.accessCheckIcon} ${styles.locked}`}>
-            <Lock className="w-10 h-10" />
-          </div>
-          <h2 className={styles.accessCheckTitle}>لا يمكن الوصول إلى المحتوى</h2>
-          <p className={styles.accessCheckMessage}>
-            {accessCheck?.message || 'لقد تجاوزت الحد الأقصى لعدد المشاهدات المسموح به'}
-          </p>
-          <div className={styles.attemptsInfo}>
-            <div className={styles.attemptInfoItem}>
-              <div className={styles.attemptInfoValue}>{accessCheck?.currentAttempts || 0}</div>
-              <div className={styles.attemptInfoLabel}>المشاهدات</div>
-            </div>
-            <div className={styles.attemptInfoItem}>
-              <div className={styles.attemptInfoValue}>{accessCheck?.maxAttempts || content.max_attempts}</div>
-              <div className={styles.attemptInfoLabel}>الحد الأقصى</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleOpenOriginal = () => window.open(pdfUrl, '_blank')
 
   if (error) {
     return (
-      <div className={styles.accessCheckContainer}>
-        <div className={styles.accessCheckCard}>
-          <div className={`${styles.accessCheckIcon} ${styles.error}`}>
-            <AlertCircle className="w-10 h-10" />
-          </div>
-          <h2 className={styles.accessCheckTitle}>حدث خطأ</h2>
-          <p className={styles.accessCheckMessage}>{error}</p>
-          <button onClick={() => window.location.reload()} className={`${styles.premiumBtn} ${styles.premiumBtnPrimary} mt-4`}>
-            إعادة المحاولة
+      <div className={styles.pdfViewerContainer} style={{ padding: '2rem', textAlign: 'center' }}>
+        <AlertCircle size={48} color="#ef4444" />
+        <h3>حدث خطأ في تحميل الملف</h3>
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
+          <button 
+            onClick={handleOpenOriginal} 
+            className={styles.openButton}
+            style={{ borderColor: theme.primary, color: theme.primary }}
+          >
+            <ExternalLink size={18} /> فتح الرابط الأصلي
           </button>
+          {isGoogleDrive && (
+            <button 
+              onClick={handleDownload} 
+              className={styles.downloadButton}
+              style={{ background: theme.primary }}
+            >
+              <Download size={18} /> تحميل
+            </button>
+          )}
         </div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className={styles.videoPlayerWrapper}>
-      {/* Info Card */}
-      <div className={styles.premiumCard}>
-        <div className={styles.premiumCardHeader}>
-          <div className={styles.headerContent}>
-            <div>
-              <h1 className={styles.heading3}>{content.title}</h1>
-              {content.description && (
-                <p className={styles.textBody}>{content.description}</p>
-              )}
-            </div>
-            <div className={styles.badgeGroup}>
-              {!accessCheck.isCompleted && (
-                <span className={`${styles.premiumBadge} ${styles.premiumBadgePrimary}`}>
-                  متبقي {accessCheck.remainingAttempts} مشاهدات
-                </span>
-              )}
-              {accessCheck.isCompleted && (
-                <span className={`${styles.premiumBadge} ${styles.premiumBadgeSuccess}`}>
-                  <CheckCircle className="w-3 h-3" />
-                  مكتمل
-                </span>
-              )}
-            </div>
+    <div className={styles.pdfViewerContainer}>
+      <div className={styles.pdfHeader}>
+        <div className={styles.headerLeft}>
+          <div className={styles.iconContainer} style={{ background: theme.primary }}>
+            <BookOpen size={24} color="white" />
+          </div>
+          <div>
+            <h3 className={styles.title}>ملف PDF</h3>
+            <p className={styles.subtitle}>
+              {isGoogleDrive ? 'Google Drive' : 'PDF'}
+              {timeSpent > 0 && ` | ${Math.floor(timeSpent / 60)}:${(timeSpent % 60).toString().padStart(2, '0')}`}
+            </p>
           </div>
         </div>
-      </div>
-
-      {/* Video Player */}
-      <div
-        ref={containerRef}
-        className={`${styles.videoPlayerContainer} ${showControls ? styles.showControls : ''}`}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => isPlaying && setShowControls(false)}
-      >
-        <div className={styles.videoPlayerWrapperInner}>
-          <video
-            ref={videoRef}
-            className={styles.videoPlayer}
-            src={content.content_url || undefined}
-            onLoadedMetadata={handleLoadedMetadata}
-            onTimeUpdate={handleTimeUpdate}
-            onEnded={handleEnded}
-            onError={handleError}
-            onWaiting={() => setIsLoading(true)}
-            onPlaying={() => setIsLoading(false)}
-            playsInline
-          />
-
-          {isLoading && (
-            <div className={styles.videoLoading}>
-              <div className={styles.videoLoadingSpinner} />
-            </div>
-          )}
-        </div>
-
-        {/* Controls */}
-        <div className={styles.videoControls}>
-          <div
-            ref={progressRef}
-            className={styles.videoProgressContainer}
-            onClick={handleSeek}
+        <div className={styles.headerActionsPdf}>
+          <button 
+            onClick={handleOpenOriginal} 
+            className={styles.openButton}
+            style={{ borderColor: theme.primary, color: theme.primary }}
           >
-            <div
-              className={styles.videoProgressBar}
-              style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-            />
-          </div>
-
-          <div className={styles.videoControlsRow}>
-            <div className={styles.videoControlsLeft}>
-              <button className={styles.videoControlBtn} onClick={togglePlay}>
-                {isPlaying ? <Pause /> : <Play />}
-              </button>
-
-              <button className={styles.videoControlBtn} onClick={() => skip(-10)}>
-                <SkipBack />
-              </button>
-
-              <button className={styles.videoControlBtn} onClick={() => skip(10)}>
-                <SkipForward />
-              </button>
-
-              <div className={styles.videoVolumeContainer}>
-                <button className={styles.videoControlBtn} onClick={toggleMute}>
-                  {isMuted || volume === 0 ? <VolumeX /> : <Volume2 />}
-                </button>
-                <div className={styles.videoVolumeSlider} onClick={handleVolumeChange}>
-                  <div
-                    className={styles.videoVolumeLevel}
-                    style={{ width: `${isMuted ? 0 : volume * 100}%` }}
-                  />
-                </div>
-              </div>
-
-              <span className={styles.videoTime}>
-                {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
-              </span>
-            </div>
-
-            <div className={styles.videoControlsRight}>
-              <button className={styles.videoControlBtn} onClick={toggleFullscreen}>
-                {isFullscreen ? <Minimize /> : <Maximize />}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Video Info */}
-      <div className={`${styles.premiumCard} mt-4`}>
-        <div className={styles.premiumCardBody}>
-          <div className={styles.videoInfoRow}>
-            <div className={styles.videoInfoStats}>
-              <div className={styles.videoInfoItem}>
-                <div className={`${styles.videoInfoValue} ${styles.textPrimary}`}>
-                  {accessCheck.currentAttempts + 1}
-                </div>
-                <div className={styles.videoInfoLabel}>المشاهدة الحالية</div>
-              </div>
-              <div className={styles.videoInfoDivider} />
-              <div className={styles.videoInfoItem}>
-                <div className={styles.videoInfoValue}>
-                  {accessCheck.maxAttempts}
-                </div>
-                <div className={styles.videoInfoLabel}>الحد الأقصى</div>
-              </div>
-              <div className={styles.videoInfoDivider} />
-              <div className={styles.videoInfoItem}>
-                <div className={`${styles.videoInfoValue} ${styles.textSuccess}`}>
-                  {Math.round((currentTime / (duration || 1)) * 100)}%
-                </div>
-                <div className={styles.videoInfoLabel}>التقدم</div>
-              </div>
-            </div>
-
-            <div className={styles.keyboardShortcuts}>
-              اضغط <kbd className={styles.kbd}>المسافة</kbd> للتشغيل/الإيقاف |
-              <kbd className={styles.kbd}>←</kbd>
-              <kbd className={styles.kbd}>→</kbd> للتقديم/التأخير 10ث |
-              <kbd className={styles.kbd}>F</kbd> ملء الشاشة
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================
-// Exam Viewer Component
-// ============================================
-function ExamViewer({
-  content,
-  userId,
-  packageId,
-  onComplete,
-}: {
-  content: LectureContent;
-  userId: string;
-  packageId: string;
-  onComplete?: () => void;
-}) {
-const supabase = createClient();
-
-
-  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
-  const [accessCheck, setAccessCheck] = useState<AccessCheckResult | null>(null);
-  const [shuffledQuestions, setShuffledQuestions] = useState<ExamQuestion[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [examStarted, setExamStarted] = useState(false);
-  const [examFinished, setExamFinished] = useState(false);
-  const [examResult, setExamResult] = useState<ExamResultData | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showExitWarning, setShowExitWarning] = useState(false);
-  const [startTime, setStartTime] = useState<string | null>(null);
-
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const examRecordedRef = useRef(false);
-
-  useEffect(() => {
-    checkAccess();
-
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (examStarted && !examFinished) {
-        e.preventDefault();
-        e.returnValue = '';
-        return '';
-      }
-    };
-
-    const handlePopState = (e: PopStateEvent) => {
-      if (examStarted && !examFinished) {
-        e.preventDefault();
-        setShowExitWarning(true);
-        window.history.pushState(null, '', window.location.href);
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('popstate', handlePopState);
-    window.history.pushState(null, '', window.location.href);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('popstate', handlePopState);
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [content.id, userId]);
-
-  useEffect(() => {
-    if (examStarted && !examFinished && timeRemaining > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            handleSubmitExam();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [examStarted, examFinished, timeRemaining]);
-
-  const checkAccess = async () => {
-    setIsCheckingAccess(true);
-    try {
-      const { data: progress, error: progressError } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('lecture_content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      if (progressError && progressError.code !== 'PGRST116') {
-        throw progressError;
-      }
-
-      const { data: examResults, error: resultsError } = await supabase
-        .from('exam_results')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('content_id', content.id)
-        .order('attempt_number', { ascending: false });
-
-      if (resultsError) throw resultsError;
-
-      const currentAttempts = examResults?.length || 0;
-      const contentMaxAttempts = content.max_attempts || 1;
-      const remainingAttempts = contentMaxAttempts - currentAttempts;
-      const isCompleted = (progress as UserProgress | null)?.status === 'passed' || (progress as UserProgress | null)?.status === 'completed';
-      const lastScore = examResults?.[0]?.score;
-
-      if (remainingAttempts <= 0 && !isCompleted) {
-        setAccessCheck({
-          canAccess: false,
-          currentAttempts,
-          maxAttempts: contentMaxAttempts,
-          remainingAttempts: 0,
-          isCompleted: false,
-          lastScore,
-          message: 'لقد تجاوزت الحد الأقصى لعدد المحاولات',
-        });
-        setIsCheckingAccess(false);
-        return;
-      }
-
-      const { data: questionsData, error: questionsError } = await supabase
-        .from('exam_questions')
-        .select('*')
-        .eq('content_id', content.id)
-        .eq('is_active', true)
-        .order('order_number', { ascending: true });
-
-      if (questionsError) throw questionsError;
-
-      const fetchedQuestions = (questionsData as ExamQuestion[]) || [];
-
-      const shuffled = shuffleArray(fetchedQuestions).map((q) => ({
-        ...q,
-        options: q.options ? shuffleArray(q.options) : q.options,
-      }));
-
-      setShuffledQuestions(shuffled);
-
-      setAccessCheck({
-        canAccess: true,
-        currentAttempts,
-        maxAttempts: contentMaxAttempts,
-        remainingAttempts,
-        isCompleted,
-        lastScore,
-      });
-    } catch (err) {
-      console.error('Error checking access:', err);
-    } finally {
-      setIsCheckingAccess(false);
-    }
-  };
-
-  const startExam = async () => {
-    const now = new Date().toISOString();
-    setStartTime(now);
-    setExamStarted(true);
-    setTimeRemaining((content.duration_minutes || 30) * 60);
-
-    try {
-      const { data: progress } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('lecture_content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      if (progress) {
-        await supabase
-          .from('user_progress')
-          .update({
-            status: 'in_progress',
-            attempts: ((progress as UserProgress).attempts || 0) + 1,
-            last_accessed_at: now,
-          })
-          .eq('id', (progress as UserProgress).id);
-      } else {
-        await supabase.from('user_progress').insert({
-          user_id: userId,
-          lecture_content_id: content.id,
-          package_id: packageId,
-          status: 'in_progress',
-          attempts: 1,
-          last_accessed_at: now,
-        });
-      }
-    } catch (err) {
-      console.error('Error recording exam start:', err);
-    }
-  };
-
-  const handleAnswerSelect = (questionId: string, answer: string) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: answer }));
-  };
-
-  const toggleFlag = (questionId: string) => {
-    setFlaggedQuestions((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(questionId)) {
-        newSet.delete(questionId);
-      } else {
-        newSet.add(questionId);
-      }
-      return newSet;
-    });
-  };
-
-  const goToQuestion = (index: number) => {
-    if (index >= 0 && index < shuffledQuestions.length) {
-      setCurrentQuestionIndex(index);
-    }
-  };
-
-  const handleSubmitExam = async () => {
-    if (isSubmitting || examRecordedRef.current) return;
-
-    setIsSubmitting(true);
-    examRecordedRef.current = true;
-
-    try {
-      let correctCount = 0;
-      let wrongCount = 0;
-      const answerDetails: ExamResultData['answers'] = [];
-
-      shuffledQuestions.forEach((question) => {
-        const userAnswer = answers[question.id];
-        const isCorrect = userAnswer === question.correct_answer;
-
-        if (isCorrect) {
-          correctCount++;
-        } else {
-          wrongCount++;
-        }
-
-        answerDetails.push({
-          questionId: question.id,
-          isCorrect: !!isCorrect,
-          userAnswer: userAnswer || '',
-          correctAnswer: question.correct_answer || '',
-        });
-      });
-
-      const totalQuestions = shuffledQuestions.length;
-      const score = Math.round((correctCount / totalQuestions) * 100);
-      const passed = score >= (content.pass_score || 70);
-
-      const result: ExamResultData = {
-        score,
-        totalQuestions,
-        correctAnswers: correctCount,
-        wrongAnswers: wrongCount,
-        passed,
-        answers: answerDetails,
-      };
-
-      setExamResult(result);
-
-      const { data: existingResults } = await supabase
-        .from('exam_results')
-        .select('attempt_number')
-        .eq('user_id', userId)
-        .eq('content_id', content.id)
-        .order('attempt_number', { ascending: false })
-        .limit(1);
-
-      const nextAttemptNumber = ((existingResults?.[0] as ExamResult | undefined)?.attempt_number || 0) + 1;
-
-      await supabase.from('exam_results').insert({
-        user_id: userId,
-        content_id: content.id,
-        attempt_number: nextAttemptNumber,
-        score,
-        total_questions: totalQuestions,
-        correct_answers: correctCount,
-        wrong_answers: wrongCount,
-        started_at: startTime,
-      });
-
-      const { data: progress } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('lecture_content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      const now = new Date().toISOString();
-
-      if (progress) {
-        await supabase
-          .from('user_progress')
-          .update({
-            status: passed ? 'passed' : 'failed',
-            score,
-            completed_at: now,
-          })
-          .eq('id', (progress as UserProgress).id);
-      }
-
-      setExamFinished(true);
-      onComplete?.();
-    } catch (err) {
-      console.error('Error submitting exam:', err);
-      examRecordedRef.current = false;
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const getTimerColor = () => {
-    const totalTime = (content.duration_minutes || 30) * 60;
-    const percentage = timeRemaining / totalTime;
-
-    if (percentage <= 0.1) return styles.danger;
-    if (percentage <= 0.25) return styles.warning;
-    return '';
-  };
-
-  if (isCheckingAccess) {
-    return (
-      <div className={styles.accessCheckContainer}>
-        <div className={styles.accessCheckCard}>
-          <div className={`${styles.accessCheckIcon} ${styles.loading}`}>
-            <Loader2 className="w-10 h-10 animate-spin" />
-          </div>
-          <h2 className={styles.accessCheckTitle}>جاري التحقق من الصلاحية...</h2>
-          <p className={styles.accessCheckMessage}>يرجى الانتظار بينما نتحقق من صلاحية الوصول</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!accessCheck?.canAccess) {
-    return (
-      <div className={styles.accessCheckContainer}>
-        <div className={styles.accessCheckCard}>
-          <div className={`${styles.accessCheckIcon} ${styles.locked}`}>
-            <Lock className="w-10 h-10" />
-          </div>
-          <h2 className={styles.accessCheckTitle}>لا يمكن الوصول إلى الامتحان</h2>
-          <p className={styles.accessCheckMessage}>
-            {accessCheck?.message || 'لقد تجاوزت الحد الأقصى لعدد المحاولات'}
-          </p>
-          {accessCheck?.lastScore !== undefined && (
-            <div className={styles.lastScoreBox}>
-              <p className={styles.lastScoreLabel}>نتيجة آخر محاولة:</p>
-              <p className={`${styles.lastScoreValue} ${accessCheck.lastScore >= (content.pass_score || 70) ? styles.textSuccess : styles.textError}`}>
-                {accessCheck.lastScore}%
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (!examStarted) {
-    return (
-      <div className={styles.accessCheckContainer}>
-        <div className={styles.accessCheckCard}>
-          <div className={`${styles.accessCheckIcon} ${styles.success}`}>
-            <Eye className="w-10 h-10" />
-          </div>
-          <h2 className={styles.accessCheckTitle}>{content.title}</h2>
-          <p className={styles.accessCheckMessage}>{content.description}</p>
-
-          <div className={styles.attemptsInfo}>
-            <div className={styles.attemptInfoItem}>
-              <div className={styles.attemptInfoValue}>{shuffledQuestions.length}</div>
-              <div className={styles.attemptInfoLabel}>سؤال</div>
-            </div>
-            <div className={styles.attemptInfoItem}>
-              <div className={styles.attemptInfoValue}>{content.duration_minutes || 30}</div>
-              <div className={styles.attemptInfoLabel}>دقيقة</div>
-            </div>
-            <div className={styles.attemptInfoItem}>
-              <div className={styles.attemptInfoValue}>{content.pass_score || 70}%</div>
-              <div className={styles.attemptInfoLabel}>درجة النجاح</div>
-            </div>
-            <div className={styles.attemptInfoItem}>
-              <div className={styles.attemptInfoValue}>{accessCheck.remainingAttempts}</div>
-              <div className={styles.attemptInfoLabel}>محاولات متبقية</div>
-            </div>
-          </div>
-
-          <div className={`${styles.premiumAlert} ${styles.premiumAlertWarning} mt-4`}>
-            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-            <div className={styles.alertText}>
-              <strong>تنبيه مهم:</strong> بمجرد بدء الامتحان لا يمكنك الخروج حتى تسلم إجاباتك.
-              سيتم تسليم الامتحان تلقائياً عند انتهاء الوقت.
-            </div>
-          </div>
-
-          <button onClick={startExam} className={`${styles.premiumBtn} ${styles.premiumBtnPrimary} ${styles.premiumBtnLg} mt-6`}>
-            بدء الامتحان
+            <ExternalLink size={18} /><span>فتح في Drive</span>
+          </button>
+          <button 
+            onClick={handleDownload} 
+            className={styles.downloadButton}
+            style={{ background: theme.primary }}
+          >
+            <Download size={18} /><span>تحميل</span>
           </button>
         </div>
       </div>
-    );
+      <div className={styles.viewerContainer}>
+        {isLoading ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
+          </div>
+        ) : (
+          <div className={styles.iframeContainer}>
+            <iframe 
+              src={getViewerUrl()} 
+              className={styles.pdfFrame} 
+              title="PDF Viewer" 
+              sandbox="allow-scripts allow-same-origin allow-popups"
+            />
+            <div className={styles.protectionOverlay} onContextMenu={(e) => e.preventDefault()} />
+          </div>
+        )}
+      </div>
+      <div className={styles.pdfFooter}>
+        <div className={styles.progressBarContainer}>
+          <div className={styles.progressBarFill} style={{ width: '100%', background: theme.success }} />
+        </div>
+        <div className={styles.progressText}>{progressSaved ? '✓ تم التحميل' : 'جاري التحميل...'}</div>
+        {isGoogleDrive && (
+          <p className={styles.driveNotice}>
+            <AlertCircle size={14} /> قد تحتاج لتسجيل الدخول في Google
+          </p>
+        )}
+        <p className={styles.watermark}>الأبــارع محمود الـديــب © 2024</p>
+      </div>
+    </div>
+  )
+}
+
+// ==========================================
+// EXAM VIEWER - معدل ليقرأ من JSON في الوصف
+// ==========================================
+function ExamViewer({ examContent, contentId, packageId, userId, theme, onComplete }: {
+  examContent: any; contentId: string; packageId: string; userId: string
+  theme: Theme; onComplete: () => void
+}) {
+  const router = useRouter()
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [currentQuestion, setCurrentQuestion] = useState(0)
+  const [answers, setAnswers] = useState<Record<number, string>>({})
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showResults, setShowResults] = useState(false)
+  const [score, setScore] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+const [results, setResults] = useState<{correct: number, wrong: number} | null>(null)
+
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        // البحث عن الأسئلة في content_url أو description
+        const contentText = examContent?.content_url || examContent?.description || '';
+        
+        // البحث عن النمط [EXAM_QUESTIONS]:{...}
+        const match = contentText.match(/\[EXAM_QUESTIONS\]:(\{[\s\S]*\})/);
+        
+        if (match && match[1]) {
+          try {
+            const parsedData = JSON.parse(match[1]);
+            
+            if (parsedData.questions && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
+              const formattedQuestions: Question[] = parsedData.questions.map((q: any, index: number) => ({
+                id: index + 1,
+                text: q.question,
+                options: q.options.map((opt: string, optIndex: number) => ({
+                  id: String.fromCharCode(65 + optIndex), // A, B, C, D
+                  text: opt
+                })),
+                correctAnswer: q.correct // يجب أن تطابق نص أحد الخيارات
+              }));
+              
+              setQuestions(formattedQuestions);
+              setTimeLeft((examContent?.duration_minutes || 10) * 60);
+              setLoading(false);
+              return;
+            } else {
+              throw new Error('لا توجد أسئلة في البيانات');
+            }
+          } catch (parseErr) {
+            console.error('JSON Parse Error:', parseErr);
+            setError('تنسيق الأسئلة غير صحيح');
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // Fallback: محاولة الجلب من قاعدة البيانات إذا لم يوجد JSON
+        const supabase = getSupabase()
+        if (!supabase) {
+          setError('لا توجد أسئلة متاحة');
+          setLoading(false);
+          return
+        }
+
+        const { data, error: dbError } = await supabase
+          .from('questions')
+          .select('*')
+          .eq('content_id', contentId)
+          .eq('is_active', true)
+          .order('order_number', { ascending: true })
+
+        if (dbError || !data || data.length === 0) {
+          setError('لا توجد أسئلة متاحة لهذا الامتحان')
+          setLoading(false)
+          return
+        }
+
+        const formattedQuestions: Question[] = data.map((q: any, index: number) => ({
+          id: q.id || index + 1,
+          text: q.question_text || q.text,
+          options: Array.isArray(q.options) ? q.options : [
+            { id: 'A', text: q.option_a || 'الإجابة أ' },
+            { id: 'B', text: q.option_b || 'الإجابة ب' },
+            { id: 'C', text: q.option_c || 'الإجابة ج' },
+            { id: 'D', text: q.option_d || 'الإجابة د' }
+          ],
+          correctAnswer: q.correct_answer || 'A'
+        }))
+
+        setQuestions(formattedQuestions)
+        setTimeLeft((examContent?.duration_minutes || 10) * 60)
+        setLoading(false)
+      } catch (err) {
+        console.error('Exam fetch error:', err)
+        setError('حدث خطأ في تحميل الامتحان')
+        setLoading(false)
+      }
+    }
+
+    fetchQuestions()
+  }, [contentId, examContent])
+
+  useEffect(() => {
+    if (showResults || loading || error) return
+    const timer = setInterval(() => {
+      setTimeLeft(prev => { 
+        if (prev <= 1) { 
+          clearInterval(timer); 
+          handleSubmit(); 
+          return 0 
+        } 
+        return prev - 1 
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [showResults, loading, error])
+
+  const handleAnswer = (questionId: number, answerId: string) => {
+    setAnswers(prev => ({ ...prev, [questionId]: answerId }))
   }
 
-  if (examFinished && examResult) {
+  const handleSubmit = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    
+    let correctCount = 0
+    questions.forEach(q => { 
+      const userAnswer = answers[q.id]
+      const isCorrect = userAnswer === q.correctAnswer || 
+        q.options.find(opt => opt.id === userAnswer)?.text === q.correctAnswer
+      if (isCorrect) correctCount++ 
+    })
+    
+    const wrongCount = questions.length - correctCount
+    const finalScore = Math.round((correctCount / questions.length) * 100)
+    
+    setScore(finalScore)
+    setResults({ correct: correctCount, wrong: wrongCount }) // 👈 حفظ النتيجة
+    setShowResults(true)
+    setIsSubmitting(false)
+    
+    if (finalScore >= (examContent?.pass_score || 50)) onComplete()
+
+    try {
+      const supabase = getSupabase()
+      if (supabase) await supabase.from('exam_results').insert({
+        user_id: userId, 
+        content_id: contentId, 
+        score: finalScore,
+        total_questions: questions.length, 
+        correct_answers: correctCount, 
+        wrong_answers: wrongCount
+      })
+    } catch (err) { 
+      console.error('Error saving exam results:', err) 
+    }
+  }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  if (loading) return (
+    <div className={styles.loadingContainer} style={{ minHeight: '400px' }}>
+      <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
+      <p>جاري التحميل...</p>
+    </div>
+  )
+
+  if (error) return (
+    <div className={styles.errorContainer} style={{ minHeight: '400px' }}>
+      <div className={styles.errorContent}>
+        <AlertCircle className={styles.errorIcon} />
+        <h3 className={styles.errorTitle}>خطأ</h3>
+        <p className={styles.errorMessage}>{error}</p>
+      </div>
+    </div>
+  )
+
+  if (showResults) {
+    const passed = score >= (examContent?.pass_score || 50)
     return (
-      <div className={styles.examContainer}>
-        <div className={styles.examResults}>
-          <div className={`${styles.examScoreCircle} ${examResult.passed ? styles.pass : styles.fail}`}>
-            <div className={styles.examScoreValue}>{examResult.score}%</div>
-            <div className={styles.examScoreLabel}>{examResult.passed ? 'ناجح' : 'راسب'}</div>
+      <div className={styles.resultsContainer}>
+        <div 
+          className={styles.resultCard} 
+          style={passed ? { background: '#d1fae5', border: '2px solid #059669' } : { background: '#fee2e2', border: '2px solid #dc2626' }}
+        >
+          <div className={styles.resultIcon}>
+            {passed ? <Trophy size={64} color="#10b981" /> : <AlertCircle size={64} color="#ef4444" />}
           </div>
-
-          <h2 className={styles.heading2}>
-            {examResult.passed ? 'تهانينا! لقد نجحت' : 'لم تنجح هذه المرة'}
-          </h2>
-          <p className={styles.textBody}>
-            {examResult.passed
-              ? 'أحسنت! لقد تجاوزت درجة النجاح المطلوبة'
-              : 'لا تيأس! يمكنك المحاولة مرة أخرى'}
-          </p>
-
-          <div className={styles.examStats}>
-            <div className={styles.examStat}>
-              <div className={`${styles.examStatValue} ${styles.textSuccess}`}>{examResult.correctAnswers}</div>
-              <div className={styles.examStatLabel}>إجابات صحيحة</div>
+          <h2>{passed ? 'مبروك! لقد نجحت' : 'للأسف، لم تنجح'}</h2>
+          <p className={styles.scoreText}>{score}%</p>
+          <p className={styles.passScoreText}>درجة النجاح: {examContent?.pass_score || 50}%</p>
+          <div className={styles.stats}>
+            <div className={styles.stat}>
+              <CheckCircle color="#10b981" />
+              <span>صحيحة: {results?.correct ?? 0}</span>  {/* 👈 استخدم results */}
             </div>
-            <div className={styles.examStat}>
-              <div className={`${styles.examStatValue} ${styles.textError}`}>{examResult.wrongAnswers}</div>
-              <div className={styles.examStatLabel}>إجابات خاطئة</div>
-            </div>
-            <div className={styles.examStat}>
-              <div className={styles.examStatValue}>{examResult.totalQuestions}</div>
-              <div className={styles.examStatLabel}>إجمالي الأسئلة</div>
+            <div className={styles.stat}>
+              <XCircle color="#ef4444" />
+              <span>خاطئة: {results?.wrong ?? 0}</span>    {/* 👈 استخدم results */}
             </div>
           </div>
-
-          <div className={styles.examResultActions}>
-            {!examResult.passed && accessCheck.remainingAttempts > 1 && (
-              <button
-                onClick={() => window.location.reload()}
-                className={`${styles.premiumBtn} ${styles.premiumBtnPrimary}`}
+          <div className={styles.resultButtons}>
+            <button 
+              onClick={() => router.back()} 
+              className={styles.backButtonExam}
+              style={{ background: theme.primary }}
+            >
+              العودة للباقة
+            </button>
+            {!passed && (
+              <button 
+                onClick={() => { 
+                  setShowResults(false); 
+                  setAnswers({}); 
+                  setCurrentQuestion(0); 
+                  setTimeLeft((examContent?.duration_minutes || 10) * 60) 
+                }} 
+                className={styles.retryButton}
               >
-                <RotateCcw className="w-4 h-4" />
-                إعادة المحاولة
+                <RefreshCw size={18} /> إعادة المحاولة
               </button>
             )}
-            <button onClick={() => window.location.href = '/dashboard'} className={`${styles.premiumBtn} ${styles.premiumBtnSecondary}`}>
-              العودة للرئيسية
-            </button>
           </div>
         </div>
-
-        <div className={styles.reviewSection}>
-          <h3 className={styles.heading3}>مراجعة الإجابات</h3>
-          {shuffledQuestions.map((question, index) => {
-            const answerDetail = examResult.answers.find((a) => a.questionId === question.id);
-            const isCorrect = answerDetail?.isCorrect;
-
-            return (
-              <div key={question.id} className={styles.questionCard}>
-                <div className={styles.questionHeader}>
-                  <span className={styles.questionNumber}>{index + 1}</span>
-                  <div className={styles.questionTextWrapper}>
-                    <p className={styles.questionText}>{question.question}</p>
-                  </div>
-                  {isCorrect ? (
-                    <CheckCircle className={`w-6 h-6 ${styles.textSuccess}`} />
-                  ) : (
-                    <XCircle className={`w-6 h-6 ${styles.textError}`} />
-                  )}
-                </div>
-
-                <div className={styles.answerOptions}>
-                  {question.options?.map((option, optIndex) => {
-                    const isSelected = answerDetail?.userAnswer === option;
-                    const isCorrectOption = question.correct_answer === option;
-
-                    let optionClass = styles.answerOption;
-                    if (isCorrectOption) {
-                      optionClass += ` ${styles.correct}`;
-                    } else if (isSelected && !isCorrectOption) {
-                      optionClass += ` ${styles.wrong}`;
-                    }
-
-                    return (
-                      <div key={optIndex} className={optionClass}>
-                        <span className={styles.answerOptionMarker} />
-                        <span className={styles.answerOptionText}>{option}</span>
-                        {isCorrectOption && (
-                          <CheckCircle className={`w-4 h-4 ${styles.textSuccess} mr-auto`} />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </div>
-    );
+    )
   }
 
-  const currentQuestion = shuffledQuestions[currentQuestionIndex];
-  const answeredCount = Object.keys(answers).length;
-  const timerClass = getTimerColor();
+  const currentQ = questions[currentQuestion]
+  const isLastQuestion = currentQuestion === questions.length - 1
+
+  if (!currentQ) return null
 
   return (
     <div className={styles.examContainer}>
-      {/* Exit Warning Modal */}
-      {showExitWarning && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modal}>
-            <div className={styles.modalHeader}>
-              <h3 className={`${styles.heading3} ${styles.textError}`}>تحذير!</h3>
-            </div>
-            <div className={styles.modalBody}>
-              <p className={styles.textBody}>
-                لا يمكنك مغادرة الامتحان قبل تسليم الإجابات. إذا غادرت الآن، سيتم تسجيل محاولتك
-                كفاشلة.
-              </p>
-            </div>
-            <div className={styles.modalFooter}>
-              <button onClick={() => setShowExitWarning(false)} className={`${styles.premiumBtn} ${styles.premiumBtnPrimary}`}>
-                متابعة الامتحان
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Submitting Modal */}
-      {isSubmitting && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modal}>
-            <div className={`${styles.modalBody} ${styles.textCenter} py-8`}>
-              <Loader2 className={`w-12 h-12 animate-spin mx-auto mb-4 ${styles.textPrimary}`} />
-              <h3 className={styles.heading3}>جاري تسليم الامتحان...</h3>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Exam Header */}
       <div className={styles.examHeader}>
-        <div className={styles.examHeaderTop}>
-          <h1 className={styles.examTitle}>{content.title}</h1>
-          <div className={`${styles.examTimer} ${timerClass}`}>
-            <Clock className="w-5 h-5" />
-            {formatTime(timeRemaining)}
+        <div className={styles.examInfo}>
+          <Target style={{ color: theme.primary }} />
+          <div>
+            <h3>{examContent?.title || 'امتحان'}</h3>
+            <p>سؤال {currentQuestion + 1} من {questions.length}</p>
           </div>
         </div>
-
-        <div className={styles.examProgress}>
-          <span className={styles.examProgressText}>
-            {answeredCount} / {shuffledQuestions.length}
-          </span>
-          <div className={styles.examProgressBar}>
-            <div
-              className={styles.examProgressFill}
-              style={{ width: `${(answeredCount / shuffledQuestions.length) * 100}%` }}
-            />
-          </div>
+        <div 
+          className={styles.timer} 
+          style={{ 
+            background: timeLeft < 60 ? '#fee2e2' : timeLeft < 300 ? '#fef3c7' : '#d1fae5', 
+            color: timeLeft < 60 ? '#dc2626' : timeLeft < 300 ? '#d97706' : '#059669' 
+          }}
+        >
+          <Clock size={20} />
+          <span>{formatTime(timeLeft)}</span>
         </div>
       </div>
-
-      {/* Question Card */}
-      {currentQuestion && (
-        <div className={styles.questionCard}>
-          <div className={styles.questionCardHeader}>
-            <span className={styles.questionNumber}>{currentQuestionIndex + 1}</span>
-            <button
-              onClick={() => toggleFlag(currentQuestion.id)}
-              className={`${styles.flagBtn} ${flaggedQuestions.has(currentQuestion.id) ? styles.flagged : ''}`}
-            >
-              <Flag className="w-5 h-5" />
-            </button>
-          </div>
-
-          <p className={styles.questionText}>{currentQuestion.question}</p>
-
-          <div className={styles.answerOptions}>
-            {currentQuestion.options?.map((option, index) => (
-              <label
-                key={index}
-                className={`${styles.answerOption} ${answers[currentQuestion.id] === option ? styles.selected : ''}`}
-              >
-                <input
-                  type="radio"
-                  name={`question-${currentQuestion.id}`}
-                  value={option}
-                  checked={answers[currentQuestion.id] === option}
-                  onChange={() => handleAnswerSelect(currentQuestion.id, option)}
-                  className={styles.visuallyHidden}
-                />
-                <span className={styles.answerOptionMarker} />
-                <span className={styles.answerOptionText}>{option}</span>
-              </label>
-            ))}
-          </div>
+      
+      <div className={styles.questionCard}>
+        <div className={styles.questionHeader}>
+          <span className={styles.questionNumber}>سؤال {currentQuestion + 1}</span>
         </div>
-      )}
-
-      {/* Navigation */}
-      <div className={styles.examNavigation}>
-        <button
-          onClick={() => goToQuestion(currentQuestionIndex - 1)}
-          disabled={currentQuestionIndex === 0}
-          className={`${styles.premiumBtn} ${styles.premiumBtnSecondary}`}
-        >
-          <ChevronRight className="w-4 h-4" />
-          السابق
-        </button>
-
-        <div className={styles.questionGrid}>
-          {shuffledQuestions.map((q, index) => (
-            <button
-              key={q.id}
-              onClick={() => goToQuestion(index)}
-              className={`${styles.questionDot} ${
-                currentQuestionIndex === index
-                  ? styles.current
-                  : answers[q.id]
-                  ? styles.answered
-                  : styles.unanswered
-              }`}
+        <h4 className={styles.questionText}>{currentQ.text}</h4>
+        <div className={styles.options}>
+          {currentQ.options.map(option => (
+            <button 
+              key={option.id} 
+              onClick={() => handleAnswer(currentQ.id, option.id)} 
+              className={`${styles.option} ${answers[currentQ.id] === option.id ? styles.selected : ''}`}
             >
-              {flaggedQuestions.has(q.id) ? <Flag className="w-3 h-3" /> : index + 1}
+              <span className={styles.optionLabel}>{option.id}</span>
+              <span className={styles.optionText}>{option.text}</span>
+              <div className={styles.radio}>
+                {answers[currentQ.id] === option.id && <div className={styles.radioInner} />}
+              </div>
             </button>
           ))}
         </div>
-
-        {currentQuestionIndex === shuffledQuestions.length - 1 ? (
-          <button
-            onClick={handleSubmitExam}
-            disabled={isSubmitting}
-            className={`${styles.premiumBtn} ${styles.premiumBtnSuccess}`}
+      </div>
+      
+      <div className={styles.navigation}>
+        <button 
+          onClick={() => setCurrentQuestion(prev => prev - 1)} 
+          disabled={currentQuestion === 0} 
+          className={styles.navButton}
+          style={{ opacity: currentQuestion === 0 ? 0.5 : 1 }}
+        >
+          <ArrowRight size={20} /> السابق
+        </button>
+        
+        <div className={styles.progressDots}>
+          {questions.map((_, idx) => (
+            <div 
+              key={idx} 
+              className={`${styles.dot} ${idx === currentQuestion ? styles.active : ''} ${answers[questions[idx].id] ? styles.answered : ''}`} 
+            />
+          ))}
+        </div>
+        
+        {isLastQuestion ? (
+          <button 
+            onClick={handleSubmit} 
+            disabled={isSubmitting || Object.keys(answers).length < questions.length} 
+            className={styles.submitButton}
+            style={{ background: theme.success, opacity: Object.keys(answers).length < questions.length ? 0.5 : 1 }}
           >
-            <CheckCircle className="w-4 h-4" />
-            تسليم
+            {isSubmitting ? <Loader2 className={styles.loadingSpinner} /> : 'تسليم'}
           </button>
         ) : (
-          <button
-            onClick={() => goToQuestion(currentQuestionIndex + 1)}
-            className={`${styles.premiumBtn} ${styles.premiumBtnPrimary}`}
+          <button 
+            onClick={() => setCurrentQuestion(prev => prev + 1)} 
+            className={styles.navButton}
+            style={{ background: theme.primary, color: 'white', border: 'none' }}
           >
-            التالي
-            <ChevronLeft className="w-4 h-4" />
+            التالي <ArrowLeft size={20} />
           </button>
         )}
       </div>
-
-      {/* Quick Submit */}
-      {answeredCount === shuffledQuestions.length && (
-        <div className={styles.quickSubmit}>
-          <button
-            onClick={handleSubmitExam}
-            disabled={isSubmitting}
-            className={`${styles.premiumBtn} ${styles.premiumBtnSuccess} ${styles.premiumBtnLg}`}
-          >
-            <CheckCircle className="w-5 h-5" />
-            تسليم الامتحان
-          </button>
-        </div>
-      )}
     </div>
-  );
+  )
 }
 
-// ============================================
-// PDF Viewer Component
-// ============================================
-function PDFViewer({
-  content,
-  userId,
-  packageId,
-}: {
-  content: LectureContent;
-  userId: string;
-  packageId: string;
-}) {
-const supabase = createClient();
-
-  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
-  const [accessCheck, setAccessCheck] = useState<AccessCheckResult | null>(null);
-  const [viewRecorded, setViewRecorded] = useState(false);
-
-  useEffect(() => {
-    checkAccess();
-  }, [content.id, userId]);
-
-  const checkAccess = async () => {
-    setIsCheckingAccess(true);
-    try {
-      const { data: progress, error: progressError } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('lecture_content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      if (progressError && progressError.code !== 'PGRST116') {
-        throw progressError;
-      }
-
-      const { data: viewCount } = await supabase
-        .from('content_views')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      const currentAttempts = (viewCount as { view_count?: number } | null)?.view_count || 0;
-      const contentMaxAttempts = content.max_attempts || 1;
-      const remainingAttempts = contentMaxAttempts - currentAttempts;
-      const isCompleted = (progress as UserProgress | null)?.status === 'completed';
-
-      if (isCompleted) {
-        setAccessCheck({
-          canAccess: true,
-          currentAttempts,
-          maxAttempts: contentMaxAttempts,
-          remainingAttempts: Infinity,
-          isCompleted: true,
-          message: 'لقد أكملت هذا المحتوى مسبقاً',
-        });
-        setIsCheckingAccess(false);
-        recordView();
-        return;
-      }
-
-      if (remainingAttempts <= 0) {
-        setAccessCheck({
-          canAccess: false,
-          currentAttempts,
-          maxAttempts: contentMaxAttempts,
-          remainingAttempts: 0,
-          isCompleted: false,
-          message: 'لقد تجاوزت الحد الأقصى لعدد المشاهدات',
-        });
-        setIsCheckingAccess(false);
-        return;
-      }
-
-      setAccessCheck({
-        canAccess: true,
-        currentAttempts,
-        maxAttempts: contentMaxAttempts,
-        remainingAttempts,
-        isCompleted: false,
-      });
-
-      await recordView();
-    } catch (err) {
-      console.error('Error checking access:', err);
-      setAccessCheck({
-        canAccess: true,
-        currentAttempts: 0,
-        maxAttempts: content.max_attempts || 1,
-        remainingAttempts: content.max_attempts || 1,
-        isCompleted: false,
-      });
-    } finally {
-      setIsCheckingAccess(false);
-    }
-  };
-
-  const recordView = async () => {
-    if (viewRecorded) return;
-
-    try {
-      const { data: existing } = await supabase
-        .from('content_views')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      const now = new Date().toISOString();
-
-      if (existing) {
-        await supabase
-          .from('content_views')
-          .update({
-            view_count: ((existing as { view_count?: number }).view_count || 0) + 1,
-            last_viewed_at: now,
-          })
-          .eq('id', (existing as { id: string }).id);
-      } else {
-        await supabase.from('content_views').insert({
-          user_id: userId,
-          content_id: content.id,
-          view_count: 1,
-          last_viewed_at: now,
-        });
-      }
-
-      const { data: progress } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('lecture_content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      if (progress) {
-        await supabase
-          .from('user_progress')
-          .update({
-            status: 'completed',
-            completed_at: now,
-          })
-          .eq('id', (progress as UserProgress).id);
-      } else {
-        await supabase.from('user_progress').insert({
-          user_id: userId,
-          lecture_content_id: content.id,
-          package_id: packageId,
-          status: 'completed',
-          completed_at: now,
-        });
-      }
-
-      setViewRecorded(true);
-    } catch (err) {
-      console.error('Error recording view:', err);
-    }
-  };
-
-  if (isCheckingAccess) {
-    return (
-      <div className={styles.accessCheckContainer}>
-        <div className={styles.accessCheckCard}>
-          <div className={`${styles.accessCheckIcon} ${styles.loading}`}>
-            <Loader2 className="w-10 h-10 animate-spin" />
-          </div>
-          <h2 className={styles.accessCheckTitle}>جاري التحقق من الصلاحية...</h2>
-          <p className={styles.accessCheckMessage}>يرجى الانتظار بينما نتحقق من صلاحية الوصول</p>
-        </div>
-      </div>
-    );
+// ==========================================
+// UTILS
+// ==========================================
+function getGradeTheme(gradeSlug: string): Theme {
+  const themes: Record<string, Theme> = {
+    first: { primary: '#3b82f6', success: '#10b981' },
+    second: { primary: '#8b5cf6', success: '#10b981' },
+    third: { primary: '#f59e0b', success: '#10b981' }
   }
+  return themes[gradeSlug] || themes.first
+}
 
-  if (!accessCheck?.canAccess) {
-    return (
-      <div className={styles.accessCheckContainer}>
-        <div className={styles.accessCheckCard}>
-          <div className={`${styles.accessCheckIcon} ${styles.locked}`}>
-            <Lock className="w-10 h-10" />
-          </div>
-          <h2 className={styles.accessCheckTitle}>لا يمكن الوصول إلى الملف</h2>
-          <p className={styles.accessCheckMessage}>
-            {accessCheck?.message || 'لقد تجاوزت الحد الأقصى لعدد المشاهدات'}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
+// ==========================================
+// MAIN PAGE
+// ==========================================
+function LoadingState() {
   return (
-    <div className={styles.pdfViewerWrapper}>
-      <div className={styles.premiumCard}>
-        <div className={styles.premiumCardHeader}>
-          <div className={styles.headerContent}>
-            <div>
-              <h1 className={styles.heading3}>{content.title}</h1>
-              {content.description && (
-                <p className={styles.textBody}>{content.description}</p>
-              )}
-            </div>
-            <div className={styles.badgeGroup}>
-              {!accessCheck.isCompleted && (
-                <span className={`${styles.premiumBadge} ${styles.premiumBadgePrimary}`}>
-                  متبقي {accessCheck.remainingAttempts} مشاهدات
-                </span>
-              )}
-              {accessCheck.isCompleted && (
-                <span className={`${styles.premiumBadge} ${styles.premiumBadgeSuccess}`}>
-                  <CheckCircle className="w-3 h-3" />
-                  مكتمل
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.pdfContainer}>
-        {content.content_url ? (
-          <iframe
-            src={content.content_url}
-            className={styles.pdfIframe}
-            title={content.title}
-          />
-        ) : (
-          <div className={styles.pdfError}>
-            <AlertCircle className="w-12 h-12 mb-4" />
-            <p>لا يوجد ملف PDF متاح</p>
-          </div>
-        )}
-      </div>
+    <div className={styles.loadingContainer}>
+      <Loader2 className={styles.loadingSpinner} />
+      <p className={styles.loadingText}>جاري تحميل المحتوى...</p>
     </div>
-  );
+  )
 }
 
-// ============================================
-// Text Content Component
-// ============================================
-function TextViewer({
-  content,
-  userId,
-  packageId,
-}: {
-  content: LectureContent;
-  userId: string;
-  packageId: string;
-}) {
-const supabase = createClient();
+function ContentViewer() {
+  const router = useRouter()
+  const params = useParams()
+  
+  const gradeSlug = params?.grade as string
+  const packageId = params?.packageId as string
+  const contentId = params?.contentId as string
+  
+  const theme = getGradeTheme(gradeSlug as any)
 
-  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
-  const [accessCheck, setAccessCheck] = useState<AccessCheckResult | null>(null);
-  const [viewRecorded, setViewRecorded] = useState(false);
+  const [content, setContent] = useState<any>(null)
+  const [lecture, setLecture] = useState<any>(null)
+  const [packageData, setPackageData] = useState<any>(null)
+  const [userProgress, setUserProgress] = useState<any>(null)
+  const [userPackage, setUserPackage] = useState<any>(null)
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
+  const [videoProgress, setVideoProgress] = useState(0)
+  const [authChecked, setAuthChecked] = useState(false)
+  
+  const supabase = useMemo(() => getSupabase(), [])
 
   useEffect(() => {
-    checkAccess();
-  }, [content.id, userId]);
+    if (!supabase || !gradeSlug || !packageId || !contentId || authChecked) return
 
-  const checkAccess = async () => {
-    setIsCheckingAccess(true);
-    try {
-      const { data: progress, error: progressError } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('lecture_content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
+    const initializePage = async () => {
+      try {
+        setLoading(true)
+        
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError || !session?.user) {
+          console.log('No session, redirecting...')
+          router.replace(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
+          return
+        }
 
-      if (progressError && progressError.code !== 'PGRST116') {
-        throw progressError;
+        const user = session.user
+        setCurrentUser(user)
+        
+        const { data: userPackageData, error: accessError } = await supabase
+          .from('user_packages')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('package_id', packageId)
+          .eq('is_active', true)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle()
+
+        if (!userPackageData) {
+          router.replace(`/grades/${gradeSlug}?error=not_subscribed`)
+          return
+        }
+        
+        setUserPackage(userPackageData)
+        
+        const { data: contentData, error: contentError } = await supabase
+          .from('lecture_contents')
+          .select('*')
+          .eq('id', contentId)
+          .single()
+        
+        if (contentError || !contentData) {
+          setError('المحتوى غير موجود')
+          setLoading(false)
+          setAuthChecked(true)
+          return
+        }
+        
+        setContent(contentData)
+        
+        const [lectureRes, packageRes, progressRes] = await Promise.all([
+          supabase.from('lectures').select('*').eq('id', contentData.lecture_id).single(),
+          supabase.from('packages').select('*').eq('id', packageId).single(),
+          supabase.from('user_progress')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('lecture_content_id', contentId)
+            .maybeSingle()
+        ])
+        
+        setLecture(lectureRes.data)
+        setPackageData(packageRes.data)
+        
+        const now = new Date().toISOString()
+        
+        if (!progressRes.data) {
+          const { data: newProgress } = await supabase
+            .from('user_progress')
+            .insert({
+              user_id: user.id,
+              lecture_content_id: contentId,
+              package_id: packageId,
+              status: 'in_progress',
+              last_accessed_at: now,
+              created_at: now
+            })
+            .select()
+            .single()
+          setUserProgress(newProgress)
+        } else {
+          await supabase
+            .from('user_progress')
+            .update({ last_accessed_at: now })
+            .eq('id', progressRes.data.id)
+          
+          setUserProgress({...progressRes.data, last_accessed_at: now})
+        }
+        
+        setLoading(false)
+        setAuthChecked(true)
+        
+      } catch (err: any) {
+        console.error('Error:', err)
+        setError(err?.message || 'حدث خطأ في تحميل البيانات')
+        setLoading(false)
+        setAuthChecked(true)
       }
-
-      const { data: viewCount } = await supabase
-        .from('content_views')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('content_id', content.id)
-        .maybeSingle();
-
-      const currentAttempts = (viewCount as { view_count?: number } | null)?.view_count || 0;
-      const contentMaxAttempts = content.max_attempts || 1;
-      const remainingAttempts = contentMaxAttempts - currentAttempts;
-      const isCompleted = (progress as UserProgress | null)?.status === 'completed';
-
-      if (isCompleted) {
-        setAccessCheck({
-          canAccess: true,
-          currentAttempts,
-          maxAttempts: contentMaxAttempts,
-          remainingAttempts: Infinity,
-          isCompleted: true,
-          message: 'لقد أكملت هذا المحتوى مسبقاً',
-        });
-        setIsCheckingAccess(false);
-        recordView();
-        return;
-      }
-
-      if (remainingAttempts <= 0) {
-        setAccessCheck({
-          canAccess: false,
-          currentAttempts,
-          maxAttempts: contentMaxAttempts,
-          remainingAttempts: 0,
-          isCompleted: false,
-          message: 'لقد تجاوزت الحد الأقصى لعدد المشاهدات',
-        });
-        setIsCheckingAccess(false);
-        return;
-      }
-
-      setAccessCheck({
-        canAccess: true,
-        currentAttempts,
-        maxAttempts: contentMaxAttempts,
-        remainingAttempts,
-        isCompleted: false,
-      });
-
-      await recordView();
-    } catch (err) {
-      console.error('Error checking access:', err);
-      setAccessCheck({
-        canAccess: true,
-        currentAttempts: 0,
-        maxAttempts: content.max_attempts || 1,
-        remainingAttempts: content.max_attempts || 1,
-        isCompleted: false,
-      });
-    } finally {
-      setIsCheckingAccess(false);
     }
-  };
+    
+    initializePage()
+  }, [gradeSlug, packageId, contentId, supabase, authChecked, router])
 
-  const recordView = async () => {
-    if (viewRecorded) return;
+  const handleVideoProgress = useCallback((progress: number) => {
+    setVideoProgress(progress)
+    if (progress >= 80 && content?.type === 'video') {
+      markAsCompleted()
+    }
+  }, [content])
 
+  const markAsCompleted = useCallback(async () => {
+    if (!userProgress || !content || !currentUser) return
+    if (userProgress.status === 'completed' || userProgress.status === 'passed') return
+
+    const status = content.type === 'exam' ? 'passed' : 'completed'
+    const now = new Date().toISOString()
+    
     try {
-      const { data: existing } = await supabase
-        .from('content_views')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('content_id', content.id)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      const now = new Date().toISOString();
-
-      if (existing) {
-        await supabase
-          .from('content_views')
-          .update({
-            view_count: ((existing as { view_count?: number }).view_count || 0) + 1,
-            last_viewed_at: now,
-          })
-          .eq('id', (existing as { id: string }).id);
-      } else {
-        await supabase.from('content_views').insert({
-          user_id: userId,
-          content_id: content.id,
-          view_count: 1,
-          last_viewed_at: now,
-        });
-      }
-
-      const { data: progress } = await supabase
+      const supabase = getSupabase()
+      if (!supabase) return
+      
+      await supabase
         .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('lecture_content_id', content.id)
-        .maybeSingle();
-
-      if (progress) {
-        await supabase
-          .from('user_progress')
-          .update({
-            status: 'completed',
-            completed_at: now,
-          })
-          .eq('id', (progress as UserProgress).id);
-      } else {
-        await supabase.from('user_progress').insert({
-          user_id: userId,
-          lecture_content_id: content.id,
-          package_id: packageId,
-          status: 'completed',
+        .update({ 
+          status, 
           completed_at: now,
-        });
-      }
-
-      setViewRecorded(true);
+          score: content.type === 'exam' ? userProgress.score : 100
+        })
+        .eq('id', userProgress.id)
+      
+      setUserProgress({ ...userProgress, status, completed_at: now })
     } catch (err) {
-      console.error('Error recording view:', err);
+      console.error('Mark complete error:', err)
     }
-  };
+  }, [userProgress, content, currentUser])
 
-  if (isCheckingAccess) {
-    return (
-      <div className={styles.accessCheckContainer}>
-        <div className={styles.accessCheckCard}>
-          <div className={`${styles.accessCheckIcon} ${styles.loading}`}>
-            <Loader2 className="w-10 h-10 animate-spin" />
-          </div>
-          <h2 className={styles.accessCheckTitle}>جاري التحقق من الصلاحية...</h2>
-          <p className={styles.accessCheckMessage}>يرجى الانتظار بينما نتحقق من صلاحية الوصول</p>
-        </div>
-      </div>
-    );
-  }
+  const handleBack = useCallback(() => {
+    router.push(`/grades/${gradeSlug}/packages/${packageId}`)
+  }, [router, gradeSlug, packageId])
 
-  if (!accessCheck?.canAccess) {
-    return (
-      <div className={styles.accessCheckContainer}>
-        <div className={styles.accessCheckCard}>
-          <div className={`${styles.accessCheckIcon} ${styles.locked}`}>
-            <Lock className="w-10 h-10" />
-          </div>
-          <h2 className={styles.accessCheckTitle}>لا يمكن الوصول إلى المحتوى</h2>
-          <p className={styles.accessCheckMessage}>
-            {accessCheck?.message || 'لقد تجاوزت الحد الأقصى لعدد المشاهدات'}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.textViewerWrapper}>
-      <div className={styles.premiumCard}>
-        <div className={styles.premiumCardHeader}>
-          <div className={styles.headerContent}>
-            <div>
-              <h1 className={styles.heading3}>{content.title}</h1>
-              {content.description && (
-                <p className={styles.textBody}>{content.description}</p>
-              )}
-            </div>
-            <div className={styles.badgeGroup}>
-              {!accessCheck.isCompleted && (
-                <span className={`${styles.premiumBadge} ${styles.premiumBadgePrimary}`}>
-                  متبقي {accessCheck.remainingAttempts} مشاهدات
-                </span>
-              )}
-              {accessCheck.isCompleted && (
-                <span className={`${styles.premiumBadge} ${styles.premiumBadgeSuccess}`}>
-                  <CheckCircle className="w-3 h-3" />
-                  مكتمل
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className={styles.premiumCardBody}>
-          <div 
-            className={styles.textContent}
-            dangerouslySetInnerHTML={{ __html: content.content_url || 'لا يوجد محتوى نصي متاح' }}
+  const renderContent = useCallback(() => {
+    if (!content) return null
+    
+    const commonProps = {
+      contentId,
+      userId: currentUser?.id,
+      packageId,
+      theme
+    }
+    
+    switch (content.type) {
+      case 'video': 
+        return (
+          <ProtectedVideoPlayer 
+            videoUrl={content.content_url || ''} 
+            {...commonProps}
+            onProgress={handleVideoProgress}
           />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================
-// Main Page Component
-// ============================================
-export default function ContentPage() {
-  const params = useParams();
-  const router = useRouter();
-const supabase = createClient();
-
-
-  const { contentId } = params;
-
-  const [content, setContent] = useState<LectureContent | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [packageId, setPackageId] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadData();
-  }, [contentId]);
-
-  const loadData = async () => {
-    if (!contentId) {
-      setError('معرف المحتوى غير صحيح');
-      setIsLoading(false);
-      return;
+        )
+      case 'pdf': 
+        return <PDFViewer pdfUrl={content.content_url || ''} {...commonProps} />
+      case 'exam': 
+        return <ExamViewer examContent={content} {...commonProps} onComplete={markAsCompleted} />
+      case 'text': 
+        return (
+          <div className={styles.textContent}>
+            <div 
+              className={styles.textContentInner}
+              dangerouslySetInnerHTML={{ 
+                __html: content.content_url || 'لا يوجد محتوى' 
+              }} 
+            />
+          </div>
+        )
+      default: 
+        return (
+          <div className={styles.unsupportedContent}>
+            <AlertCircle className={styles.unsupportedIcon} />
+            <p>نوع المحتوى غير مدعوم</p>
+          </div>
+        )
     }
+  }, [content, currentUser, contentId, packageId, theme, handleVideoProgress, markAsCompleted])
 
-    try {
-      setIsLoading(true);
-
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        setError('يجب تسجيل الدخول أولاً');
-        setIsLoading(false);
-        return;
-      }
-
-      setUserId(user.id);
-
-      const { data: contentData, error: contentError } = await supabase
-        .from('lecture_contents')
-        .select(`
-          *,
-          lectures:lecture_id (
-            package_id
-          )
-        `)
-        .eq('id', contentId)
-        .eq('is_active', true)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      if (contentError || !contentData) {
-        setError('المحتوى غير موجود أو غير متاح');
-        setIsLoading(false);
-        return;
-      }
-
-      const packageIdFromLecture = (contentData as LectureContent & { lectures?: { package_id?: string } }).lectures?.package_id;
-      setPackageId(packageIdFromLecture || '');
-
-      const { data: userPackage, error: packageError } = await supabase
-        .from('user_packages')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('package_id', packageIdFromLecture)
-        .eq('is_active', true)
-  .maybeSingle(); // ✅ غيّرها من single()
-
-      if (packageError || !userPackage) {
-        setError('ليس لديك صلاحية الوصول إلى هذا المحتوى');
-        setIsLoading(false);
-        return;
-      }
-
-      if ((userPackage as { expires_at?: string }).expires_at && new Date((userPackage as { expires_at?: string }).expires_at!) < new Date()) {
-        setError('لقد انتهت صلاحية اشتراكك في هذه الحزمة');
-        setIsLoading(false);
-        return;
-      }
-
-      setContent(contentData as LectureContent);
-    } catch (err) {
-      console.error('Error loading content page:', err);
-      setError('حدث خطأ أثناء تحميل الصفحة');
-    } finally {
-      setIsLoading(false);
+  const getContentTypeLabel = useCallback(() => {
+    switch (content?.type) {
+      case 'video': return 'فيديو'
+      case 'pdf': return 'PDF'
+      case 'exam': return 'امتحان'
+      case 'text': return 'نص'
+      default: return 'محتوى'
     }
-  };
+  }, [content])
 
-  const handleComplete = () => {
-    router.push('/dashboard');
-  };
-
-  const getContentIcon = (type: string) => {
-    switch (type) {
-      case 'video':
-        return <Video className="w-5 h-5" />;
-      case 'pdf':
-        return <FileText className="w-5 h-5" />;
-      case 'exam':
-        return <HelpCircle className="w-5 h-5" />;
-      default:
-        return <FileText className="w-5 h-5" />;
-    }
-  };
-
-  const getContentLabel = (type: string) => {
-    switch (type) {
-      case 'video':
-        return 'فيديو تعليمي';
-      case 'pdf':
-        return 'ملف PDF';
-      case 'exam':
-        return 'امتحان';
-      case 'text':
-        return 'محتوى نصي';
-      default:
-        return 'محتوى';
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loadingContent}>
-          <Loader2 className="w-12 h-12 animate-spin mb-4" />
-          <p>جاري تحميل المحتوى...</p>
-        </div>
-      </div>
-    );
-  }
-
+  if (loading) return <LoadingState />
+  
   if (error) {
     return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.accessCheckCard}>
-          <div className={`${styles.accessCheckIcon} ${styles.error}`}>
-            <AlertCircle className="w-10 h-10" />
-          </div>
-          <h2 className={styles.accessCheckTitle}>خطأ</h2>
-          <p className={styles.accessCheckMessage}>{error}</p>
-          <button
-            onClick={() => router.push('/dashboard')}
-            className={`${styles.premiumBtn} ${styles.premiumBtnPrimary} mt-4`}
-          >
-            <ArrowRight className="w-4 h-4" />
-            العودة للرئيسية
+      <div className={styles.errorContainer}>
+        <div className={styles.errorContent}>
+          <AlertCircle className={styles.errorIcon} />
+          <h2 className={styles.errorTitle}>حدث خطأ</h2>
+          <p className={styles.errorMessage}>{error}</p>
+          <button onClick={handleBack} className={styles.backBtn}>
+            العودة للباقة
           </button>
         </div>
       </div>
-    );
+    )
   }
-
-  if (!content || !userId) {
+  
+  if (!content) {
     return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.accessCheckCard}>
-          <div className={`${styles.accessCheckIcon} ${styles.error}`}>
-            <AlertCircle className="w-10 h-10" />
-          </div>
-          <h2 className={styles.accessCheckTitle}>خطأ</h2>
-          <p className={styles.accessCheckMessage}>لم يتم العثور على المحتوى</p>
-          <button
-            onClick={() => router.push('/dashboard')}
-            className={`${styles.premiumBtn} ${styles.premiumBtnPrimary} mt-4`}
-          >
-            <ArrowRight className="w-4 h-4" />
-            العودة للرئيسية
+      <div className={styles.errorContainer}>
+        <div className={styles.errorContent}>
+          <AlertCircle className={styles.errorIcon} />
+          <h2 className={styles.errorTitle}>حدث خطأ</h2>
+          <p className={styles.errorMessage}>المحتوى غير موجود</p>
+          <button onClick={handleBack} className={styles.backBtn}>
+            العودة للباقة
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
     <div className={styles.pageContainer}>
-      {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <div className={styles.headerContent}>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className={styles.backButton}
-            >
-              <ArrowRight className="w-5 h-5" />
-              <span>العودة</span>
+      <div className={styles.header}>
+        <div className={styles.headerContent}>
+          <div className={styles.breadcrumb}>
+            <button onClick={() => router.push('/')} className={styles.breadcrumbItem}>
+              <Home size={16} />الرئيسية
             </button>
-
-            <div className={styles.badgeGroup}>
-              {getContentIcon(content.type)}
-              <span className={`${styles.premiumBadge} ${
-                content.type === 'video' ? styles.premiumBadgePrimary :
-                content.type === 'exam' ? styles.premiumBadgeWarning :
-                styles.premiumBadgeNeutral
-              }`}>
-                {getContentLabel(content.type)}
-              </span>
+            <ChevronRight size={16} className={styles.breadcrumbSeparator} />
+            <button 
+              onClick={() => router.push(`/grades/${gradeSlug}`)} 
+              className={styles.breadcrumbItem}
+            >
+              {gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}
+            </button>
+            <ChevronRight size={16} className={styles.breadcrumbSeparator} />
+            <button 
+              onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)} 
+              className={styles.breadcrumbItem}
+            >
+              {packageData?.name || 'الباقة'}
+            </button>
+            <ChevronRight size={16} className={styles.breadcrumbSeparator} />
+            <span className={styles.currentPage}>{content.title}</span>
+          </div>
+          
+          <div className={styles.contentHeader}>
+            <div className={styles.contentInfo}>
+              <h1 className={styles.contentTitle}>{content.title}</h1>
+              <div className={styles.contentMeta}>
+                <span className={styles.contentType}>{getContentTypeLabel()}</span>
+                <span className={styles.contentSeparator}>•</span>
+                <span>{lecture?.title}</span>
+                <span className={styles.contentSeparator}>•</span>
+                <span>{packageData?.name}</span>
+              </div>
+            </div>
+            <div className={styles.headerActions}>
+              <button 
+                onClick={handleBack} 
+                className={styles.backActionBtn}
+                style={{ borderColor: theme.primary, color: theme.primary }}
+              >
+                <ArrowRight size={18} />العودة
+              </button>
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Main Content */}
-      <main className={styles.mainContent}>
-        {content.type === 'video' && (
-          <VideoPlayer
-            content={content}
-            userId={userId}
-            packageId={packageId}
-            onComplete={handleComplete}
-          />
-        )}
+      <div className={styles.mainContent}>
+        <div className={styles.contentLayout}>
+          <div className={styles.leftColumn}>
+            <div className={styles.tabs}>
+              <button 
+                onClick={() => setActiveTab('viewer')} 
+                className={`${styles.tabButton} ${activeTab === 'viewer' ? styles.activeTab : ''}`}
+                style={activeTab === 'viewer' ? { borderColor: theme.primary, color: theme.primary } : {}}
+              >
+                <Eye size={18} /><span>العرض</span>
+              </button>
+              <button 
+                onClick={() => setActiveTab('info')} 
+                className={`${styles.tabButton} ${activeTab === 'info' ? styles.activeTab : ''}`}
+                style={activeTab === 'info' ? { borderColor: theme.primary, color: theme.primary } : {}}
+              >
+                <BookOpen size={18} /><span>المعلومات</span>
+              </button>
+            </div>
+            
+            <div className={styles.contentArea}>
+              {activeTab === 'viewer' ? renderContent() : (
+                <div className={styles.infoContainer}>
+                  <h3 className={styles.infoTitle}>معلومات المحتوى</h3>
+                  <p>{content.description || 'لا يوجد وصف'}</p>
+                </div>
+              )}
+              
+              {content.type === 'video' && (
+                <div className={styles.progressTracking}>
+                  <div className={styles.progressHeader}>
+                    <h4>تقدم المشاهدة</h4>
+                    <span>{videoProgress}%</span>
+                  </div>
+                  <div className={styles.progressBar}>
+                    <div 
+                      className={styles.progressFill} 
+                      style={{ width: `${videoProgress}%`, background: theme.primary }} 
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
-        {content.type === 'exam' && (
-          <ExamViewer
-            content={content}
-            userId={userId}
-            packageId={packageId}
-            onComplete={handleComplete}
-          />
-        )}
-
-        {content.type === 'pdf' && (
-          <PDFViewer
-            content={content}
-            userId={userId}
-            packageId={packageId}
-          />
-        )}
-
-        {content.type === 'text' && (
-          <TextViewer
-            content={content}
-            userId={userId}
-            packageId={packageId}
-          />
-        )}
-      </main>
+          <div className={styles.rightColumn}>
+            <div className={styles.statusCard}>
+              <h4 className={styles.cardTitle}>الحالة</h4>
+              <div 
+                className={styles.statusContent}
+                style={
+                  userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                    { background: '#d1fae5', color: '#065f46' } : 
+                  userProgress?.status === 'failed' ? 
+                    { background: '#fee2e2', color: '#991b1b' } : 
+                  userProgress?.status === 'in_progress' ? 
+                    { background: '#dbeafe', color: '#1e40af' } : 
+                    { background: '#f3f4f6', color: '#4b5563' }
+                }
+              >
+                {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                  <CheckCircle size={24} /> : 
+                  userProgress?.status === 'failed' ? 
+                    <X size={24} /> : 
+                  userProgress?.status === 'in_progress' ? 
+                    <Loader2 className={styles.loadingSpinner} size={24} /> : 
+                    <BookOpen size={24} />
+                }
+                <div className={styles.statusInfo}>
+                  <div className={styles.statusText}>
+                    {userProgress?.status === 'completed' ? 'مكتمل' : 
+                     userProgress?.status === 'passed' ? 'ناجح' : 
+                     userProgress?.status === 'failed' ? 'فاشل' : 
+                     userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}
+                  </div>
+                </div>
+              </div>
+              
+              {content.type !== 'exam' && (
+                <button 
+                  onClick={markAsCompleted} 
+                  disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'} 
+                  className={styles.completeButton}
+                  style={
+                    userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                      { background: '#9ca3af', cursor: 'not-allowed' } : 
+                      { background: theme.success }
+                  }
+                >
+                  {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                    <><CheckCircle size={18} />تم</> : 
+                    <><CheckCircle size={18} />تمييز كمكتمل</>
+                  }
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  );
+  )
+}
+
+export default function ContentPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <ContentViewer />
+    </Suspense>
+  )
 }
