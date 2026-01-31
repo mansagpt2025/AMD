@@ -15,6 +15,9 @@ import {
   TrendingUp, PlayIcon, MoreHorizontal
 } from 'lucide-react'
 import { getGradeTheme } from '@/lib/utils/grade-themes'
+import type { Variants } from 'framer-motion'
+
+
 
 // ======= Types & Interfaces (كما هي) =======
 interface LectureContent {
@@ -246,6 +249,30 @@ function PackageContent() {
   const [authChecked, setAuthChecked] = useState(false)
 
   const supabase = useMemo(() => getSupabase(), [])
+
+const cardVariants: Variants = {
+  hidden: {
+    scale: 0.95,
+    opacity: 0,
+  },
+  visible: {
+    scale: 1,
+    opacity: 1,
+    transition: {
+      type: "spring" as const,
+      stiffness: 100,
+      damping: 20,
+    },
+  },
+  hover: {
+    scale: 1.02,
+    transition: {
+      type: "spring" as const,
+      stiffness: 400,
+      damping: 10,
+    },
+  },
+}
 
   useEffect(() => {
     setMounted(true)
@@ -502,7 +529,7 @@ function PackageContent() {
           >
             <div className="grid lg:grid-cols-5 gap-8 p-8">
               {/* Image Column */}
-              <motion.div variants={itemVariants} className="lg:col-span-2">
+              <motion.div  className="lg:col-span-2">
                 <div className="relative group">
                   <div className="absolute -inset-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
                   <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-xl">
@@ -531,7 +558,7 @@ function PackageContent() {
               </motion.div>
 
               {/* Content Column */}
-              <motion.div variants={itemVariants} className="lg:col-span-3 flex flex-col justify-center">
+              <motion.div  className="lg:col-span-3 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-4">
                   <span className="px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold border border-indigo-200">
                     {packageData.type === 'weekly' ? 'أسبوعي' : packageData.type === 'monthly' ? 'شهري' : packageData.type === 'term' ? 'ترم كامل' : 'عرض خاص'}
