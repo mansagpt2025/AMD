@@ -9,7 +9,9 @@ import {
   Crown, Sparkles, Clock, Calendar, Medal, PlayCircle,
   CheckCircle2, ArrowRight, ShoppingCart, RefreshCw, 
   Ticket, CreditCard, X, Shield, Gift, Zap, Star,
-  ChevronLeft, TrendingUp, Award, BookMarked
+  ChevronLeft, TrendingUp, Award, BookMarked, Hexagon,
+  Diamond, Layers, Play, Pause, Sparkle, ArrowUpRight,
+  Fingerprint, Lock, Unlock, Info, Check
 } from 'lucide-react'
 import styles from './GradePage.module.css'
 import { 
@@ -51,30 +53,38 @@ interface ThemeType {
   accent: string
   gradient: string
   light: string
+  dark: string
+  surface: string
 }
 
-// الألوان الخاصة بكل صف
+// الألوان الخاصة بكل صف - تصميم متناسق أنيق
 const themes: Record<string, ThemeType> = {
   first: {
-    primary: '#3b82f6',
-    secondary: '#1e40af',
+    primary: '#4f46e5',
+    secondary: '#7c3aed',
     accent: '#06b6d4',
-    gradient: 'from-blue-500 via-blue-600 to-cyan-500',
-    light: '#eff6ff'
+    gradient: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+    light: '#eef2ff',
+    dark: '#3730a3',
+    surface: '#ffffff'
   },
   second: {
-    primary: '#8b5cf6',
-    secondary: '#7c3aed',
-    accent: '#ec4899',
-    gradient: 'from-violet-500 via-purple-600 to-pink-500',
-    light: '#f5f3ff'
+    primary: '#0891b2',
+    secondary: '#0e7490',
+    accent: '#22d3ee',
+    gradient: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)',
+    light: '#ecfeff',
+    dark: '#155e75',
+    surface: '#ffffff'
   },
   third: {
-    primary: '#f59e0b',
-    secondary: '#d97706',
-    accent: '#ef4444',
-    gradient: 'from-amber-500 via-orange-600 to-red-500',
-    light: '#fffbeb'
+    primary: '#ea580c',
+    secondary: '#dc2626',
+    accent: '#fbbf24',
+    gradient: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)',
+    light: '#fff7ed',
+    dark: '#9a3412',
+    surface: '#ffffff'
   }
 }
 
@@ -107,6 +117,7 @@ export default function GradePage() {
   const [activeTab, setActiveTab] = useState<'all' | 'purchased' | 'offers'>('all')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null)
 
   // جلب البيانات
   const fetchData = useCallback(async () => {
@@ -174,6 +185,7 @@ export default function GradePage() {
     fetchData()
   }, [fetchData])
 
+  // Real-time updates
   useEffect(() => {
     if (!user?.id) return
     
@@ -194,6 +206,7 @@ export default function GradePage() {
     return () => { supabase.removeChannel(channel) }
   }, [user?.id, supabase])
 
+  // تصنيف الباقات
   const { purchased, available, offers } = useMemo(() => {
     const purchasedIds = userPackages.map(up => up.package_id)
     
@@ -251,50 +264,52 @@ export default function GradePage() {
     }
   }
 
+  const getGradeIcon = () => {
+    switch(gradeSlug) {
+      case 'first': return <BookOpen size={32} />
+      case 'second': return <Layers size={32} />
+      case 'third': return <GraduationCap size={32} />
+      default: return <BookOpen size={32} />
+    }
+  }
+
   if (loading) {
     return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loadingContent}>
+      <div className={styles.loadingContainer} style={{ background: theme.light }}>
+        <div className={styles.loadingWrapper}>
           <motion.div 
+            className={styles.loadingLogo}
             animate={{ 
-              rotate: 360,
-              scale: [1, 1.2, 1]
-            }} 
-            transition={{ 
-              rotate: { duration: 2, repeat: Infinity, ease: "linear" },
-              scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+              scale: [1, 1.1, 1],
+              rotate: [0, 5, -5, 0]
             }}
-            className={styles.loadingIcon}
+            transition={{ 
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            style={{ color: theme.primary }}
           >
-            <GraduationCap size={64} color={theme.primary} />
+            <Hexagon size={80} strokeWidth={1.5} />
           </motion.div>
           <motion.div
+            className={styles.loadingContent}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className={styles.loadingText}
           >
-            <h3>جاري تحميل البيانات...</h3>
+            <h2 style={{ color: theme.dark }}>جاري التحميل...</h2>
+            <div className={styles.loadingProgress}>
+              <motion.div 
+                className={styles.progressBar}
+                style={{ background: theme.gradient }}
+                initial={{ width: 0 }}
+                animate={{ width: '100%' }}
+                transition={{ duration: 1.5, ease: "easeInOut" }}
+              />
+            </div>
             <p>نحضر لك أفضل المحتوى التعليمي</p>
           </motion.div>
-          <div className={styles.loadingBars}>
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className={styles.loadingBar}
-                animate={{ 
-                  height: ["20%", "80%", "20%"],
-                  backgroundColor: [theme.primary, theme.accent, theme.primary]
-                }}
-                transition={{
-                  duration: 1,
-                  repeat: Infinity,
-                  delay: i * 0.2,
-                  ease: "easeInOut"
-                }}
-              />
-            ))}
-          </div>
         </div>
       </div>
     )
@@ -302,239 +317,271 @@ export default function GradePage() {
 
   return (
     <div className={styles.container} ref={containerRef}>
+      {/* شريط التقدم العلوي */}
       <motion.div 
-        className={styles.progressBar}
+        className={styles.progressBarTop}
         style={{ 
           scaleX,
-          background: `linear-gradient(90deg, ${theme.primary}, ${theme.accent})`
+          background: theme.gradient
         }}
       />
 
+      {/* تأثيرات الخلفية المتقدمة */}
       <div className={styles.backgroundEffects}>
-        <div className={styles.gradientOrb1} style={{ background: theme.primary }} />
-        <div className={styles.gradientOrb2} style={{ background: theme.accent }} />
+        <div className={styles.gradientMesh}>
+          <div className={styles.blob1} style={{ background: theme.primary }} />
+          <div className={styles.blob2} style={{ background: theme.secondary }} />
+          <div className={styles.blob3} style={{ background: theme.accent }} />
+        </div>
+        <div className={styles.noiseOverlay} />
         <div className={styles.gridPattern} />
       </div>
 
-      <header className={styles.header}>
-        <div className={styles.headerContent}>
+      {/* المحتوى الرئيسي */}
+      <div className={styles.contentWrapper}>
+        {/* الهيدر المتقدم */}
+        <header className={styles.header}>
+          <div className={styles.headerTop}>
+            <motion.div 
+              initial={{ x: -50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              className={styles.brand}
+            >
+              <div 
+                className={styles.logoContainer}
+                style={{ 
+                  background: theme.gradient,
+                  boxShadow: `0 20px 40px -10px ${theme.primary}40`
+                }}
+              >
+                <Crown size={28} color="white" />
+              </div>
+              <div className={styles.brandInfo}>
+                <h1>البارع محمود الديب</h1>
+                <span>منصة التميز الأكاديمي</span>
+              </div>
+            </motion.div>
+
+            {user ? (
+              <motion.div 
+                initial={{ x: 50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className={styles.walletContainer}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className={styles.walletCard} style={{ borderColor: theme.primary + '20' }}>
+                  <div className={styles.walletIcon} style={{ background: theme.light, color: theme.primary }}>
+                    <Wallet size={22} />
+                  </div>
+                  <div className={styles.walletInfo}>
+                    <span className={styles.walletLabel}>الرصيد المتاح</span>
+                    <span className={styles.walletAmount} style={{ color: theme.dark }}>
+                      {walletBalance.toLocaleString()} <small>ج.م</small>
+                    </span>
+                  </div>
+                  <motion.button 
+                    className={styles.refreshButton}
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    whileHover={{ rotate: 180 }}
+                    whileTap={{ scale: 0.9 }}
+                    style={{ color: theme.primary }}
+                  >
+                    <RefreshCw size={18} className={isRefreshing ? styles.spinning : ''} />
+                  </motion.button>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.button
+                initial={{ x: 50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className={styles.loginButton}
+                style={{ background: theme.gradient }}
+                whileHover={{ scale: 1.05, boxShadow: `0 20px 40px -10px ${theme.primary}50` }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => router.push(`/login?returnUrl=/grades/${gradeSlug}`)}
+              >
+                <span>تسجيل الدخول</span>
+                <ArrowUpRight size={20} />
+              </motion.button>
+            )}
+          </div>
+
+          {/* بطاقة الصف الدراسي الرئيسية */}
           <motion.div 
-            initial={{ x: -50, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            className={styles.brand}
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className={styles.heroSection}
           >
-            <div className={styles.logoWrapper} style={{ background: theme.light }}>
-              <Crown size={28} color={theme.primary} />
-            </div>
-            <div className={styles.brandText}>
-              <h1>البارع محمود الديب</h1>
-              <span>منارة العلم والتميز</span>
+            <div className={styles.heroContent}>
+              <motion.div 
+                className={styles.gradeIconWrapper}
+                style={{ 
+                  background: theme.gradient,
+                  boxShadow: `0 30px 60px -15px ${theme.primary}40`
+                }}
+                whileHover={{ scale: 1.1, rotate: 5 }}
+              >
+                {getGradeIcon()}
+              </motion.div>
+              
+              <div className={styles.heroText}>
+                <h2 style={{ color: theme.dark }}>{getGradeName()}</h2>
+                <p>اختر باقتك التعليمية وابدأ رحلة التميز معنا</p>
+              </div>
+
+              {user && (
+                <motion.div 
+                  className={styles.quickStats}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <div className={styles.statItem}>
+                    <BookMarked size={18} style={{ color: theme.primary }} />
+                    <span>{purchased.length} باقة نشطة</span>
+                  </div>
+                  <div className={styles.divider} />
+                  <div className={styles.statItem}>
+                    <PlayCircle size={18} style={{ color: theme.primary }} />
+                    <span>{purchased.reduce((acc, p) => acc + (p.lecture_count || 0), 0)} محاضرة</span>
+                  </div>
+                </motion.div>
+              )}
             </div>
           </motion.div>
 
-          {user ? (
-            <motion.div 
-              initial={{ x: 50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              className={styles.walletCard}
-              style={{ 
-                borderColor: `${theme.primary}20`,
-                boxShadow: `0 4px 20px ${theme.primary}20`
-              }}
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <div className={styles.walletIcon} style={{ background: theme.primary }}>
-                <Wallet size={20} color="white" />
-              </div>
-              <div className={styles.walletDetails}>
-                <span className={styles.walletLabel}>رصيدك الحالي</span>
-                <span className={styles.walletAmount} style={{ color: theme.primary }}>
-                  {walletBalance.toLocaleString()} ج.م
-                </span>
-              </div>
-              <motion.button 
-                className={styles.refreshBtn}
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                whileHover={{ rotate: 180 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <RefreshCw size={16} className={isRefreshing ? styles.spinning : ''} />
-              </motion.button>
-            </motion.div>
-          ) : (
-            <motion.button
-              initial={{ x: 50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              className={styles.loginBtn}
-              style={{ background: theme.primary }}
-              whileHover={{ scale: 1.05, boxShadow: `0 10px 30px ${theme.primary}40` }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.push(`/login?returnUrl=/grades/${gradeSlug}`)}
-            >
-              <span>تسجيل الدخول</span>
-              <ArrowRight size={18} />
-            </motion.button>
-          )}
-        </div>
-
-        <motion.div 
-          initial={{ y: 30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className={styles.gradeHero}
-        >
-          <div className={styles.gradeBadge} style={{ background: theme.light }}>
-            <GraduationCap size={40} color={theme.primary} />
-          </div>
-          <h2 style={{ color: theme.primary }}>{getGradeName()}</h2>
-          <p>اختر باقتك وابدأ رحلة التميز</p>
-        </motion.div>
-
-        <motion.nav 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className={styles.tabsContainer}
-        >
-          <div className={styles.tabs}>
-            <button 
-              className={`${styles.tab} ${activeTab === 'all' ? styles.active : ''}`}
-              onClick={() => setActiveTab('all')}
-              style={{ 
-                '--active-color': theme.primary,
-                '--active-bg': theme.light 
-              } as any}
-            >
-              <BookOpen size={18} />
-              <span>الكل</span>
-              <span className={styles.tabCount}>{purchased.length + available.length + offers.length}</span>
-            </button>
-            
-            {purchased.length > 0 && (
-              <button 
-                className={`${styles.tab} ${activeTab === 'purchased' ? styles.active : ''}`}
-                onClick={() => setActiveTab('purchased')}
-                style={{ 
-                  '--active-color': '#059669',
-                  '--active-bg': '#ecfdf5'
-                } as any}
-              >
-                <CheckCircle2 size={18} />
-                <span>اشتراكاتي</span>
-                <span className={styles.tabCount} style={{ background: '#10b981', color: 'white' }}>
-                  {purchased.length}
-                </span>
-              </button>
-            )}
-            
-            {offers.length > 0 && (
-              <button 
-                className={`${styles.tab} ${activeTab === 'offers' ? styles.active : ''}`}
-                onClick={() => setActiveTab('offers')}
-                style={{ 
-                  '--active-color': '#d97706',
-                  '--active-bg': '#fffbeb'
-                } as any}
-              >
-                <Sparkles size={18} />
-                <span>عروض خاصة</span>
-                <span className={styles.tabCount} style={{ background: '#f59e0b', color: 'white' }}>
-                  {offers.length}
-                </span>
-              </button>
-            )}
-          </div>
-        </motion.nav>
-      </header>
-
-      <main className={styles.main}>
-        <AnimatePresence mode="wait">
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className={styles.errorAlert}
-            >
-              <AlertCircle size={20} />
-              <span>{error}</span>
-              <button onClick={fetchData}>إعادة المحاولة</button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {user && (
-          <motion.div 
+          {/* التبويبات المتقدمة */}
+          <motion.nav 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className={styles.statsGrid}
+            transition={{ delay: 0.3 }}
+            className={styles.tabsNav}
           >
-            <div className={styles.statCard} style={{ borderColor: `${theme.primary}20` }}>
-              <div className={styles.statIcon} style={{ background: theme.light, color: theme.primary }}>
-                <BookMarked size={24} />
-              </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statValue}>{purchased.length}</span>
-                <span className={styles.statLabel}>باقة نشطة</span>
-              </div>
+            <div className={styles.tabsContainer}>
+              <button 
+                className={`${styles.tabButton} ${activeTab === 'all' ? styles.active : ''}`}
+                onClick={() => setActiveTab('all')}
+                style={{ 
+                  '--active-color': theme.primary,
+                  '--active-bg': theme.light 
+                } as any}
+              >
+                <Layers size={18} />
+                <span>جميع الباقات</span>
+                <span className={styles.badge} style={{ background: theme.light, color: theme.primary }}>
+                  {purchased.length + available.length + offers.length}
+                </span>
+              </button>
+              
+              {purchased.length > 0 && (
+                <button 
+                  className={`${styles.tabButton} ${activeTab === 'purchased' ? styles.active : ''}`}
+                  onClick={() => setActiveTab('purchased')}
+                  style={{ 
+                    '--active-color': '#059669',
+                    '--active-bg': '#ecfdf5'
+                  } as any}
+                >
+                  <CheckCircle2 size={18} />
+                  <span>اشتراكاتي</span>
+                  <span className={styles.badge} style={{ background: '#10b981', color: 'white' }}>
+                    {purchased.length}
+                  </span>
+                </button>
+              )}
+              
+              {offers.length > 0 && (
+                <button 
+                  className={`${styles.tabButton} ${activeTab === 'offers' ? styles.active : ''}`}
+                  onClick={() => setActiveTab('offers')}
+                  style={{ 
+                    '--active-color': '#ea580c',
+                    '--active-bg': '#fff7ed'
+                  } as any}
+                >
+                  <Sparkle size={18} />
+                  <span>عروض خاصة</span>
+                  <span className={styles.badge} style={{ background: '#f97316', color: 'white' }}>
+                    {offers.length}
+                  </span>
+                </button>
+              )}
             </div>
-            <div className={styles.statCard} style={{ borderColor: `${theme.primary}20` }}>
-              <div className={styles.statIcon} style={{ background: theme.light, color: theme.primary }}>
-                <TrendingUp size={24} />
-              </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statValue}>{purchased.reduce((acc, p) => acc + (p.lecture_count || 0), 0)}</span>
-                <span className={styles.statLabel}>محاضرة متاحة</span>
-              </div>
-            </div>
-            <div className={styles.statCard} style={{ borderColor: `${theme.primary}20` }}>
-              <div className={styles.statIcon} style={{ background: theme.light, color: theme.primary }}>
-                <Award size={24} />
-              </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statValue}>{userPackages.filter(up => new Date(up.expires_at) > new Date()).length}</span>
-                <span className={styles.statLabel}>يوم متبقي</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
+          </motion.nav>
+        </header>
 
-        <motion.div 
-          layout
-          className={styles.packagesGrid}
-        >
-          <AnimatePresence mode="popLayout">
-            {filteredPackages.map((pkg: any, index) => (
-              <PackageCard 
-                key={pkg.id}
-                pkg={pkg}
-                isPurchased={purchased.some(p => p.id === pkg.id)}
-                theme={theme}
-                index={index}
-                onPurchase={() => handlePurchaseClick(pkg)}
-                onEnter={() => handleEnterPackage(pkg.id)}
-              />
-            ))}
+        {/* المحتوى الرئيسي */}
+        <main className={styles.main}>
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className={styles.errorAlert}
+                style={{ borderRightColor: '#ef4444' }}
+              >
+                <AlertCircle size={24} color="#ef4444" />
+                <div className={styles.errorContent}>
+                  <h4>حدث خطأ</h4>
+                  <p>{error}</p>
+                </div>
+                <button onClick={fetchData} className={styles.retryButton}>
+                  <RefreshCw size={16} />
+                  إعادة المحاولة
+                </button>
+              </motion.div>
+            )}
           </AnimatePresence>
-        </motion.div>
 
-        {filteredPackages.length === 0 && (
+          {/* شبكة الباقات المتقدمة */}
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={styles.emptyState}
+            layout
+            className={styles.packagesGrid}
           >
-            <div className={styles.emptyIcon} style={{ background: theme.light }}>
-              <BookOpen size={48} color={theme.primary} />
-            </div>
-            <h3>لا توجد باقات متاحة</h3>
-            <p>سيتم إضافة باقات جديدة قريباً</p>
+            <AnimatePresence mode="popLayout">
+              {filteredPackages.map((pkg: any, index) => (
+                <PackageCard 
+                  key={pkg.id}
+                  pkg={pkg}
+                  isPurchased={purchased.some(p => p.id === pkg.id)}
+                  theme={theme}
+                  index={index}
+                  onPurchase={() => handlePurchaseClick(pkg)}
+                  onEnter={() => handleEnterPackage(pkg.id)}
+                  isHovered={hoveredCard === pkg.id}
+                  setHovered={(id: string | null) => setHoveredCard(id)}
+                />
+              ))}
+            </AnimatePresence>
           </motion.div>
-        )}
-      </main>
 
+          {filteredPackages.length === 0 && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className={styles.emptyState}
+            >
+              <div 
+                className={styles.emptyIcon}
+                style={{ 
+                  background: theme.light,
+                  color: theme.primary
+                }}
+              >
+                <BookOpen size={48} />
+              </div>
+              <h3>لا توجد باقات متاحة</h3>
+              <p>سيتم إضافة باقات جديدة قريباً. تابعنا للمزيد!</p>
+            </motion.div>
+          )}
+        </main>
+      </div>
+
+      {/* مودال الشراء المتقدم */}
       <AnimatePresence>
         {showPurchaseModal && selectedPackage && user && (
           <PurchaseModal 
@@ -557,168 +604,235 @@ export default function GradePage() {
         )}
       </AnimatePresence>
 
+      {/* تأثير الاحتفال المتقدم */}
       <AnimatePresence>
-        {showConfetti && <ConfettiEffect />}
+        {showConfetti && <ConfettiEffect theme={theme} />}
       </AnimatePresence>
     </div>
   )
 }
 
+// مكون بطاقة الباقة المتقدم
 function PackageCard({ 
   pkg, 
   isPurchased, 
   theme, 
   index, 
   onPurchase, 
-  onEnter 
+  onEnter,
+  isHovered,
+  setHovered
 }: any) {
   const getTypeIcon = () => {
     switch (pkg.type) {
-      case 'weekly': return <Clock size={18} />
-      case 'monthly': return <Calendar size={18} />
-      case 'term': return <Medal size={18} />
-      case 'offer': return <Crown size={18} />
-      default: return <BookOpen size={18} />
+      case 'weekly': return <Clock size={20} />
+      case 'monthly': return <Calendar size={20} />
+      case 'term': return <Medal size={20} />
+      case 'offer': return <Crown size={20} />
+      default: return <BookOpen size={20} />
     }
   }
 
-  const getTypeColor = () => {
+  const getTypeLabel = () => {
     switch (pkg.type) {
-      case 'weekly': return 'bg-blue-100 text-blue-700'
-      case 'monthly': return 'bg-purple-100 text-purple-700'
-      case 'term': return 'bg-emerald-100 text-emerald-700'
-      case 'offer': return 'bg-amber-100 text-amber-700'
-      default: return 'bg-gray-100 text-gray-700'
+      case 'weekly': return 'أسبوعي'
+      case 'monthly': return 'شهري'
+      case 'term': return 'ترم كامل'
+      case 'offer': return 'عرض خاص'
+      default: return 'عام'
     }
   }
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ delay: index * 0.05, type: "spring", stiffness: 100 }}
-      whileHover={{ y: -8, transition: { type: "spring", stiffness: 400 } }}
+      initial={{ opacity: 0, y: 40, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, y: 20 }}
+      transition={{ 
+        delay: index * 0.08, 
+        type: "spring", 
+        stiffness: 100,
+        damping: 15
+      }}
       className={`${styles.packageCard} ${isPurchased ? styles.purchased : ''} ${pkg.type === 'offer' ? styles.offer : ''}`}
+      onMouseEnter={() => setHovered(pkg.id)}
+      onMouseLeave={() => setHovered(null)}
+      style={{
+        transform: isHovered ? 'translateY(-8px)' : 'translateY(0)',
+      }}
     >
+      {/* تأثير الإضاءة المتحرك */}
       <div 
-        className={styles.cardAccent}
+        className={styles.cardGlow}
+        style={{
+          background: `radial-gradient(circle at 50% -20%, ${theme.primary}20, transparent 70%)`,
+          opacity: isHovered ? 1 : 0
+        }}
+      />
+
+      {/* الشريط العلوي الملون */}
+      <div 
+        className={styles.cardTopBar}
         style={{ 
           background: isPurchased 
             ? 'linear-gradient(90deg, #10b981, #059669)' 
             : pkg.type === 'offer'
-            ? 'linear-gradient(90deg, #f59e0b, #d97706)'
-            : `linear-gradient(90deg, ${theme.primary}, ${theme.accent})`
+            ? 'linear-gradient(90deg, #f59e0b, #ea580c)'
+            : theme.gradient
         }}
       />
 
-      {(isPurchased || pkg.type === 'offer') && (
-        <div className={styles.badge}>
-          {isPurchased ? (
-            <>
-              <CheckCircle2 size={14} />
-              <span>مشترك</span>
-            </>
-          ) : (
-            <>
-              <Zap size={14} />
-              <span>عرض خاص</span>
-            </>
-          )}
-        </div>
-      )}
+      {/* شارة الحالة */}
+      <div className={styles.cardBadges}>
+        {(isPurchased || pkg.type === 'offer') && (
+          <motion.div 
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className={styles.statusBadge}
+            style={{
+              background: isPurchased 
+                ? 'linear-gradient(135deg, #10b981, #059669)' 
+                : 'linear-gradient(135deg, #f59e0b, #ea580c)'
+            }}
+          >
+            {isPurchased ? (
+              <>
+                <Check size={14} />
+                <span>مفعل</span>
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} />
+                <span>عرض محدود</span>
+              </>
+            )}
+          </motion.div>
+        )}
 
-      {pkg.original_price && (
-        <div className={styles.discountBadge}>
-          <span>خصم {Math.round((1 - pkg.price/pkg.original_price) * 100)}%</span>
-        </div>
-      )}
-
-      <div className={styles.cardImageWrapper}>
-        {pkg.image_url ? (
-          <img src={pkg.image_url} alt={pkg.name} loading="lazy" />
-        ) : (
-          <div className={styles.placeholderImage} style={{ background: theme.light }}>
-            {getTypeIcon()}
+        {pkg.original_price && (
+          <div className={styles.discountBadge}>
+            <span>وفر {Math.round((1 - pkg.price/pkg.original_price) * 100)}%</span>
           </div>
         )}
-        <div className={`${styles.typeChip} ${getTypeColor()}`}>
+      </div>
+
+      {/* الجزء المرئي */}
+      <div className={styles.cardVisual}>
+        <div 
+          className={styles.cardImage}
+          style={{ background: theme.light }}
+        >
+          {pkg.image_url ? (
+            <img src={pkg.image_url} alt={pkg.name} loading="lazy" />
+          ) : (
+            <div className={styles.placeholderImage} style={{ color: theme.primary }}>
+              {getTypeIcon()}
+            </div>
+          )}
+          <div className={styles.imageOverlay} />
+        </div>
+
+        {/* نوع الباقة */}
+        <div 
+          className={styles.typeChip}
+          style={{ 
+            background: theme.surface,
+            color: theme.dark,
+            borderColor: theme.primary + '20'
+          }}
+        >
           {getTypeIcon()}
-          <span>
-            {pkg.type === 'weekly' && 'أسبوعي'}
-            {pkg.type === 'monthly' && 'شهري'}
-            {pkg.type === 'term' && 'ترم كامل'}
-            {pkg.type === 'offer' && 'عرض محدود'}
-          </span>
+          <span>{getTypeLabel()}</span>
         </div>
       </div>
 
-      <div className={styles.cardBody}>
-        <h3 className={styles.cardTitle}>{pkg.name}</h3>
+      {/* المحتوى */}
+      <div className={styles.cardContent}>
+        <h3 className={styles.cardTitle} style={{ color: theme.dark }}>
+          {pkg.name}
+        </h3>
         <p className={styles.cardDescription}>{pkg.description}</p>
 
+        {/* المميزات */}
         <ul className={styles.featuresList}>
           {pkg.features?.slice(0, 3).map((feature: string, i: number) => (
-            <li key={i}>
-              <CheckCircle2 size={14} style={{ color: theme.primary }} />
+            <motion.li 
+              key={i}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 + (i * 0.05) }}
+            >
+              <div 
+                className={styles.featureIcon}
+                style={{ background: theme.light, color: theme.primary }}
+              >
+                <Check size={12} />
+              </div>
               <span>{feature}</span>
-            </li>
+            </motion.li>
           ))}
         </ul>
 
-        <div className={styles.cardStats}>
-          <div className={styles.stat}>
+        {/* الإحصائيات السريعة */}
+        <div className={styles.quickInfo}>
+          <div className={styles.infoItem}>
             <PlayCircle size={16} style={{ color: theme.primary }} />
             <span>{pkg.lecture_count} محاضرة</span>
           </div>
-          <div className={styles.stat}>
+          <div className={styles.infoDivider} />
+          <div className={styles.infoItem}>
             <Clock size={16} style={{ color: theme.primary }} />
             <span>{pkg.duration_days} يوم</span>
           </div>
         </div>
 
+        {/* تاريخ الانتهاء */}
         {pkg.expires_at && (
-          <div className={styles.expiryDate}>
+          <div className={styles.expiryBadge}>
             <Calendar size={14} />
-            <span>ينتهي: {new Date(pkg.expires_at).toLocaleDateString('ar-EG')}</span>
+            <span>ينتهي {new Date(pkg.expires_at).toLocaleDateString('ar-EG')}</span>
           </div>
         )}
 
+        {/* السعر والزر */}
         <div className={styles.cardFooter}>
-          <div className={styles.priceWrapper}>
+          <div className={styles.priceSection}>
             {pkg.original_price && (
               <span className={styles.oldPrice}>{pkg.original_price.toLocaleString()} ج.م</span>
             )}
-            <span className={styles.price} style={{ color: theme.primary }}>
-              {pkg.price.toLocaleString()}
-              <small> ج.م</small>
-            </span>
+            <div className={styles.currentPrice}>
+              <span style={{ color: theme.dark }}>{pkg.price.toLocaleString()}</span>
+              <small>جنية مصري</small>
+            </div>
           </div>
 
           {isPurchased ? (
             <motion.button
-              className={styles.enterButton}
+              className={styles.enterBtn}
               style={{ background: '#10b981' }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={onEnter}
             >
-              <span>دخول</span>
+              <span>دخول للباقة</span>
               <ChevronLeft size={18} />
             </motion.button>
           ) : (
             <motion.button
-              className={styles.buyButton}
+              className={styles.buyBtn}
               style={{ 
-                background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
-                boxShadow: `0 4px 15px ${theme.primary}40`
+                background: theme.gradient,
+                boxShadow: `0 10px 25px -5px ${theme.primary}40`
               }}
-              whileHover={{ scale: 1.05, boxShadow: `0 6px 20px ${theme.primary}60` }}
+              whileHover={{ 
+                scale: 1.05, 
+                boxShadow: `0 20px 35px -10px ${theme.primary}60` 
+              }}
               whileTap={{ scale: 0.95 }}
               onClick={onPurchase}
             >
-              <span>اشترك الآن</span>
+              <span>اشتري الآن</span>
               <ShoppingCart size={18} />
             </motion.button>
           )}
@@ -728,6 +842,7 @@ function PackageCard({
   )
 }
 
+// مكون مودال الشراء المتقدم
 function PurchaseModal({ 
   pkg, 
   user, 
@@ -743,6 +858,7 @@ function PurchaseModal({
   const [error, setError] = useState('')
   const [codeValid, setCodeValid] = useState<any>(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [isValidating, setIsValidating] = useState(false)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -752,19 +868,23 @@ function PurchaseModal({
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handleEsc)
-    return () => window.removeEventListener('keydown', handleEsc)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', handleEsc)
+      document.body.style.overflow = 'unset'
+    }
   }, [onClose])
 
   const handleValidateCode = async () => {
-    if (!code.trim()) { setError('أدخل الكود'); return }
-    setLoading(true); setError('')
+    if (!code.trim()) { setError('أدخل الكود أولاً'); return }
+    setIsValidating(true); setError('')
     try {
       const result = await validateCode(code, gradeSlug, pkg.id)
       if (!result.success) throw new Error(result.message)
       setCodeValid(result.data)
     } catch (err: any) {
       setError(err.message); setCodeValid(null)
-    } finally { setLoading(false) }
+    } finally { setIsValidating(false) }
   }
 
   const handlePurchase = async () => {
@@ -805,21 +925,62 @@ function PurchaseModal({
         initial={{ opacity: 0, scale: 0.9, y: 50 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 50 }}
-        className={styles.modal}
+        className={styles.modalContainer}
         onClick={e => e.stopPropagation()}
       >
         {showSuccess ? (
           <div className={styles.successState}>
             <motion.div 
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 200 }}
               className={styles.successIcon}
-              style={{ background: theme.light }}
+              style={{ background: theme.gradient }}
             >
-              <CheckCircle2 size={64} color={theme.primary} />
+              <Check size={40} color="white" />
             </motion.div>
-            <h3>تم الشراء بنجاح!</h3>
-            <p>يمكنك الآن الوصول إلى جميع محتويات الباقة</p>
+            <motion.h3
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              تم الشراء بنجاح!
+            </motion.h3>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              يمكنك الآن الوصول إلى جميع محتويات الباقة
+            </motion.p>
+            <motion.div
+              className={styles.successConfetti}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              {[...Array(20)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ y: 0, x: 0, opacity: 1 }}
+                  animate={{ 
+                    y: -100 - Math.random() * 100,
+                    x: (Math.random() - 0.5) * 200,
+                    opacity: 0,
+                    rotate: Math.random() * 360
+                  }}
+                  transition={{ duration: 1, delay: i * 0.05 }}
+                  style={{
+                    position: 'absolute',
+                    width: 10,
+                    height: 10,
+                    background: theme.primary,
+                    borderRadius: '50%',
+                    left: '50%',
+                    top: '50%'
+                  }}
+                />
+              ))}
+            </motion.div>
           </div>
         ) : (
           <>
@@ -828,123 +989,179 @@ function PurchaseModal({
             </button>
 
             <div className={styles.modalHeader} style={{ background: theme.light }}>
-              <div className={styles.modalIcon} style={{ background: theme.primary }}>
+              <div className={styles.packageIcon} style={{ background: theme.gradient }}>
                 <Gift size={32} color="white" />
               </div>
               <h3>{pkg.name}</h3>
-              <div className={styles.priceTag}>
-                <span style={{ color: theme.primary }}>{pkg.price.toLocaleString()}</span>
+              <div className={styles.priceDisplay}>
+                <span style={{ color: theme.dark }}>{pkg.price.toLocaleString()}</span>
                 <small>جنية مصري</small>
               </div>
               {pkg.original_price && (
-                <span className={styles.originalPrice}>{pkg.original_price.toLocaleString()} ج.م</span>
+                <span className={styles.originalPriceDisplay}>
+                  {pkg.original_price.toLocaleString()} ج.م
+                </span>
               )}
             </div>
 
             <div className={styles.modalBody}>
-              <div className={styles.methods}>
+              {/* طرق الدفع */}
+              <div className={styles.paymentMethods}>
                 <button 
-                  className={`${styles.methodCard} ${method === 'wallet' ? styles.active : ''}`}
+                  className={`${styles.methodBtn} ${method === 'wallet' ? styles.active : ''}`}
                   onClick={() => setMethod('wallet')}
-                  style={method === 'wallet' ? { borderColor: theme.primary, background: theme.light } : {}}
+                  style={method === 'wallet' ? { borderColor: theme.primary } : {}}
                 >
-                  <div className={styles.methodIcon} style={{ background: theme.primary }}>
-                    <CreditCard size={24} color="white" />
+                  <div className={styles.methodIcon} style={{ background: theme.light, color: theme.primary }}>
+                    <Wallet size={24} />
                   </div>
-                  <div className={styles.methodInfo}>
+                  <div className={styles.methodDetails}>
                     <strong>الدفع من المحفظة</strong>
                     <span>رصيدك: {walletBalance.toLocaleString()} ج.م</span>
                   </div>
-                  {walletBalance >= pkg.price ? (
-                    <CheckCircle2 size={20} color="#10b981" />
-                  ) : (
-                    <AlertCircle size={20} color="#ef4444" />
-                  )}
+                  <div className={styles.methodCheck} style={{ 
+                    background: walletBalance >= pkg.price ? '#10b981' : '#ef4444',
+                    opacity: method === 'wallet' ? 1 : 0
+                  }}>
+                    {walletBalance >= pkg.price ? <Check size={16} color="white" /> : <AlertCircle size={16} color="white" />}
+                  </div>
                 </button>
 
                 <button 
-                  className={`${styles.methodCard} ${method === 'code' ? styles.active : ''}`}
+                  className={`${styles.methodBtn} ${method === 'code' ? styles.active : ''}`}
                   onClick={() => setMethod('code')}
-                  style={method === 'code' ? { borderColor: theme.primary, background: theme.light } : {}}
+                  style={method === 'code' ? { borderColor: theme.primary } : {}}
                 >
-                  <div className={styles.methodIcon} style={{ background: '#f59e0b' }}>
-                    <Ticket size={24} color="white" />
+                  <div className={styles.methodIcon} style={{ background: '#fff7ed', color: '#ea580c' }}>
+                    <Ticket size={24} />
                   </div>
-                  <div className={styles.methodInfo}>
+                  <div className={styles.methodDetails}>
                     <strong>كود تفعيل</strong>
                     <span>لديك كود خصم؟</span>
+                  </div>
+                  <div className={styles.methodCheck} style={{ 
+                    background: theme.primary,
+                    opacity: method === 'code' ? 1 : 0
+                  }}>
+                    <Check size={16} color="white" />
                   </div>
                 </button>
               </div>
 
-              {method === 'code' && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className={styles.codeInput}
-                >
-                  <div className={styles.inputWrapper}>
-                    <input 
-                      type="text" 
-                      value={code} 
-                      onChange={e => setCode(e.target.value.toUpperCase())} 
-                      placeholder="أدخل الكود هنا"
-                      disabled={!!codeValid}
-                      maxLength={20}
-                    />
-                    <button 
-                      onClick={handleValidateCode}
-                      disabled={loading || !code || !!codeValid}
-                      style={{ background: theme.primary }}
-                    >
-                      {loading ? <Loader2 className={styles.spinning} size={20} /> : 'تحقق'}
-                    </button>
-                  </div>
-                  {codeValid && (
-                    <div className={styles.codeSuccess}>
-                      <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                      <span>كود صالح! {codeValid.discount_percentage && `(خصم ${codeValid.discount_percentage}%)`}</span>
+              {/* إدخال الكود */}
+              <AnimatePresence>
+                {method === 'code' && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className={styles.codeInputSection}
+                  >
+                    <div className={styles.codeInputWrapper}>
+                      <input 
+                        type="text" 
+                        value={code} 
+                        onChange={e => setCode(e.target.value.toUpperCase())} 
+                        placeholder="أدخل الكود هنا"
+                        disabled={!!codeValid}
+                        maxLength={20}
+                        style={{ borderColor: codeValid ? '#10b981' : error ? '#ef4444' : '#e5e7eb' }}
+                      />
+                      <button 
+                        onClick={handleValidateCode}
+                        disabled={isValidating || !code || !!codeValid}
+                        style={{ 
+                          background: codeValid ? '#10b981' : theme.gradient,
+                          opacity: isValidating ? 0.7 : 1
+                        }}
+                      >
+                        {isValidating ? <Loader2 className={styles.spinning} size={20} /> : 'تحقق'}
+                      </button>
                     </div>
-                  )}
-                </motion.div>
-              )}
+                    {codeValid && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={styles.codeSuccess}
+                      >
+                        <CheckCircle2 size={18} color="#10b981" />
+                        <span>كود صالح! {codeValid.discount_percentage && `(خصم ${codeValid.discount_percentage}%)`}</span>
+                      </motion.div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-              {method === 'wallet' && walletBalance < pkg.price && (
-                <div className={styles.insufficientFunds}>
-                  <AlertCircle size={20} color="#ef4444" />
-                  <div>
-                    <strong>رصيد غير كافٍ</strong>
-                    <span>يرجى شحن محفظتك أولاً</span>
-                  </div>
-                </div>
-              )}
+              {/* رسالة عدم كفاية الرصيد */}
+              <AnimatePresence>
+                {method === 'wallet' && walletBalance < pkg.price && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className={styles.insufficientFunds}
+                  >
+                    <AlertCircle size={24} color="#ef4444" />
+                    <div>
+                      <strong>رصيد غير كافٍ</strong>
+                      <span>يرجى شحن محفظتك أولاً</span>
+                    </div>
+                    <button 
+                      className={styles.chargeBtn}
+                      style={{ background: theme.gradient }}
+                    >
+                      شحن الآن
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-              {error && (
-                <div className={styles.errorMessage}>
-                  <AlertCircle size={18} />
-                  <span>{error}</span>
-                </div>
-              )}
+              {/* رسالة الخطأ */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className={styles.errorMessage}
+                  >
+                    <Info size={18} />
+                    <span>{error}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
+              {/* زر التأكيد */}
               <motion.button 
-                className={styles.confirmButton}
+                className={styles.confirmBtn}
                 style={{ 
-                  background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
+                  background: theme.gradient,
                   opacity: (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid) ? 0.5 : 1
                 }}
-                whileHover={{ scale: (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid) ? 1 : 1.02 }}
-                whileTap={{ scale: (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid) ? 1 : 0.98 }}
+                whileHover={{ 
+                  scale: (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid) ? 1 : 1.02 
+                }}
+                whileTap={{ 
+                  scale: (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid) ? 1 : 0.98 
+                }}
                 onClick={handlePurchase}
                 disabled={loading || (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid)}
               >
                 {loading ? (
-                  <><Loader2 className={styles.spinning} size={20} /> جاري المعالجة...</>
+                  <>
+                    <Loader2 className={styles.spinning} size={20} />
+                    <span>جاري المعالجة...</span>
+                  </>
                 ) : (
-                  <><span>تأكيد الشراء</span><ArrowRight size={20} /></>
+                  <>
+                    <span>تأكيد الشراء</span>
+                    <ArrowRight size={20} />
+                  </>
                 )}
               </motion.button>
 
-              <div className={styles.secureBadge}>
+              {/* شارة الأمان */}
+              <div className={styles.securityBadge}>
                 <Shield size={16} />
                 <span>معاملة آمنة ومشفرة 100%</span>
               </div>
@@ -956,35 +1173,67 @@ function PurchaseModal({
   )
 }
 
-function ConfettiEffect() {
+// تأثير الاحتفال المتقدم
+function ConfettiEffect({ theme }: { theme: ThemeType }) {
+  const colors = [theme.primary, theme.secondary, theme.accent, '#10b981', '#f59e0b']
+  
   return (
     <div className={styles.confettiContainer}>
-      {[...Array(50)].map((_, i) => (
+      {[...Array(50)].map((_, i) => {
+        const randomColor = colors[Math.floor(Math.random() * colors.length)]
+        const randomX = Math.random() * 100
+        const randomDelay = Math.random() * 0.5
+        const randomDuration = 2 + Math.random() * 2
+        
+        return (
+          <motion.div
+            key={i}
+            initial={{ 
+              top: -20, 
+              left: `${randomX}%`,
+              rotate: 0,
+              scale: 0,
+              opacity: 1
+            }}
+            animate={{ 
+              top: '110%', 
+              left: `${randomX + (Math.random() - 0.5) * 20}%`,
+              rotate: Math.random() * 720,
+              scale: Math.random() * 0.5 + 0.5,
+              opacity: 0
+            }}
+            transition={{ 
+              duration: randomDuration,
+              delay: randomDelay,
+              ease: "linear"
+            }}
+            style={{
+              position: 'absolute',
+              backgroundColor: randomColor,
+              width: Math.random() * 12 + 6,
+              height: Math.random() * 12 + 6,
+              borderRadius: Math.random() > 0.5 ? '50%' : Math.random() > 0.5 ? '4px' : '0'
+            }}
+          />
+        )
+      })}
+      
+      {/* تأثيرات النص */}
+      {[...Array(5)].map((_, i) => (
         <motion.div
-          key={i}
-          className={styles.confetti}
-          initial={{ 
-            top: -10, 
-            left: Math.random() * 100 + '%',
-            rotate: 0,
-            scale: 0
-          }}
-          animate={{ 
-            top: '110%', 
-            rotate: Math.random() * 720,
-            scale: Math.random() * 0.5 + 0.5
-          }}
-          transition={{ 
-            duration: Math.random() * 3 + 2,
-            ease: "linear"
-          }}
+          key={`text-${i}`}
+          initial={{ opacity: 0, scale: 0, y: 0 }}
+          animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 1], y: -100 }}
+          transition={{ delay: i * 0.2, duration: 1.5 }}
+          className={styles.floatingText}
           style={{
-            backgroundColor: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#6c5ce7'][Math.floor(Math.random() * 5)],
-            width: Math.random() * 10 + 5,
-            height: Math.random() * 10 + 5,
-            borderRadius: Math.random() > 0.5 ? '50%' : '0'
+            left: `${20 + i * 15}%`,
+            top: '50%',
+            color: theme.primary
           }}
-        />
+        >
+          ✨
+        </motion.div>
       ))}
     </div>
   )
