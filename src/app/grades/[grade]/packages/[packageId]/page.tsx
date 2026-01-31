@@ -8,13 +8,14 @@ import {
   PlayCircle, BookOpen, Clock, Lock, Unlock,
   CheckCircle, XCircle, AlertCircle, Home,
   ChevronRight, GraduationCap, BarChart3,
-  Calendar, Video, File, Target, Loader2,
-  ArrowRight, Shield, Users, Award, Sparkles,
-  Play, FileText, HelpCircle, Crown, Star,
-  ChevronDown, Share2, CalendarDays, ChevronLeft
+  Calendar, Target, ArrowRight, Shield,
+  Play, FileText, HelpCircle, Crown,
+  ChevronDown, Share2, CalendarDays,
+  Users, Award, File, Video, Sparkles,
+  Bookmark, Download, Star, Eye, Zap,
+  Brain, Target as TargetIcon, Trophy, Lightbulb
 } from 'lucide-react'
 import { getGradeTheme } from '@/lib/utils/grade-themes'
-import styles from './PackagePage.module.css'
 
 interface LectureContent {
   id: string
@@ -99,11 +100,18 @@ const getSupabase = () => {
 // Loading Component
 function LoadingState() {
   return (
-    <div className={styles.loadingContainer}>
-      <div className={styles.loadingContent}>
-        <div className={styles.loadingSpinner}></div>
-        <GraduationCap className={styles.loadingIcon} size={24} />
-        <p className={styles.loadingText}>جاري تحميل البيانات...</p>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="text-center space-y-6">
+        <div className="relative">
+          <div className="w-24 h-24 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <GraduationCap className="w-12 h-12 text-blue-600 animate-pulse" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-xl font-semibold text-gray-800">جاري تحميل الباقة التعليمية</h3>
+          <p className="text-gray-600">يرجى الانتظار قليلاً...</p>
+        </div>
       </div>
     </div>
   )
@@ -112,18 +120,30 @@ function LoadingState() {
 // Error Component
 function ErrorState({ message, onBack }: { message: string; onBack: () => void }) {
   return (
-    <div className={styles.errorContainer}>
-      <div className={styles.errorCard}>
-        <div className={styles.errorIconContainer}>
-          <AlertCircle className={styles.errorIcon} size={32} />
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-md w-full"
+      >
+        <div className="bg-white rounded-3xl shadow-xl p-8 text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-red-50 to-red-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-10 h-10 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">حدث خطأ</h2>
+          <p className="text-gray-600 mb-8 leading-relaxed">{message}</p>
+          <button
+            onClick={onBack}
+            className="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-4 px-8 rounded-xl w-full hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5"
+          >
+            <span className="flex items-center justify-center gap-3">
+              <ArrowRight className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+              العودة إلى الصفحة الرئيسية
+            </span>
+            <div className="absolute inset-0 bg-white/10 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+          </button>
         </div>
-        <h2 className={styles.errorTitle}>حدث خطأ</h2>
-        <p className={styles.errorMessage}>{message}</p>
-        <button onClick={onBack} className={styles.backButton}>
-          <ArrowRight size={20} />
-          العودة إلى الصفحة الرئيسية
-        </button>
-      </div>
+      </motion.div>
     </div>
   )
 }
@@ -307,15 +327,13 @@ function PackageContent() {
   }
 
   const getContentIcon = (type: string) => {
-    const iconStyle = {
-      video: { icon: <PlayCircle size={20} />, color: styles.textBlue600 },
-      pdf: { icon: <FileText size={20} />, color: styles.textRed600 },
-      exam: { icon: <HelpCircle size={20} />, color: styles.textPurple600 },
-      text: { icon: <BookOpen size={20} />, color: styles.textGreen600 }
+    switch (type) {
+      case 'video': return <PlayCircle className="w-5 h-5" />
+      case 'pdf': return <FileText className="w-5 h-5" />
+      case 'exam': return <HelpCircle className="w-5 h-5" />
+      case 'text': return <BookOpen className="w-5 h-5" />
+      default: return <PlayCircle className="w-5 h-5" />
     }
-    
-    const { icon, color } = iconStyle[type as keyof typeof iconStyle] || iconStyle.video
-    return <div className={color}>{icon}</div>
   }
 
   const getContentStatus = (contentId: string) => {
@@ -339,13 +357,13 @@ function PackageContent() {
     switch (status) {
       case 'completed':
       case 'passed':
-        return `${styles.bgGreen50} ${styles.textGreen600} ${styles.borderGreen200}`
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200'
       case 'failed':
-        return `${styles.bgRed50} ${styles.textRed600} ${styles.borderRed200}`
+        return 'bg-rose-50 text-rose-700 border-rose-200'
       case 'in_progress':
-        return `${styles.bgYellow50} ${styles.textYellow600} ${styles.borderYellow200}`
+        return 'bg-amber-50 text-amber-700 border-amber-200'
       default:
-        return `${styles.bgGray50} ${styles.textGray600} ${styles.borderGray200}`
+        return 'bg-slate-50 text-slate-600 border-slate-200'
     }
   }
 
@@ -366,11 +384,21 @@ function PackageContent() {
 
   const getTypeBadge = (type: string) => {
     switch (type) {
-      case 'weekly': return 'أسبوعي'
-      case 'monthly': return 'شهري'
-      case 'term': return 'ترم كامل'
-      case 'offer': return 'عرض خاص'
-      default: return type
+      case 'weekly': return { text: 'أسبوعي', color: 'bg-blue-500' }
+      case 'monthly': return { text: 'شهري', color: 'bg-purple-500' }
+      case 'term': return { text: 'ترم كامل', color: 'bg-emerald-500' }
+      case 'offer': return { text: 'عرض خاص', color: 'bg-amber-500' }
+      default: return { text: type, color: 'bg-blue-500' }
+    }
+  }
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'weekly': return <Calendar className="w-4 h-4" />
+      case 'monthly': return <Calendar className="w-4 h-4" />
+      case 'term': return <Trophy className="w-4 h-4" />
+      case 'offer': return <Zap className="w-4 h-4" />
+      default: return <Calendar className="w-4 h-4" />
     }
   }
 
@@ -379,182 +407,243 @@ function PackageContent() {
   if (error) return <ErrorState message={error} onBack={() => router.push(`/grades/${gradeSlug || ''}`)} />
   if (!packageData) return <ErrorState message="لم يتم العثور على الباقة" onBack={() => router.push('/')} />
 
+  const typeBadge = getTypeBadge(packageData.type)
+
   return (
-    <div className={styles.pageContainer}>
-      {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div className={styles.navContainer}>
-            {/* Breadcrumb */}
-            <div className={styles.breadcrumb}>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      {/* Top Navigation */}
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-8">
               <button
                 onClick={() => router.push('/')}
-                className={styles.breadcrumbItem}
+                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors duration-200 group"
               >
-                <Home className={styles.breadcrumbIcon} size={20} />
-                الرئيسية
+                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-blue-50 transition-colors">
+                  <Home className="w-4 h-4" />
+                </div>
+                <span className="font-medium">الرئيسية</span>
               </button>
-              <ChevronLeft className={styles.breadcrumbSeparator} size={16} />
-              <button
-                onClick={() => router.push(`/grades/${gradeSlug}`)}
-                className={styles.breadcrumbItem}
-              >
-                {gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}
-              </button>
-              <ChevronLeft className={styles.breadcrumbSeparator} size={16} />
-              <span className={styles.currentPage}>{packageData.name}</span>
+              
+              <div className="hidden md:flex items-center gap-4">
+                <div className="w-1 h-6 bg-gray-200 rounded-full"></div>
+                <button
+                  onClick={() => router.push(`/grades/${gradeSlug}`)}
+                  className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium"
+                >
+                  {gradeSlug === 'first' ? 'الصف الأول' : gradeSlug === 'second' ? 'الصف الثاني' : 'الصف الثالث'}
+                </button>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+                <span className="text-blue-600 font-semibold truncate max-w-xs">
+                  {packageData.name}
+                </span>
+              </div>
             </div>
             
-            {/* Brand */}
-            <div className={styles.brandContainer}>
-              <div className={styles.brandBadge}>
-                <Crown className={styles.brandIcon} size={18} />
-                <span className={styles.brandText}>البارع محمود الديب</span>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-2 rounded-xl border border-blue-100">
+                <Crown className="w-5 h-5 text-blue-600" />
+                <span className="font-semibold text-blue-700">البارع محمود الديب</span>
+                <Sparkles className="w-4 h-4 text-amber-500" />
               </div>
             </div>
           </div>
         </div>
-      </header>
+      </nav>
 
-      <main className={styles.container}>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Package Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`${styles.packageHeader} ${styles.bgWhite} ${styles.rounded2xl} ${styles.shadowLg} ${styles.p8} ${styles.mb8}`}
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white to-gray-50 shadow-xl border border-gray-200/50 mb-8"
         >
-          <div className={styles.lgFlexRow}>
-            {/* Package Image */}
-            <div className={styles.packageImageContainer}>
-              <div className={styles.imageWrapper}>
-                <div className={styles.typeBadge}>
-                  {getTypeBadge(packageData.type)}
-                </div>
-                {packageData.image_url ? (
-                  <img
-                    src={packageData.image_url}
-                    alt={packageData.name}
-                    className={styles.packageImage}
-                  />
-                ) : (
-                  <div className={styles.placeholderImage}>
-                    <GraduationCap className={styles.placeholderIcon} size={64} />
-                  </div>
-                )}
-              </div>
-              
-              {/* Stats */}
-              <div className={styles.statsGrid}>
-                <div className={styles.statCard}>
-                  <div className={styles.statIconContainer}>
-                    <PlayCircle className={styles.statIcon} />
-                  </div>
-                  <span className={styles.statValue}>{lectures.length}</span>
-                  <span className={styles.statLabel}>محاضرة</span>
-                </div>
-                
-                <div className={styles.statCard}>
-                  <div className={styles.statIconContainer}>
-                    <BookOpen className={styles.statIcon} />
-                  </div>
-                  <span className={styles.statValue}>{contents.length}</span>
-                  <span className={styles.statLabel}>محتوى</span>
-                </div>
-                
-                <div className={styles.statCard}>
-                  <div className={styles.statIconContainer}>
-                    <Clock className={styles.statIcon} />
-                  </div>
-                  <span className={styles.statValue}>{packageData.duration_days}</span>
-                  <span className={styles.statLabel}>يوم</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Package Info */}
-            <div className={styles.packageInfo}>
-              <div className={styles.packageHeaderContent}>
-                <div>
-                  <h1 className={styles.packageTitle}>{packageData.name}</h1>
-                  <p className={styles.packageDescription}>{packageData.description}</p>
-                </div>
-                <button className={styles.shareButton}>
-                  <Share2 size={18} />
-                  مشاركة
-                </button>
-              </div>
-
-              {/* Progress Section */}
-              <div className={styles.progressSection}>
-                <div className={styles.progressHeader}>
-                  <div className={styles.progressIconContainer}>
-                    <BarChart3 className={styles.progressIcon} size={18} />
-                  </div>
-                  <span className={styles.progressLabel}>تقدمك في الباقة</span>
-                  <span className={styles.progressPercentage}>{completion}%</span>
-                </div>
-                
-                <div className={styles.progressBarContainer}>
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${completion}%` }}
-                    transition={{ duration: 1 }}
-                    className={styles.progressBar}
-                  />
-                </div>
-                
-                <div className={styles.progressLabels}>
-                  <span>لم يبدأ</span>
-                  <span>مكتمل</span>
-                </div>
-
-                {/* Stats */}
-                <div className={styles.statsGridLarge}>
-                  <div className={styles.statCardLarge}>
-                    <div className={styles.statHeader}>
-                      <div className={`${styles.statIconSmall} ${styles.bgGreen50}`}>
-                        <CheckCircle size={16} className={styles.textGreen600} />
+          {/* Background Pattern */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 via-transparent to-purple-50/20"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-blue-100/30 to-transparent rounded-full -translate-y-32 translate-x-32"></div>
+          
+          <div className="relative p-8">
+            <div className="flex flex-col lg:flex-row gap-8">
+              {/* Package Image & Stats */}
+              <div className="lg:w-2/5 space-y-6">
+                <div className="relative group">
+                  <div className="absolute -inset-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-3xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity duration-300"></div>
+                  <div className="relative bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg overflow-hidden">
+                    {packageData.image_url ? (
+                      <div className="aspect-video relative overflow-hidden">
+                        <img
+                          src={packageData.image_url}
+                          alt={packageData.name}
+                          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
                       </div>
-                      <span className={styles.statTitle}>مكتمل</span>
+                    ) : (
+                      <div className="aspect-video bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                        <GraduationCap className="w-16 h-16 text-white" />
+                      </div>
+                    )}
+                    
+                    {/* Type Badge */}
+                    <div className="absolute top-4 left-4">
+                      <div className={`${typeBadge.color} text-white px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg`}>
+                        {getTypeIcon(packageData.type)}
+                        <span className="font-semibold">{typeBadge.text}</span>
+                      </div>
                     </div>
-                    <div className={styles.statValueLarge}>
-                      {userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
+                  </div>
+                </div>
+
+                {/* Quick Stats */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-300">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <PlayCircle className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-gray-900">{lectures.length}</div>
+                        <div className="text-sm text-gray-600">محاضرة</div>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className={styles.statCardLarge}>
-                    <div className={styles.statHeader}>
-                      <div className={`${styles.statIconSmall} ${styles.bgYellow50}`}>
-                        <Clock size={16} className={styles.textYellow600} />
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-300">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                        <BookOpen className="w-5 h-5 text-emerald-600" />
                       </div>
-                      <span className={styles.statTitle}>قيد التقدم</span>
-                    </div>
-                    <div className={styles.statValueLarge}>
-                      {userProgress.filter(p => p.status === 'in_progress').length}
+                      <div>
+                        <div className="text-2xl font-bold text-gray-900">{contents.length}</div>
+                        <div className="text-sm text-gray-600">محتوى</div>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className={styles.statCardLarge}>
-                    <div className={styles.statHeader}>
-                      <div className={`${styles.statIconSmall} ${styles.bgRed50}`}>
-                        <XCircle size={16} className={styles.textRed600} />
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-300">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-purple-600" />
                       </div>
-                      <span className={styles.statTitle}>فشل</span>
-                    </div>
-                    <div className={styles.statValueLarge}>
-                      {userProgress.filter(p => p.status === 'failed').length}
+                      <div>
+                        <div className="text-2xl font-bold text-gray-900">{packageData.duration_days}</div>
+                        <div className="text-sm text-gray-600">يوم</div>
+                      </div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Package Details */}
+              <div className="lg:w-3/5 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="space-y-3">
+                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
+                      {packageData.name}
+                    </h1>
+                    <p className="text-lg text-gray-600 leading-relaxed">
+                      {packageData.description}
+                    </p>
+                  </div>
                   
-                  <div className={styles.statCardLarge}>
-                    <div className={styles.statHeader}>
-                      <div className={`${styles.statIconSmall} ${styles.bgGray50}`}>
-                        <Target size={16} className={styles.textGray600} />
+                  <button className="group flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5">
+                    <Share2 className="w-5 h-5" />
+                    مشاركة الباقة
+                    <div className="absolute inset-0 bg-white/10 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                  </button>
+                </div>
+
+                {/* Progress Section */}
+                <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 shadow-lg border border-gray-200/50">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center">
+                        <BarChart3 className="w-6 h-6 text-blue-600" />
                       </div>
-                      <span className={styles.statTitle}>متبقي</span>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">تقدمك في الباقة</h3>
+                        <p className="text-sm text-gray-600">تابع تقدمك التعليمي</p>
+                      </div>
                     </div>
-                    <div className={styles.statValueLarge}>
-                      {contents.length - userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
+                    
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-blue-600">{completion}%</div>
+                      <div className="text-sm text-gray-600">
+                        {userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length} من {contents.length}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden mb-6">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${completion}%` }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
+                      className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 rounded-full"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+                    </motion.div>
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-4 border border-emerald-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                          <CheckCircle className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-gray-900">
+                            {userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
+                          </div>
+                          <div className="text-sm text-gray-600">مكتمل</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl p-4 border border-amber-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                          <Clock className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-gray-900">
+                            {userProgress.filter(p => p.status === 'in_progress').length}
+                          </div>
+                          <div className="text-sm text-gray-600">قيد التقدم</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-rose-50 to-rose-100/50 rounded-xl p-4 border border-rose-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center">
+                          <XCircle className="w-5 h-5 text-rose-600" />
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-gray-900">
+                            {userProgress.filter(p => p.status === 'failed').length}
+                          </div>
+                          <div className="text-sm text-gray-600">فشل</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl p-4 border border-slate-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                          <TargetIcon className="w-5 h-5 text-slate-600" />
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-gray-900">
+                            {contents.length - userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length}
+                          </div>
+                          <div className="text-sm text-gray-600">متبقي</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -564,36 +653,43 @@ function PackageContent() {
         </motion.div>
 
         {/* Lectures Section */}
-        <div className={styles.mb8}>
-          <div className={styles.lecturesHeader}>
-            <div className={styles.lecturesTitleContainer}>
-              <div className={styles.lecturesIconContainer}>
-                <BookOpen className={styles.lecturesIcon} size={24} />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center">
+                <BookOpen className="w-7 h-7 text-indigo-600" />
               </div>
               <div>
-                <h2 className={styles.lecturesTitle}>محاضرات الباقة</h2>
-                <p className={styles.lecturesSubtitle}>ابدأ رحلتك التعليمية الآن وحقق التفوق</p>
+                <h2 className="text-2xl font-bold text-gray-900">محاضرات الباقة</h2>
+                <p className="text-gray-600">ابدأ رحلتك التعليمية الآن وحقق التفوق</p>
               </div>
             </div>
-            <div className={styles.lecturesCount}>
-              {lectures.length} محاضرة
+            
+            <div className="flex items-center gap-2 text-gray-600">
+              <Users className="w-5 h-5" />
+              <span className="font-semibold">{lectures.length} محاضرة</span>
             </div>
           </div>
 
           {lectures.length === 0 ? (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={styles.emptyState}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-lg border border-gray-200/50 p-12 text-center"
             >
-              <div className={styles.emptyIconContainer}>
-                <BookOpen className={styles.emptyIcon} size={32} />
+              <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <BookOpen className="w-12 h-12 text-gray-400" />
               </div>
-              <h3 className={styles.emptyTitle}>لا توجد محاضرات متاحة حالياً</h3>
-              <p className={styles.emptyText}>سيتم إضافة المحاضرات قريباً</p>
+              <h3 className="text-2xl font-bold text-gray-800 mb-3">لا توجد محاضرات متاحة حالياً</h3>
+              <p className="text-gray-600 text-lg">سيتم إضافة المحاضرات قريباً</p>
             </motion.div>
           ) : (
-            <div className={styles.lecturesList}>
+            <div className="space-y-4">
               {lectures.map((lecture, lectureIndex) => {
                 const lectureContents = contents.filter(c => c.lecture_id === lecture.id)
                 const isExpanded = activeSection === lecture.id
@@ -609,70 +705,95 @@ function PackageContent() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: lectureIndex * 0.1 }}
-                    className={styles.lectureCard}
+                    className="group bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-200/50 overflow-hidden hover:shadow-xl transition-all duration-300"
                   >
                     <div
-                      className={styles.lectureHeader}
+                      className="p-6 cursor-pointer hover:bg-gray-50/50 transition-colors duration-200"
                       onClick={() => toggleSection(lecture.id)}
                     >
-                      <div className={styles.lectureContent}>
-                        <div className={styles.lectureNumberBadge}>
-                          <div className={styles.lectureNumberContainer}>
-                            <span className={styles.lectureNumber}>{lectureIndex + 1}</span>
+                      <div className="flex items-start justify-between gap-6">
+                        <div className="flex items-start gap-4 flex-1">
+                          {/* Lecture Number */}
+                          <div className="relative">
+                            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                              <span className="text-2xl font-bold text-white">{lectureIndex + 1}</span>
+                            </div>
+                            <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center">
+                              {progressPercentage === 100 ? (
+                                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                              ) : progressPercentage > 0 ? (
+                                <Clock className="w-4 h-4 text-amber-600" />
+                              ) : (
+                                <Star className="w-4 h-4 text-gray-400" />
+                              )}
+                            </div>
                           </div>
-                          <div className={styles.lectureBadge}>
-                            {progressPercentage === 100 ? '✓' : progressPercentage > 0 ? '→' : '•'}
+
+                          {/* Lecture Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-xl font-bold text-gray-900 truncate">{lecture.title}</h3>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
+                                  progressPercentage === 100 ? 'completed' : 
+                                  progressPercentage > 0 ? 'in_progress' : 'not_started'
+                                )}`}>
+                                  {progressPercentage === 100 ? 'مكتمل' : progressPercentage > 0 ? 'قيد التقدم' : 'لم يبدأ'}
+                                </span>
+                                <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
+                                  {lectureContents.length} محتوى
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {lecture.description && (
+                              <p className="text-gray-600 mb-4 leading-relaxed">{lecture.description}</p>
+                            )}
+
+                            {/* Progress & Stats */}
+                            <div className="flex items-center gap-6">
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                  <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                  <span className="text-sm text-gray-600">
+                                    {completedContents} مكتمل
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-amber-600" />
+                                  <span className="text-sm text-gray-600">
+                                    {lectureContents.length - completedContents} متبقي
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <div className="flex-1 max-w-xs">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-sm text-gray-600">التقدم</span>
+                                  <span className="text-sm font-bold text-blue-600">{progressPercentage}%</span>
+                                </div>
+                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+                                    style={{ width: `${progressPercentage}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        
-                        <div className={styles.lectureInfo}>
-                          <div className={styles.lectureTitleRow}>
-                            <h3 className={styles.lectureTitle}>{lecture.title}</h3>
-                            <div className={styles.lectureTags}>
-                              <span className={`${styles.lectureTag} ${getStatusColor(
-                                progressPercentage === 100 ? 'completed' : 
-                                progressPercentage > 0 ? 'in_progress' : 'not_started'
-                              )}`}>
-                                {progressPercentage === 100 ? 'مكتمل' : progressPercentage > 0 ? 'قيد التقدم' : 'لم يبدأ'}
-                              </span>
-                              <span className={`${styles.lectureTag} ${styles.bgGray100} ${styles.textGray600}`}>
-                                {lectureContents.length} محتوى
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {lecture.description && (
-                            <p className={styles.lectureDescription}>{lecture.description}</p>
-                          )}
-                          
-                          <div className={styles.lectureMeta}>
-                            <div className={styles.metaItem}>
-                              <CheckCircle size={16} />
-                              <span>{completedContents} مكتمل</span>
-                            </div>
-                            <div className={styles.metaItem}>
-                              <Clock size={16} />
-                              <span>{lectureContents.length - completedContents} متبقي</span>
-                            </div>
-                          </div>
-                          
-                          {/* Progress Bar */}
-                          <div className={styles.progressContainer}>
-                            <div className={styles.progressInfo}>
-                              <span className={styles.progressLabelSmall}>التقدم</span>
-                              <span className={styles.progressValue}>{progressPercentage}%</span>
-                            </div>
-                            <div className={styles.progressBarSmall}>
-                              <div
-                                className={styles.progressFill}
-                                style={{ width: `${progressPercentage}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
+
+                        {/* Expand Button */}
+                        <motion.div
+                          animate={{ rotate: isExpanded ? 180 : 0 }}
+                          className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors duration-200"
+                        >
+                          <ChevronDown className="w-6 h-6" />
+                        </motion.div>
                       </div>
                     </div>
 
+                    {/* Contents */}
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div
@@ -680,114 +801,133 @@ function PackageContent() {
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.3 }}
-                          className={styles.contentsContainer}
+                          className="border-t border-gray-200/50 bg-gradient-to-b from-gray-50/50 to-white"
                         >
-                          <div className={styles.contentsList}>
-                            {lectureContents.map((content, contentIndex) => {
-                              const isAccessible = isContentAccessible(lectureIndex, contentIndex, content)
-                              const status = getContentStatus(content.id)
-                              const isCompleted = status === 'completed' || status === 'passed'
+                          <div className="p-6">
+                            <div className="grid grid-cols-1 gap-3">
+                              {lectureContents.map((content, contentIndex) => {
+                                const isAccessible = isContentAccessible(lectureIndex, contentIndex, content)
+                                const status = getContentStatus(content.id)
+                                const isCompleted = status === 'completed' || status === 'passed'
 
-                              return (
-                                <motion.div
-                                  key={content.id}
-                                  initial={{ opacity: 0, x: -20 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: contentIndex * 0.05 }}
-                                  className={`${styles.contentItem} ${isCompleted ? styles.completed : ''} ${!isAccessible ? styles.locked : ''}`}
-                                  onClick={() => isAccessible && handleContentClick(content, lectureIndex, contentIndex)}
-                                >
-                                  <div className={styles.contentMain}>
-                                    <div className={styles.contentIconContainer} style={{
-                                      background: isCompleted ? 'rgba(16, 185, 129, 0.1)' : 
-                                                 status === 'failed' ? 'rgba(239, 68, 68, 0.1)' :
-                                                 status === 'in_progress' ? 'rgba(245, 158, 11, 0.1)' :
-                                                 isAccessible ? 'rgba(59, 130, 246, 0.1)' : 'rgba(156, 163, 175, 0.1)'
-                                    }}>
-                                      {getContentIcon(content.type)}
-                                      {isCompleted && (
-                                        <div className={styles.statusBadge}>
-                                          <CheckCircle size={12} className={styles.textGreen600} />
+                                return (
+                                  <motion.div
+                                    key={content.id}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: contentIndex * 0.05 }}
+                                    className={`group/item bg-white rounded-xl border ${isCompleted ? 'border-emerald-200' : 'border-gray-200'} shadow-sm hover:shadow-md transition-all duration-300 ${isAccessible ? 'cursor-pointer hover:-translate-y-0.5' : 'opacity-75'}`}
+                                    onClick={() => isAccessible && handleContentClick(content, lectureIndex, contentIndex)}
+                                  >
+                                    <div className="p-4">
+                                      <div className="flex items-center justify-between gap-4">
+                                        {/* Content Info */}
+                                        <div className="flex items-start gap-4 flex-1">
+                                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                                            isCompleted ? 'bg-emerald-100' :
+                                            status === 'failed' ? 'bg-rose-100' :
+                                            status === 'in_progress' ? 'bg-amber-100' :
+                                            isAccessible ? 'bg-blue-100' : 'bg-gray-100'
+                                          }`}>
+                                            <div className={`
+                                              ${isCompleted ? 'text-emerald-600' :
+                                                status === 'failed' ? 'text-rose-600' :
+                                                status === 'in_progress' ? 'text-amber-600' :
+                                                isAccessible ? 'text-blue-600' : 'text-gray-400'
+                                              }
+                                            `}>
+                                              {getContentIcon(content.type)}
+                                            </div>
+                                            {isCompleted && (
+                                              <div className="absolute -mt-8 -ml-8">
+                                                <div className="w-6 h-6 bg-white rounded-full shadow-lg flex items-center justify-center">
+                                                  <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <h4 className="font-semibold text-gray-900 truncate">{content.title}</h4>
+                                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+                                                {getStatusText(status)}
+                                              </span>
+                                            </div>
+                                            
+                                            {content.description && (
+                                              <p className="text-sm text-gray-600 mb-2 line-clamp-2">{content.description}</p>
+                                            )}
+
+                                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                                              <span className="flex items-center gap-1">
+                                                {content.type === 'video' ? 'فيديو' : content.type === 'pdf' ? 'ملف PDF' : content.type === 'exam' ? 'امتحان' : 'نص'}
+                                              </span>
+                                              {content.duration_minutes > 0 && (
+                                                <span className="flex items-center gap-1">
+                                                  <Clock className="w-3 h-3" />
+                                                  {content.duration_minutes} دقيقة
+                                                </span>
+                                              )}
+                                              {content.type === 'exam' && (
+                                                <span className="flex items-center gap-1">
+                                                  <TargetIcon className="w-3 h-3" />
+                                                  النجاح: {content.pass_score}%
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
                                         </div>
-                                      )}
+
+                                        {/* Action Button */}
+                                        <div className="flex-shrink-0">
+                                          {!isAccessible ? (
+                                            <div className="flex items-center gap-2 text-gray-400 px-4 py-2 rounded-lg bg-gray-100">
+                                              <Lock className="w-4 h-4" />
+                                              <span className="text-sm font-medium">مقفل</span>
+                                            </div>
+                                          ) : (
+                                            <button
+                                              className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all duration-300 transform hover:scale-105 ${
+                                                isCompleted
+                                                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                                  : status === 'failed'
+                                                  ? 'bg-rose-100 text-rose-700 hover:bg-rose-200'
+                                                  : status === 'in_progress'
+                                                  ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                                  : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:shadow-lg'
+                                              }`}
+                                            >
+                                              {isCompleted ? (
+                                                <>
+                                                  <CheckCircle className="w-4 h-4" />
+                                                  مكتمل
+                                                </>
+                                              ) : status === 'failed' ? (
+                                                <>
+                                                  <XCircle className="w-4 h-4" />
+                                                  إعادة المحاولة
+                                                </>
+                                              ) : status === 'in_progress' ? (
+                                                <>
+                                                  <Play className="w-4 h-4" />
+                                                  استكمال
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <Play className="w-4 h-4" />
+                                                  بدء الآن
+                                                </>
+                                              )}
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
-                                    
-                                    <div className={styles.contentDetails}>
-                                      <div className={styles.contentHeader}>
-                                        <h4 className={styles.contentTitle}>{content.title}</h4>
-                                        <span className={`${styles.contentStatus} ${getStatusColor(status)}`}>
-                                          {getStatusText(status)}
-                                        </span>
-                                      </div>
-                                      
-                                      {content.description && (
-                                        <p className={styles.contentDescription}>{content.description}</p>
-                                      )}
-                                      
-                                      <div className={styles.contentMeta}>
-                                        <span className={styles.metaItemSmall}>
-                                          {content.type === 'video' ? 'فيديو' : content.type === 'pdf' ? 'ملف PDF' : content.type === 'exam' ? 'امتحان' : 'نص'}
-                                        </span>
-                                        {content.duration_minutes > 0 && (
-                                          <span className={styles.metaItemSmall}>
-                                            <Clock size={14} />
-                                            {content.duration_minutes} دقيقة
-                                          </span>
-                                        )}
-                                        {content.type === 'exam' && (
-                                          <span className={styles.metaItemSmall}>
-                                            <Target size={14} />
-                                            النجاح: {content.pass_score}%
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className={styles.contentActions}>
-                                    {!isAccessible ? (
-                                      <div className={styles.lockBadge}>
-                                        <Lock size={18} />
-                                        <span>مقفل</span>
-                                      </div>
-                                    ) : (
-                                      <button
-                                        className={styles.actionButton}
-                                        style={{
-                                          background: isCompleted ? '#10b981' : 
-                                                     status === 'failed' ? '#ef4444' :
-                                                     status === 'in_progress' ? '#f59e0b' :
-                                                     '#3b82f6',
-                                          color: 'white'
-                                        }}
-                                      >
-                                        {isCompleted ? (
-                                          <>
-                                            <CheckCircle size={16} />
-                                            مكتمل
-                                          </>
-                                        ) : status === 'failed' ? (
-                                          <>
-                                            <XCircle size={16} />
-                                            إعادة المحاولة
-                                          </>
-                                        ) : status === 'in_progress' ? (
-                                          <>
-                                            <Play size={16} />
-                                            استكمال
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Play size={16} />
-                                            بدء
-                                          </>
-                                        )}
-                                      </button>
-                                    )}
-                                  </div>
-                                </motion.div>
-                              )
-                            })}
+                                  </motion.div>
+                                )
+                              })}
+                            </div>
                           </div>
                         </motion.div>
                       )}
@@ -797,143 +937,143 @@ function PackageContent() {
               })}
             </div>
           )}
-        </div>
+        </motion.div>
 
-        {/* Notes & Info Section */}
-        <div className={styles.gridContainer}>
+        {/* Info Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"
+        >
           {/* Important Notes */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className={styles.notesCard}
-          >
-            <div className={styles.notesHeader}>
-              <div className={styles.notesIconContainer}>
-                <Award className={styles.notesIcon} size={24} />
+          <div className="bg-gradient-to-br from-white to-blue-50 rounded-3xl shadow-xl border border-blue-100/50 p-8">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center">
+                <Award className="w-7 h-7 text-blue-600" />
               </div>
               <div>
-                <h3 className={styles.notesTitle}>ملاحظات هامة</h3>
-                <p className={styles.notesSubtitle}>نصائح للاستفادة القصوى من الباقة</p>
+                <h3 className="text-2xl font-bold text-gray-900">ملاحظات هامة</h3>
+                <p className="text-gray-600">نصائح للاستفادة القصوى من الباقة</p>
               </div>
             </div>
             
-            <div className={styles.notesList}>
+            <div className="space-y-4">
               {packageData.type === 'monthly' || packageData.type === 'term' ? (
                 <>
-                  <div className={styles.noteItem}>
-                    <div className={`${styles.noteIconContainer} ${styles.bgBlue50}`}>
-                      <Shield size={16} className={styles.textBlue600} />
+                  <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-xl border border-blue-200">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-5 h-5 text-blue-600" />
                     </div>
-                    <div className={styles.noteText}>
-                      <strong>نظام التقدم المتسلسل:</strong> يجب إتمام كل محتوى قبل الانتقال للذي يليه
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-1">نظام التقدم المتسلسل</h4>
+                      <p className="text-sm text-gray-600">يجب إتمام كل محتوى قبل الانتقال للذي يليه</p>
                     </div>
                   </div>
                   
-                  <div className={styles.noteItem}>
-                    <div className={`${styles.noteIconContainer} ${styles.bgPurple50}`}>
-                      <Target size={16} className={styles.textPurple600} />
+                  <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-purple-50 to-purple-100/50 rounded-xl border border-purple-200">
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <TargetIcon className="w-5 h-5 text-purple-600" />
                     </div>
-                    <div className={styles.noteText}>
-                      <strong>الامتحانات:</strong> لابد من اجتياز الامتحان قبل الانتقال للمحاضرة التالية
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-1">الامتحانات</h4>
+                      <p className="text-sm text-gray-600">لابد من اجتياز الامتحان قبل الانتقال للمحاضرة التالية</p>
                     </div>
                   </div>
                 </>
               ) : null}
               
               {userPackage?.expires_at && (
-                <div className={styles.noteItem}>
-                  <div className={`${styles.noteIconContainer} ${styles.bgGreen50}`}>
-                    <CalendarDays size={16} className={styles.textGreen600} />
+                <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-emerald-50 to-emerald-100/50 rounded-xl border border-emerald-200">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <CalendarDays className="w-5 h-5 text-emerald-600" />
                   </div>
-                  <div className={styles.noteText}>
-                    <strong>مدة الاشتراك:</strong> تنتهي صلاحية اشتراكك في:{' '}
-                    <strong>
-                      {new Date(userPackage.expires_at).toLocaleDateString('ar-EG', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </strong>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-1">مدة الاشتراك</h4>
+                    <p className="text-sm text-gray-600">
+                      تنتهي صلاحية اشتراكك في:{' '}
+                      <span className="font-bold text-emerald-700">
+                        {new Date(userPackage.expires_at).toLocaleDateString('ar-EG', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </p>
                   </div>
                 </div>
               )}
               
-              <div className={styles.noteItem}>
-                <div className={`${styles.noteIconContainer} ${styles.bgGray50}`}>
-                  <Clock size={16} className={styles.textGray600} />
+              <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-xl border border-gray-200">
+                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Lightbulb className="w-5 h-5 text-gray-600" />
                 </div>
-                <div className={styles.noteText}>
-                  <strong>جدول الدراسة:</strong> نوصي بدراسة محتوى واحد يومياً لتحقيق أفضل النتائج
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-1">نصائح الدراسة</h4>
+                  <p className="text-sm text-gray-600">نوصي بدراسة محتوى واحد يومياً لتحقيق أفضل النتائج</p>
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Package Summary */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className={styles.summaryCard}
-          >
-            <div className={styles.summaryHeader}>
-              <div className={styles.summaryIconContainer}>
-                <GraduationCap className={styles.summaryIcon} size={24} />
+          <div className="bg-gradient-to-br from-white to-purple-50 rounded-3xl shadow-xl border border-purple-100/50 p-8">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-14 h-14 bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl flex items-center justify-center">
+                <Brain className="w-7 h-7 text-purple-600" />
               </div>
               <div>
-                <h3 className={styles.summaryTitle}>ملخص الباقة</h3>
-                <p className={styles.summarySubtitle}>معلومات شاملة عن محتويات الباقة</p>
+                <h3 className="text-2xl font-bold text-gray-900">ملخص الباقة</h3>
+                <p className="text-gray-600">معلومات شاملة عن محتويات الباقة</p>
               </div>
             </div>
             
-            <div className={styles.summaryContent}>
-              <div className={styles.summaryItem}>
-                <div className={styles.summaryRow}>
-                  <span className={styles.summaryLabel}>نوع الباقة</span>
-                  <span className={styles.typeBadgeSmall}>
-                    {getTypeBadge(packageData.type)}
+            <div className="space-y-6">
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-gray-700">نوع الباقة</span>
+                  <span className="px-3 py-1 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-full text-sm font-semibold">
+                    {getTypeBadge(packageData.type).text}
                   </span>
                 </div>
-                <div className={styles.summaryRow}>
-                  <span className={styles.summaryLabel}>المدة</span>
-                  <span className={styles.summaryValue}>{packageData.duration_days} يوم</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-gray-700">المدة</span>
+                  <span className="text-lg font-bold text-gray-900">{packageData.duration_days} يوم</span>
                 </div>
               </div>
               
-              <div className={styles.summaryItem}>
-                <h4 className={styles.summarySectionTitle}>توزيع المحتويات</h4>
-                <div className={styles.distributionList}>
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <h4 className="font-semibold text-gray-900 mb-4">توزيع المحتويات</h4>
+                <div className="space-y-3">
                   {['video', 'pdf', 'exam', 'text'].map((type) => {
                     const count = contents.filter(c => c.type === type).length
                     if (count === 0) return null
                     
                     const percentage = Math.round((count / contents.length) * 100)
                     const colors = {
-                      video: { bg: '#3b82f6', text: '#3b82f6' },
-                      pdf: { bg: '#ef4444', text: '#ef4444' },
-                      exam: { bg: '#8b5cf6', text: '#8b5cf6' },
-                      text: { bg: '#10b981', text: '#10b981' }
+                      video: { bg: 'from-blue-500 to-blue-600', text: 'text-blue-600' },
+                      pdf: { bg: 'from-rose-500 to-rose-600', text: 'text-rose-600' },
+                      exam: { bg: 'from-purple-500 to-purple-600', text: 'text-purple-600' },
+                      text: { bg: 'from-emerald-500 to-emerald-600', text: 'text-emerald-600' }
                     }
                     
                     return (
-                      <div key={type} className={styles.distributionItem}>
-                        <div className={styles.distributionHeader}>
-                          <div className={styles.distributionInfo}>
-                            {getContentIcon(type)}
-                            <span className={styles.distributionLabel}>
+                      <div key={type} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${colors[type as keyof typeof colors].text.replace('text-', 'bg-')}20`}>
+                              {getContentIcon(type)}
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">
                               {type === 'video' ? 'فيديوهات' : type === 'pdf' ? 'ملفات PDF' : type === 'exam' ? 'امتحانات' : 'نصوص'}
                             </span>
                           </div>
-                          <span className={styles.distributionCount}>{count} ({percentage}%)</span>
+                          <span className="text-sm font-bold text-gray-900">{count} ({percentage}%)</span>
                         </div>
-                        <div className={styles.distributionBar}>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
-                            className={styles.distributionFill}
-                            style={{
-                              width: `${percentage}%`,
-                              background: colors[type as keyof typeof colors].bg
-                            }}
+                            className={`h-full rounded-full bg-gradient-to-r ${colors[type as keyof typeof colors].bg}`}
+                            style={{ width: `${percentage}%` }}
                           />
                         </div>
                       </div>
@@ -942,60 +1082,68 @@ function PackageContent() {
                 </div>
               </div>
               
-              <div className={styles.summaryItem}>
-                <h4 className={styles.summarySectionTitle}>نصائح للدراسة</h4>
-                <div className={styles.tipsList}>
-                  <div className={styles.tipItem}>
-                    <div className={styles.tipIcon}>
-                      <CheckCircle size={12} className={styles.textBlue600} />
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-xl p-4 border border-blue-200">
+                <h4 className="font-semibold text-gray-900 mb-3">نصائح للدراسة</h4>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li className="flex items-start gap-2">
+                    <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle className="w-3 h-3 text-blue-600" />
                     </div>
-                    <p className={styles.tipText}>احرص على إكمال المحتوى بالترتيب المحدد</p>
-                  </div>
-                  <div className={styles.tipItem}>
-                    <div className={styles.tipIcon}>
-                      <CheckCircle size={12} className={styles.textBlue600} />
+                    <span>احرص على إكمال المحتوى بالترتيب المحدد</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle className="w-3 h-3 text-blue-600" />
                     </div>
-                    <p className={styles.tipText}>خصص وقتاً ثابتاً للدراسة يومياً</p>
-                  </div>
-                  <div className={styles.tipItem}>
-                    <div className={styles.tipIcon}>
-                      <CheckCircle size={12} className={styles.textBlue600} />
+                    <span>خصص وقتاً ثابتاً للدراسة يومياً</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle className="w-3 h-3 text-blue-600" />
                     </div>
-                    <p className={styles.tipText}>استخدم الملاحظات أثناء مشاهدة الفيديوهات</p>
-                  </div>
-                </div>
+                    <span>استخدم الملاحظات أثناء مشاهدة الفيديوهات</span>
+                  </li>
+                </ul>
               </div>
             </div>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
 
         {/* Back Button */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className={styles.backSection}
+          transition={{ delay: 0.3 }}
+          className="text-center"
         >
           <button
             onClick={() => router.push(`/grades/${gradeSlug}`)}
-            className={styles.backActionButton}
+            className="group inline-flex items-center gap-3 bg-gradient-to-r from-white to-gray-50 text-blue-600 border border-blue-200 px-8 py-4 rounded-xl font-semibold hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
           >
-            <ArrowRight size={20} />
+            <ArrowRight className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
             العودة إلى الباقات
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-700 opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300"></div>
           </button>
         </motion.div>
       </main>
 
       {/* Footer */}
-      <footer className={styles.footer}>
-        <div className={styles.footerContent}>
-          <div className={styles.footerContainer}>
-            <div className={styles.footerBrand}>
-              <Crown className={styles.footerBrandIcon} size={20} />
-              <span className={styles.footerBrandText}>البارع محمود الديب</span>
+      <footer className="mt-12 bg-gradient-to-r from-gray-900 to-gray-800 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                <Crown className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-bold text-lg">البارع محمود الديب</div>
+                <div className="text-sm text-gray-400">نحو تعليم أفضل لمستقبل مشرق</div>
+              </div>
             </div>
-            <div className={styles.footerCopyright}>
-              © {new Date().getFullYear()} جميع الحقوق محفوظة
+            
+            <div className="text-center md:text-right">
+              <div className="text-sm text-gray-400 mb-2">© {new Date().getFullYear()} جميع الحقوق محفوظة</div>
+              <div className="text-xs text-gray-500">مصمم بحب لتجربة تعليمية استثنائية</div>
             </div>
           </div>
         </div>

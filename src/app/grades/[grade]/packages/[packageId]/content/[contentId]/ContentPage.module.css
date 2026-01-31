@@ -1,24 +1,40 @@
-/* ContentPage.module.css - تصميم جديد كليًا */
-
-/* ===== المتغيرات العامة ===== */
 :root {
-  --radius: 12px;
-  --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  --transition: all 0.3s ease;
+  --primary-color: #6366f1;
+  --primary-light: #e0e7ff;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --background-color: #f8fafc;
+  --card-color: #ffffff;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ===== الهيكل الأساسي ===== */
+/* ========== Global Styles ========== */
 .pageContainer {
   min-height: 100vh;
-  background: #f8fafc;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--background-color);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+/* ========== Header Styles ========== */
 .header {
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, var(--card-color) 0%, #f8fafc 100%);
+  border-bottom: 1px solid var(--border-color);
   padding: 1.5rem 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(10px);
 }
 
 .headerContainer {
@@ -27,51 +43,53 @@
   padding: 0 2rem;
 }
 
-/* ===== مسار التنقل ===== */
+/* Breadcrumb */
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
   flex-wrap: wrap;
 }
 
 .breadcrumbItem {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 0.875rem;
-  cursor: pointer;
+  font-weight: 500;
   padding: 0.5rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
   transition: var(--transition);
 }
 
 .breadcrumbItem:hover {
-  color: #334155;
-  background: #f1f5f9;
+  color: var(--primary-color);
+  background: var(--primary-light);
 }
 
 .breadcrumbSeparator {
   color: #cbd5e1;
+  width: 16px;
+  height: 16px;
 }
 
 .currentPage {
-  color: #1e293b;
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 0.875rem;
-  padding: 0.5rem;
 }
 
-/* ===== رأس المحتوى ===== */
+/* Content Header */
 .contentHeader {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .contentInfo {
@@ -84,17 +102,22 @@
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   border-radius: 20px;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
   margin-bottom: 1rem;
 }
 
 .contentTitle {
-  font-size: 2rem;
+  font-size: 1.875rem;
   font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
   line-height: 1.2;
+  background: linear-gradient(135deg, var(--text-primary) 0%, #475569 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .contentMeta {
@@ -107,40 +130,43 @@
 .metaItem {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #64748b;
+  gap: 0.375rem;
+  color: var(--text-secondary);
   font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .metaSeparator {
   color: #cbd5e1;
 }
 
-/* ===== أزرار التنقل ===== */
+/* Header Actions */
 .headerActions {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .backActionBtn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: 2px solid;
-  border-radius: 8px;
-  background: white;
-  font-weight: 600;
+  padding: 0.625rem 1.25rem;
+  border: 1px solid;
+  border-radius: var(--radius-md);
+  background: var(--card-color);
+  font-weight: 500;
+  font-size: 0.875rem;
   cursor: pointer;
   transition: var(--transition);
+  box-shadow: var(--shadow-sm);
 }
 
 .backActionBtn:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-md);
 }
 
-/* ===== المحتوى الرئيسي ===== */
+/* ========== Main Content ========== */
 .mainContent {
   max-width: 1400px;
   margin: 2rem auto;
@@ -149,23 +175,25 @@
 
 .contentLayout {
   display: grid;
-  grid-template-columns: 1fr 350px;
-  gap: 2rem;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
 }
 
-/* ===== العمود الأيسر ===== */
+/* Left Column */
 .leftColumn {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
+/* Tabs */
 .tabs {
   display: flex;
-  background: white;
-  border-radius: var(--radius);
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
+  background: var(--card-color);
+  border-radius: var(--radius-lg);
+  padding: 0.25rem;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .tabButton {
@@ -174,61 +202,70 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
   border: none;
   background: none;
-  color: #64748b;
-  font-weight: 600;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.875rem;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   transition: var(--transition);
 }
 
 .tabButton:hover {
-  color: #334155;
-  background: #f8fafc;
+  color: var(--primary-color);
+  background: var(--primary-light);
 }
 
 .activeTab {
-  background: white;
-  color: inherit;
+  background: var(--primary-color);
+  color: white;
+  box-shadow: var(--shadow-sm);
 }
 
+/* Content Area */
 .contentArea {
-  background: white;
-  border-radius: var(--radius);
-  padding: 2rem;
-  box-shadow: var(--shadow);
+  background: var(--card-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
 }
 
-/* ===== محتوى النص ===== */
+/* ========== Content Components ========== */
+
+/* Text Content */
 .textContent {
-  background: white;
-  border-radius: var(--radius);
+  background: var(--card-color);
+  border-radius: var(--radius-lg);
   overflow: hidden;
+  border: 1px solid var(--border-color);
 }
 
 .textContentHeader {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, var(--primary-light) 0%, #f0f9ff 100%);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .textContentInner {
-  padding: 2rem;
+  padding: 1.5rem;
   line-height: 1.8;
-  color: #334155;
+  color: var(--text-secondary);
 }
 
 .textContentInner h1,
 .textContentInner h2,
 .textContentInner h3,
 .textContentInner h4 {
-  color: #1e293b;
+  color: var(--text-primary);
   margin-top: 1.5rem;
   margin-bottom: 1rem;
+  font-weight: 600;
 }
 
 .textContentInner p {
@@ -241,118 +278,168 @@
   margin-bottom: 1rem;
 }
 
-/* ===== محتوى غير مدعوم ===== */
+.textContentInner li {
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.textContentInner ul li::before {
+  content: "•";
+  color: var(--primary-color);
+  font-weight: bold;
+  position: absolute;
+  right: -1rem;
+}
+
+/* Unsupported Content */
 .unsupportedContent {
   text-align: center;
   padding: 4rem 2rem;
+  background: var(--card-color);
+  border-radius: var(--radius-lg);
 }
 
 .unsupportedIcon {
   margin: 0 auto 1.5rem;
-  color: #94a3b8;
+  color: var(--text-secondary);
 }
 
 .unsupportedContent h3 {
-  color: #1e293b;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
+  font-size: 1.25rem;
 }
 
 .unsupportedContent p {
-  color: #64748b;
+  color: var(--text-secondary);
   max-width: 400px;
   margin: 0 auto;
+  line-height: 1.6;
 }
 
-/* ===== تتبع التقدم ===== */
+/* Progress Tracking */
 .progressTracking {
-  background: #f8fafc;
-  border-radius: var(--radius);
-  padding: 1.5rem;
-  margin-top: 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-top: 1.5rem;
+  border: 1px solid var(--border-color);
 }
 
 .progressHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .progressHeader h4 {
-  color: #1e293b;
-  font-size: 1rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .progressHeader span {
-  color: #3b82f6;
-  font-weight: 600;
-  font-size: 1.25rem;
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 1.125rem;
 }
 
 .progressBar {
-  height: 8px;
+  height: 6px;
   background: #e2e8f0;
-  border-radius: 4px;
+  border-radius: 3px;
   overflow: hidden;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.progressBar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255,255,255,0.3) 50%, 
+    transparent 100%);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 .progressFill {
   height: 100%;
-  border-radius: 4px;
-  transition: width 0.3s ease;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .progressHint {
-  color: #64748b;
-  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
   text-align: center;
+  opacity: 0.8;
 }
 
-/* ===== معلومات المحتوى ===== */
+/* Info Container */
 .infoContainer {
-  background: white;
+  background: var(--card-color);
 }
 
 .infoHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .infoTitle {
-  color: #1e293b;
-  font-size: 1.5rem;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 
 .infoBadge {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 0.375rem 0.75rem;
   border-radius: 20px;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
+  letter-spacing: 0.025em;
 }
 
 .infoContent {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .infoSection h4 {
-  color: #1e293b;
-  margin-bottom: 0.75rem;
-  font-size: 1.125rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .infoSection p {
-  color: #64748b;
+  color: var(--text-secondary);
   line-height: 1.6;
+  font-size: 0.875rem;
 }
 
 .infoGrid {
@@ -364,35 +451,45 @@
 .infoCard {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
-  padding: 1.25rem;
+  gap: 0.75rem;
+  padding: 1rem;
   background: #f8fafc;
-  border-radius: var(--radius);
-  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  transition: var(--transition);
+}
+
+.infoCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
 .infoIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
   flex-shrink: 0;
 }
 
 .infoCard h5 {
-  color: #64748b;
-  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   margin-bottom: 0.25rem;
 }
 
 .infoCard p {
-  color: #1e293b;
+  color: var(--text-primary);
   font-weight: 600;
+  font-size: 0.875rem;
 }
 
-/* ===== العمود الأيمن ===== */
+/* ========== Right Column ========== */
 .rightColumn {
   display: flex;
   flex-direction: column;
@@ -401,54 +498,70 @@
 
 .sidebar {
   position: sticky;
-  top: 2rem;
+  top: 6rem;
 }
 
 .statusCard,
 .lectureInfo,
 .packageInfo {
-  background: white;
-  border-radius: var(--radius);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: var(--shadow);
+  background: var(--card-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  transition: var(--transition);
+}
+
+.statusCard:hover,
+.lectureInfo:hover,
+.packageInfo:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
 .cardTitle {
-  color: #1e293b;
-  font-size: 1.125rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .statusContent {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.5rem;
-  border-radius: var(--radius);
-  margin-bottom: 1.5rem;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
 }
 
 .statusContent.completed {
-  background: #d1fae5;
+  background: linear-gradient(135deg, #d1fae5 0%, #ecfdf5 100%);
   color: #065f46;
+  border: 1px solid #a7f3d0;
 }
 
 .statusContent.failed {
-  background: #fee2e2;
+  background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%);
   color: #991b1b;
+  border: 1px solid #fecaca;
 }
 
 .statusContent.inProgress {
-  background: #dbeafe;
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
   color: #1e40af;
+  border: 1px solid #bfdbfe;
 }
 
 .statusContent.notStarted {
-  background: #f3f4f6;
+  background: linear-gradient(135deg, #f3f4f6 0%, #f9fafb 100%);
   color: #4b5563;
+  border: 1px solid #e5e7eb;
 }
 
 .statusInfo {
@@ -456,13 +569,13 @@
 }
 
 .statusText {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.125rem;
 }
 
 .statusSubtext {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   opacity: 0.8;
 }
 
@@ -472,30 +585,33 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 1rem;
+  padding: 0.75rem;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: white;
-  font-weight: 600;
+  font-weight: 500;
+  font-size: 0.875rem;
   cursor: pointer;
   transition: var(--transition);
+  box-shadow: var(--shadow-sm);
 }
 
 .completeButton:hover:not(.disabled) {
   transform: translateY(-2px);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-md);
 }
 
 .completeButton.disabled {
   background: #9ca3af !important;
   cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .lectureContent,
 .packageContent {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .lectureIcon,
@@ -503,101 +619,127 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
   flex-shrink: 0;
 }
 
 .lectureContent h5,
 .packageContent h5 {
-  color: #1e293b;
+  color: var(--text-primary);
   margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .lectureContent p,
 .packageContent p {
-  color: #64748b;
-  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
 }
 
-/* ===== PDF Viewer ===== */
-.pdfViewerContainer {
-  background: white;
-  border-radius: var(--radius);
+/* ========== Video Player Styles ========== */
+.videoContainer {
+  position: relative;
+  background: #000;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow);
+  aspect-ratio: 16/9;
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  box-shadow: var(--shadow-lg);
+}
+
+.videoControls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.6), transparent);
+  padding: 1.25rem 1rem 1rem;
+  transition: opacity 0.3s;
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 20;
+  direction: rtl;
+}
+
+/* ========== PDF Viewer Styles ========== */
+.pdfViewerContainer {
+  background: var(--card-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
 }
 
 .pdfHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, var(--primary-light) 0%, #f0f9ff 100%);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .headerLeft {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .iconContainer {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 50px;
-  border-radius: 10px;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
 }
 
 .headerLeft h3 {
-  color: #1e293b;
-  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+  margin-bottom: 0.125rem;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .headerLeft p {
-  color: #64748b;
-  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
 }
 
 .headerActionsPdf {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
 .openButton,
 .downloadButton {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.75rem;
   cursor: pointer;
   transition: var(--transition);
-}
-
-.openButton {
-  border: 2px solid;
-  background: white;
-}
-
-.downloadButton {
-  border: none;
-  color: white;
+  box-shadow: var(--shadow-sm);
 }
 
 .openButton:hover,
 .downloadButton:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-md);
 }
 
 .viewerContainer {
   position: relative;
-  height: 600px;
+  height: 500px;
   background: #f8fafc;
 }
 
@@ -631,8 +773,9 @@
 }
 
 .pdfFooter {
-  padding: 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border-color);
+  background: #f8fafc;
 }
 
 .progressBarContainer {
@@ -640,7 +783,7 @@
   background: #e2e8f0;
   border-radius: 2px;
   overflow: hidden;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .progressBarFill {
@@ -650,189 +793,203 @@
 }
 
 .progressText {
-  color: #1e293b;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 0.75rem;
+  margin-bottom: 0.375rem;
 }
 
 .driveNotice {
-  color: #64748b;
-  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: 0.375rem;
+  margin-bottom: 0.375rem;
 }
 
 .watermark {
   color: #94a3b8;
   font-size: 0.75rem;
   text-align: center;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
+  opacity: 0.6;
 }
 
+/* PDF Error */
 .pdfErrorContainer {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4rem 2rem;
+  padding: 3rem 1.5rem;
   text-align: center;
 }
 
 .pdfErrorContainer h3 {
-  color: #1e293b;
-  margin: 1.5rem 0 1rem;
+  color: var(--text-primary);
+  margin: 1rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .errorActions {
   display: flex;
-  gap: 1rem;
-  margin-top: 1.5rem;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
-/* ===== Exam Viewer ===== */
+/* ========== Exam Viewer Styles ========== */
 .examContainer {
-  background: white;
-  border-radius: var(--radius);
-  padding: 2rem;
-  box-shadow: var(--shadow);
+  background: var(--card-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
 }
 
 .examHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .examInfo {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .examIconContainer {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 50px;
-  border-radius: 10px;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
 }
 
 .examInfo h3 {
-  color: #1e293b;
-  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+  margin-bottom: 0.125rem;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .examInfo p {
-  color: #64748b;
-  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
 }
 
 .timer {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
   font-weight: 600;
-  font-size: 1.125rem;
+  font-size: 0.875rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .questionCard {
   background: #f8fafc;
-  border-radius: var(--radius);
-  padding: 2rem;
-  margin-bottom: 2rem;
-  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-color);
 }
 
 .questionHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .questionNumber {
-  color: #1e293b;
+  color: var(--text-primary);
   font-weight: 600;
-  font-size: 1.125rem;
+  font-size: 0.875rem;
 }
 
 .questionProgress {
-  color: #3b82f6;
+  color: var(--primary-color);
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: 1rem;
 }
 
 .questionText {
-  color: #1e293b;
-  font-size: 1.25rem;
+  color: var(--text-primary);
+  font-size: 1rem;
   line-height: 1.6;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
 }
 
 .options {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .option {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.25rem;
+  gap: 0.75rem;
+  padding: 1rem;
   background: white;
-  border: 2px solid #e2e8f0;
-  border-radius: var(--radius);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   text-align: right;
   cursor: pointer;
   transition: var(--transition);
 }
 
 .option:hover {
-  border-color: #94a3b8;
+  border-color: var(--primary-color);
   transform: translateX(-4px);
+  box-shadow: var(--shadow-sm);
 }
 
 .option.selected {
-  border-color: #3b82f6;
-  background: #eff6ff;
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+  box-shadow: var(--shadow-sm);
 }
 
 .optionLabel {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #f1f5f9;
-  border-radius: 8px;
-  font-weight: 700;
-  color: #64748b;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
   flex-shrink: 0;
+  font-size: 0.75rem;
 }
 
 .selected .optionLabel {
-  background: #3b82f6;
+  background: var(--primary-color);
   color: white;
 }
 
 .optionText {
   flex: 1;
-  color: #334155;
-  font-size: 1rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .radio {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border: 2px solid #cbd5e1;
   border-radius: 50%;
   display: flex;
@@ -842,9 +999,8 @@
 }
 
 .radioInner {
-  width: 12px;
-  height: 12px;
-  background: #3b82f6;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
 }
 
@@ -852,26 +1008,29 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 2rem;
+  margin-top: 1.5rem;
 }
 
 .navButton {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   background: white;
-  color: #64748b;
-  font-weight: 600;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.75rem;
   cursor: pointer;
   transition: var(--transition);
+  box-shadow: var(--shadow-sm);
 }
 
 .navButton:hover:not(:disabled) {
-  border-color: #94a3b8;
-  color: #334155;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: translateY(-2px);
 }
 
 .submitButton {
@@ -879,31 +1038,33 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 1rem 2rem;
+  padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: white;
-  font-weight: 600;
-  font-size: 1rem;
+  font-weight: 500;
+  font-size: 0.875rem;
   cursor: pointer;
   transition: var(--transition);
+  box-shadow: var(--shadow-sm);
 }
 
 .submitButton:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-md);
 }
 
 .progressDots {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.375rem;
 }
 
 .dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #e5e7eb;
+  transition: var(--transition);
 }
 
 .dot.active {
@@ -911,93 +1072,121 @@
 }
 
 .dot.answered {
-  background: #10b981;
+  background: var(--success-color);
 }
 
-/* ===== نتائج الامتحان ===== */
+/* Exam Results */
 .examResultsContainer {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 500px;
+  min-height: 400px;
 }
 
 .resultCard {
-  background: white;
-  border-radius: var(--radius);
-  padding: 3rem;
+  background: var(--card-color);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
   text-align: center;
-  max-width: 500px;
+  max-width: 400px;
   width: 100%;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  transition: var(--transition);
+}
+
+.resultCard:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
 }
 
 .resultCard.passed {
-  border-top: 4px solid #10b981;
+  border-top: 4px solid var(--success-color);
 }
 
 .resultCard.failed {
-  border-top: 4px solid #ef4444;
+  border-top: 4px solid var(--danger-color);
 }
 
 .resultIcon {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .resultCard h2 {
-  color: #1e293b;
-  margin-bottom: 1.5rem;
-  font-size: 1.75rem;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 
 .scoreCircle {
-  width: 120px;
-  height: 120px;
-  border: 6px solid;
+  width: 100px;
+  height: 100px;
+  border: 4px solid;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 1.5rem auto;
+  margin: 1rem auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.scoreCircle::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: conic-gradient(from 0deg, currentColor 0%, transparent 100%);
+  border-radius: 50%;
+  opacity: 0.1;
 }
 
 .scoreText {
-  font-size: 2.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
+  position: relative;
+  z-index: 1;
 }
 
 .passScoreText {
-  color: #64748b;
-  margin-bottom: 2rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
 }
 
 .stats {
   display: flex;
   justify-content: center;
-  gap: 2rem;
-  margin-bottom: 2rem;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .stat {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
+  gap: 0.375rem;
+  font-weight: 500;
+  font-size: 0.875rem;
 }
 
 .resultButtons {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   justify-content: center;
 }
 
 .backButtonExam,
 .retryButton {
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.75rem;
   cursor: pointer;
   transition: var(--transition);
+  box-shadow: var(--shadow-sm);
 }
 
 .backButtonExam {
@@ -1006,22 +1195,23 @@
 }
 
 .retryButton {
-  border: 2px solid;
-  background: white;
+  border: 1px solid;
+  background: var(--card-color);
 }
 
 .backButtonExam:hover,
 .retryButton:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-md);
 }
 
-/* ===== حالات التحميل والخطأ ===== */
+/* ========== Loading States ========== */
 .loadingContainer {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 .loadingContent {
@@ -1030,66 +1220,74 @@
 
 .loadingSpinner {
   animation: spin 1s linear infinite;
-  margin: 0 auto 1.5rem;
+  margin: 0 auto 1rem;
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .loadingText {
-  color: #64748b;
-  font-size: 1.125rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
+/* Error States */
 .errorContainer {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 .errorContent {
   text-align: center;
-  max-width: 500px;
+  max-width: 400px;
+  padding: 2rem;
+  background: var(--card-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
 }
 
 .errorIcon {
-  margin: 0 auto 1.5rem;
-  color: #ef4444;
+  margin: 0 auto 1rem;
+  color: var(--danger-color);
 }
 
 .errorTitle {
-  color: #1e293b;
-  margin-bottom: 1rem;
-  font-size: 1.75rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 
 .errorMessage {
-  color: #64748b;
-  margin-bottom: 2rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
   line-height: 1.6;
+  font-size: 0.875rem;
 }
 
 .backBtn {
-  padding: 0.75rem 2rem;
+  padding: 0.5rem 1.5rem;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: white;
-  font-weight: 600;
+  font-weight: 500;
+  font-size: 0.875rem;
   cursor: pointer;
   transition: var(--transition);
+  box-shadow: var(--shadow-sm);
 }
 
 .backBtn:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-md);
 }
 
 .examLoadingContainer,
@@ -1098,14 +1296,15 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
+  min-height: 300px;
+  padding: 2rem;
 }
 
 .examErrorContent {
   text-align: center;
 }
 
-/* ===== التجاوب ===== */
+/* ========== Responsive Design ========== */
 @media (max-width: 1200px) {
   .contentLayout {
     grid-template-columns: 1fr;
@@ -1141,7 +1340,7 @@
   }
   
   .contentArea {
-    padding: 1.5rem;
+    padding: 1rem;
   }
   
   .infoGrid {
@@ -1151,25 +1350,56 @@
   .pdfHeader,
   .examHeader {
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
     align-items: stretch;
   }
   
   .headerActionsPdf {
     justify-content: center;
+    flex-wrap: wrap;
   }
   
   .navigation {
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
   }
   
   .progressDots {
     order: -1;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   
   .resultButtons {
     flex-direction: column;
+  }
+  
+  .viewerContainer {
+    height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .contentTitle {
+    font-size: 1.25rem;
+  }
+  
+  .contentMeta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .metaSeparator {
+    display: none;
+  }
+  
+  .tabs {
+    flex-direction: column;
+  }
+  
+  .tabButton {
+    width: 100%;
   }
 }
