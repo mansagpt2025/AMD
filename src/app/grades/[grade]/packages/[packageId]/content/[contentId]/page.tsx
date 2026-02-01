@@ -14,7 +14,8 @@ import {
   MoreVertical, Share2, Heart, Bookmark, Sparkles,
   Timer, TrendingUp, CheckCheck, Circle, RotateCcw,
   GraduationCap, Calendar, User, FileQuestion,
-  PanelLeft, Minimize2, VolumeX, Settings, Subtitles
+  PanelLeft, Minimize2, VolumeX, Settings, Subtitles,
+  HelpCircle, AlertTriangle
 } from 'lucide-react'
 import styles from './ContentPage.module.css'
 
@@ -38,13 +39,21 @@ const getSupabase = () => {
 }
 
 // ==========================================
-// TYPES
+// UPDATED TYPES
 // ==========================================
+interface ExamQuestion {
+  question: string
+  options: string[]
+  correct: number
+  marks?: number
+}
+
 interface Question {
   id: number
   text: string
   options: { id: string; text: string }[]
   correctAnswer: string
+  marks: number
 }
 
 interface Theme {
@@ -64,7 +73,7 @@ interface Theme {
 }
 
 // ==========================================
-// ENHANCED VIDEO PLAYER
+// ENHANCED VIDEO PLAYER (Unchanged)
 // ==========================================
 function CinematicVideoPlayer({ 
   videoUrl, contentId, userId, packageId, onProgress, theme 
@@ -437,7 +446,7 @@ const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 }
 
 // ==========================================
-// ENHANCED PDF VIEWER
+// ENHANCED PDF VIEWER (Unchanged)
 // ==========================================
 function GlassPDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: { 
   pdfUrl: string; contentId: string; userId: string; packageId: string
@@ -596,7 +605,7 @@ function GlassPDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgres
 }
 
 // ==========================================
-// ENHANCED EXAM VIEWER
+// ENHANCED EXAM VIEWER - NEW FORMAT
 // ==========================================
 function ModernExamViewer({ examContent, contentId, packageId, userId, theme, onComplete }: {
   examContent: any; contentId: string; packageId: string; userId: string
@@ -610,15 +619,41 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const [score, setScore] = useState(0)
+  const [totalMarks, setTotalMarks] = useState(0)
+  const [obtainedMarks, setObtainedMarks] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [results, setResults] = useState<{correct: number, wrong: number} | null>(null)
+  const [results, setResults] = useState<{correct: number, wrong: number, unanswered: number} | null>(null)
   const [showExitConfirm, setShowExitConfirm] = useState(false)
 
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const contentText = examContent?.content_url || examContent?.description || '';
+        // قراءة الأسئلة من حقل exam_questions الجديد
+        const examQuestions: ExamQuestion[] = examContent?.exam_questions
+        
+        if (examQuestions && Array.isArray(examQuestions) && examQuestions.length > 0) {
+          const formattedQuestions: Question[] = examQuestions.map((q, index) => ({
+            id: index + 1,
+            text: q.question,
+            options: q.options.map((opt, optIndex) => ({
+              id: String.fromCharCode(65 + optIndex), // A, B, C, D...
+              text: opt
+            })),
+            correctAnswer: String.fromCharCode(65 + q.correct), // تحويل index إلى حرف
+            marks: q.marks || 1
+          }))
+          
+          setQuestions(formattedQuestions)
+          const total = formattedQuestions.reduce((sum, q) => sum + (q.marks || 1), 0)
+          setTotalMarks(total)
+          setTimeLeft((examContent?.duration_minutes || 10) * 60)
+          setLoading(false)
+          return
+        }
+        
+        // Fallback: محاولة قراءة من الوصف القديم إذا لم يوجد exam_questions
+        const contentText = examContent?.description || '';
         const match = contentText.match(/\[EXAM_QUESTIONS\]:(\{[\s\S]*\})/);
         
         if (match && match[1]) {
@@ -632,9 +667,12 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
                   id: String.fromCharCode(65 + optIndex),
                   text: opt
                 })),
-                correctAnswer: q.correct
+                correctAnswer: q.correct,
+                marks: q.marks || 1
               }));
               setQuestions(formattedQuestions);
+              const total = formattedQuestions.reduce((sum, q) => sum + (q.marks || 1), 0)
+              setTotalMarks(total)
               setTimeLeft((examContent?.duration_minutes || 10) * 60);
               setLoading(false);
               return;
@@ -644,40 +682,7 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
           }
         }
         
-        const supabase = getSupabase()
-        if (!supabase) {
-          setError('لا توجد أسئلة متاحة');
-          setLoading(false);
-          return
-        }
-
-        const { data, error: dbError } = await supabase
-          .from('questions')
-          .select('*')
-          .eq('content_id', contentId)
-          .eq('is_active', true)
-          .order('order_number', { ascending: true })
-
-        if (dbError || !data || data.length === 0) {
-          setError('لا توجد أسئلة متاحة لهذا الامتحان')
-          setLoading(false)
-          return
-        }
-
-        const formattedQuestions: Question[] = data.map((q: any, index: number) => ({
-          id: q.id || index + 1,
-          text: q.question_text || q.text,
-          options: Array.isArray(q.options) ? q.options : [
-            { id: 'A', text: q.option_a || 'الإجابة أ' },
-            { id: 'B', text: q.option_b || 'الإجابة ب' },
-            { id: 'C', text: q.option_c || 'الإجابة ج' },
-            { id: 'D', text: q.option_d || 'الإجابة د' }
-          ],
-          correctAnswer: q.correct_answer || 'A'
-        }))
-
-        setQuestions(formattedQuestions)
-        setTimeLeft((examContent?.duration_minutes || 10) * 60)
+        setError('لا توجد أسئلة متاحة لهذا الامتحان. تأكد من إضافة الأسئلة في لوحة التحكم.')
         setLoading(false)
       } catch (err) {
         console.error('Exam fetch error:', err)
@@ -713,18 +718,31 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
     setIsSubmitting(true)
     
     let correctCount = 0
+    let wrongCount = 0
+    let unansweredCount = 0
+    let obtained = 0
+    
     questions.forEach(q => { 
       const userAnswer = answers[q.id]
-      const isCorrect = userAnswer === q.correctAnswer || 
-        q.options.find(opt => opt.id === userAnswer)?.text === q.correctAnswer
-      if (isCorrect) correctCount++ 
+      if (!userAnswer) {
+        unansweredCount++
+      } else if (userAnswer === q.correctAnswer) {
+        correctCount++
+        obtained += (q.marks || 1)
+      } else {
+        wrongCount++
+      }
     })
     
-    const wrongCount = questions.length - correctCount
-    const finalScore = Math.round((correctCount / questions.length) * 100)
+    const finalScore = totalMarks > 0 ? Math.round((obtained / totalMarks) * 100) : 0
     
     setScore(finalScore)
-    setResults({ correct: correctCount, wrong: wrongCount })
+    setObtainedMarks(obtained)
+    setResults({ 
+      correct: correctCount, 
+      wrong: wrongCount, 
+      unanswered: unansweredCount 
+    })
     setShowResults(true)
     setIsSubmitting(false)
     
@@ -736,9 +754,13 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
         user_id: userId, 
         content_id: contentId, 
         score: finalScore,
+        obtained_marks: obtained,
+        total_marks: totalMarks,
         total_questions: questions.length, 
         correct_answers: correctCount, 
-        wrong_answers: wrongCount
+        wrong_answers: wrongCount,
+        unanswered: unansweredCount,
+        answers: answers
       })
     } catch (err) { 
       console.error('Error saving exam results:', err) 
@@ -766,8 +788,8 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
   if (error) return (
     <div className={styles.examError}>
       <div className={styles.errorCard}>
-        <AlertCircle size={48} color={theme.error} />
-        <h3>خطأ</h3>
+        <AlertTriangle size={48} color={theme.error} />
+        <h3>خطأ في تحميل الامتحان</h3>
         <p>{error}</p>
         <button onClick={() => router.back()} className={styles.primaryBtn} style={{ background: theme.primary }}>
           العودة
@@ -792,10 +814,17 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
             {passed ? 'مبروك! لقد نجحت' : 'للأسف، لم تنجح'}
           </h2>
           
-          <div className={styles.scoreCircle} style={{ 
-            background: `conic-gradient(${passed ? theme.success : theme.error} ${score}%, #e5e7eb ${score}%)` 
-          }}>
-            <span>{score}%</span>
+          <div className={styles.scoreDetails}>
+            <div className={styles.scoreCircle} style={{ 
+              background: `conic-gradient(${passed ? theme.success : theme.error} ${score}%, #e5e7eb ${score}%)` 
+            }}>
+              <span>{score}%</span>
+            </div>
+            <div className={styles.marksInfo}>
+              <span className={styles.obtainedMarks}>{obtainedMarks}</span>
+              <span className={styles.totalMarks}>/ {totalMarks}</span>
+              <span className={styles.marksLabel}>درجة</span>
+            </div>
           </div>
           
           <p className={styles.passScore}>درجة النجاح المطلوبة: {examContent?.pass_score || 50}%</p>
@@ -804,12 +833,17 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
             <div className={styles.statCard} style={{ borderColor: theme.success }}>
               <CheckCircle size={24} color={theme.success} />
               <span className={styles.statNumber} style={{ color: theme.success }}>{results?.correct ?? 0}</span>
-              <span>إجابات صحيحة</span>
+              <span>صحيحة</span>
             </div>
             <div className={styles.statCard} style={{ borderColor: theme.error }}>
               <XCircle size={24} color={theme.error} />
               <span className={styles.statNumber} style={{ color: theme.error }}>{results?.wrong ?? 0}</span>
-              <span>إجابات خاطئة</span>
+              <span>خاطئة</span>
+            </div>
+            <div className={styles.statCard} style={{ borderColor: theme.warning }}>
+              <HelpCircle size={24} color={theme.warning} />
+              <span className={styles.statNumber} style={{ color: theme.warning }}>{results?.unanswered ?? 0}</span>
+              <span>بدون إجابة</span>
             </div>
           </div>
           
@@ -840,6 +874,7 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
   const currentQ = questions[currentQuestion]
   const isLastQuestion = currentQuestion === questions.length - 1
   const progress = ((currentQuestion + 1) / questions.length) * 100
+  const answeredCount = Object.keys(answers).length
 
   return (
     <div className={styles.examWrapper}>
@@ -850,7 +885,7 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
           </div>
           <div>
             <h3>{examContent?.title || 'امتحان'}</h3>
-            <p>{questions.length} سؤال</p>
+            <p>{questions.length} سؤال | {totalMarks} درجة</p>
           </div>
         </div>
         <div 
@@ -865,7 +900,11 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
         </div>
       </div>
 
-      <div className={styles.examProgress}>
+      <div className={styles.examProgressContainer}>
+        <div className={styles.answeredBadge}>
+          <CheckCircle size={16} />
+          <span>{answeredCount} / {questions.length}</span>
+        </div>
         <div className={styles.progressBarBg}>
           <motion.div 
             className={styles.progressBarFill}
@@ -887,7 +926,10 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
           <div className={styles.questionHeader}>
-            <span className={styles.questionNumber}>سؤال {currentQuestion + 1}</span>
+            <div className={styles.questionMeta}>
+              <span className={styles.questionNumber}>سؤال {currentQuestion + 1}</span>
+              <span className={styles.marksBadge}>({currentQ.marks || 1} درجة)</span>
+            </div>
             <span className={styles.questionBadge}>{questions.length} / {currentQuestion + 1}</span>
           </div>
           
@@ -958,13 +1000,13 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
         {isLastQuestion ? (
           <button 
             onClick={() => setShowExitConfirm(true)}
-            disabled={Object.keys(answers).length < questions.length}
+            disabled={answeredCount === 0}
             className={styles.submitBtn}
             style={{ 
-              background: Object.keys(answers).length < questions.length ? '#9ca3af' : theme.success
+              background: answeredCount === 0 ? '#9ca3af' : theme.success
             }}
           >
-            تسليم
+            تسليم الامتحان
           </button>
         ) : (
           <button 
@@ -992,19 +1034,36 @@ function ModernExamViewer({ examContent, contentId, packageId, userId, theme, on
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
             >
-              <h3>تأكيد التسليم</h3>
-              <p>هل أنت متأكد من تسليم الإجابات؟ لا يمكن التراجع عن هذا الإجراء.</p>
+              <div className={styles.modalIcon}>
+                <AlertTriangle size={48} color={theme.warning} />
+              </div>
+              <h3>تأكيد تسليم الامتحان</h3>
+              
+              <div className={styles.submitSummary}>
+                <div className={styles.summaryItem}>
+                  <span>الأسئلة المجابة:</span>
+                  <strong>{answeredCount} من {questions.length}</strong>
+                </div>
+                <div className={styles.summaryItem}>
+                  <span>الأسئلة المتبقية:</span>
+                  <strong>{questions.length - answeredCount}</strong>
+                </div>
+              </div>
+
+              <p className={styles.warningText}>لا يمكن التراجع عن هذا الإجراء بعد التسليم</p>
+              
               <div className={styles.modalActions}>
                 <button 
                   onClick={() => setShowExitConfirm(false)} 
                   className={styles.secondaryBtn}
                 >
-                  إلغاء
+                  مواصلة الإجابة
                 </button>
                 <button 
                   onClick={handleSubmit} 
                   className={styles.primaryBtn}
                   style={{ background: theme.success }}
+                  disabled={isSubmitting}
                 >
                   {isSubmitting ? <Loader2 className={styles.spin} /> : 'تأكيد التسليم'}
                 </button>
@@ -1289,7 +1348,7 @@ function ContentViewer() {
             </div>
             <div 
               className={styles.textBody}
-              dangerouslySetInnerHTML={{ __html: content.content_url || 'لا يوجد محتوى' }} 
+              dangerouslySetInnerHTML={{ __html: content.content_url || content.description || 'لا يوجد محتوى' }} 
             />
           </div>
         )

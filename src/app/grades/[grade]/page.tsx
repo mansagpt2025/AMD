@@ -2,18 +2,27 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue, useMotionTemplate } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useSpring, useMotionValue, useMotionTemplate } from 'framer-motion'
 import { createBrowserClient } from '@supabase/ssr'
 import { 
   Wallet, BookOpen, GraduationCap, Loader2, AlertCircle,
   Crown, Sparkles, Clock, Calendar, Medal, PlayCircle,
   CheckCircle2, ArrowRight, ShoppingCart, RefreshCw, 
   Ticket, CreditCard, X, Shield, Gift, Zap, Star,
-  ChevronLeft, TrendingUp, Award, BookMarked, Sparkle, Triangle
+  ChevronLeft, Award, BookMarked
 } from 'lucide-react'
 import styles from './GradePage.module.css'
 
-// أنواع البيانات (كما هي)
+// استيراد الأكشنز الحقيقية من ملف الأكشنز
+import { 
+  deductWalletBalance, 
+  markCodeAsUsed, 
+  createUserPackage, 
+  validateCode,
+  getWalletBalance 
+} from './actions'
+
+// أنواع البيانات
 interface Package {
   id: string
   name: string
@@ -28,6 +37,9 @@ interface Package {
   original_price?: number
   discount_percentage?: number
   features?: string[]
+  instructor?: string
+  rating?: number
+  students_count?: number
 }
 
 interface UserPackage {
@@ -47,7 +59,7 @@ interface ThemeType {
   dark: string
 }
 
-// الألوان المُحسّنة لكل صف (تصميم فاتح عصري)
+// الألوان المُحسّنة لكل صف
 const themes: Record<string, ThemeType> = {
   first: {
     primary: '#4f46e5',
@@ -75,16 +87,6 @@ const themes: Record<string, ThemeType> = {
   }
 }
 
-// بيانات تجريبية للـ actions (يجب استبدالها بالـ imports الفعلية)
-const deductWalletBalance = async (userId: string, amount: number, pkgId: string) => ({ success: true, data: null })
-const markCodeAsUsed = async (codeId: string, userId: string) => ({ success: true })
-const createUserPackage = async (userId: string, pkgId: string, duration: number, method: string) => ({ success: true })
-const validateCode = async (code: string, grade: string, pkgId: string) => ({ 
-  success: true, 
-  data: { id: '1', discount_percentage: 20 } 
-})
-const getWalletBalance = async (userId: string) => ({ success: true, data: { balance: 1500 } })
-
 export default function GradePage() {
   const router = useRouter()
   const params = useParams()
@@ -104,7 +106,7 @@ export default function GradePage() {
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
   
-  // FIX: Move useMotionTemplate to top level (before any return statement)
+  // إنشاء spotlight background هنا في الأعلى قبل أي return
   const spotlightBackground = useMotionTemplate`radial-gradient(600px circle at ${mouseX}px ${mouseY}px, ${theme.primary}15, transparent 40%)`
   
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -125,7 +127,7 @@ export default function GradePage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
 
-  // جلب البيانات (نفس المنطق الأصلي)
+  // جلب البيانات الحقيقية من قاعدة البيانات
   const fetchData = useCallback(async () => {
     try {
       if (!isRefreshing) setLoading(true)
@@ -142,6 +144,7 @@ export default function GradePage() {
       
       setUser(currentUser)
 
+      // جلب الباقات من قاعدة البيانات
       const { data: packagesData, error: packagesError } = await supabase
         .from('packages')
         .select('*')
@@ -159,16 +162,23 @@ export default function GradePage() {
           'دعم فني على مدار الساعة',
           'شهادة إتمام'
         ],
-        original_price: pkg.type === 'offer' ? pkg.price * 1.3 : undefined
+        original_price: pkg.type === 'offer' ? pkg.price * 1.3 : undefined,
+        instructor: pkg.instructor || 'أستاذ محمود الديب',
+        rating: pkg.rating || 4.9,
+        students_count: pkg.students_count || 0
       })) || []
       
       setPackages(enhancedPackages)
 
+      // جلب رصيد المحفظة باستخدام الأكشن الحقيقي
       const walletResult = await getWalletBalance(currentUser.id)
       if (walletResult.success && walletResult.data) {
         setWalletBalance(walletResult.data.balance || 0)
+      } else {
+        console.error('Failed to fetch wallet:', walletResult.message)
       }
 
+      // جلب باقات المستخدم
       const { data: userPkgs, error: userPkgsError } = await supabase
         .from('user_packages')
         .select(`*, packages:package_id(*)`)
@@ -180,6 +190,7 @@ export default function GradePage() {
       setUserPackages(userPkgs as UserPackage[] || [])
       
     } catch (err: any) {
+      console.error('Error fetching data:', err)
       setError(err.message || 'حدث خطأ أثناء جلب البيانات')
     } finally {
       setLoading(false)
@@ -191,7 +202,7 @@ export default function GradePage() {
     fetchData()
   }, [fetchData])
 
-  // Real-time updates
+  // Real-time updates للمحفظة
   useEffect(() => {
     if (!user?.id) return
     
@@ -202,8 +213,17 @@ export default function GradePage() {
         schema: 'public',
         table: 'wallets',
         filter: `user_id=eq.${user.id}`
-      }, (payload: any) => {
-        setWalletBalance(payload.new?.balance || 0)
+      }, async (payload: any) => {
+        // تحديث الرصيد مباشرة من الـ payload أو إعادة جلبه
+        if (payload.new?.balance !== undefined) {
+          setWalletBalance(payload.new.balance)
+        } else {
+          // إعادة جلب الرصيد للتأكد
+          const result = await getWalletBalance(user.id)
+          if (result.success && result.data) {
+            setWalletBalance(result.data.balance ?? 0)
+          }
+        }
         setShowConfetti(true)
         setTimeout(() => setShowConfetti(false), 3000)
       })
@@ -307,12 +327,10 @@ export default function GradePage() {
       ref={containerRef}
       onMouseMove={handleMouseMove}
     >
-      {/* Spotlight Effect - استخدام المتغير بدلاً من استدعاء الهوك مباشرة */}
+      {/* Spotlight Effect */}
       <motion.div
         className={styles.spotlight}
-        style={{
-          background: spotlightBackground
-        }}
+        style={{ background: spotlightBackground }}
       />
 
       {/* شريط التقدم العلوي */}
@@ -630,7 +648,7 @@ export default function GradePage() {
         )}
       </main>
 
-      {/* مودال الشراء المتطور */}
+      {/* مودال الشراء */}
       <AnimatePresence>
         {showPurchaseModal && selectedPackage && user && (
           <PurchaseModal 
@@ -653,7 +671,7 @@ export default function GradePage() {
         )}
       </AnimatePresence>
 
-      {/* تأثير الاحتفال المحسّن */}
+      {/* تأثير الاحتفال */}
       <AnimatePresence>
         {showConfetti && <ConfettiEffect theme={theme} />}
       </AnimatePresence>
@@ -661,7 +679,7 @@ export default function GradePage() {
   )
 }
 
-// مكون بطاقة الباقة المتطور
+// مكون بطاقة الباقة
 function PackageCard({ 
   pkg, 
   isPurchased, 
@@ -670,8 +688,6 @@ function PackageCard({
   onPurchase, 
   onEnter 
 }: any) {
-  const cardRef = useRef<HTMLDivElement>(null)
-  
   const getTypeIcon = () => {
     switch (pkg.type) {
       case 'weekly': return <Clock size={18} />
@@ -697,7 +713,6 @@ function PackageCard({
   return (
     <motion.div
       layout
-      ref={cardRef}
       initial={{ opacity: 0, y: 50, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
@@ -706,10 +721,7 @@ function PackageCard({
       className={`${styles.packageCard} ${isPurchased ? styles.purchased : ''} ${pkg.type === 'offer' ? styles.offer : ''}`}
       style={{ ['--card-theme' as string]: theme.primary }}
     >
-      {/* Border Gradient Effect */}
       <div className={styles.cardBorder} style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` }} />
-      
-      {/* Glow Effect */}
       <div 
         className={styles.cardGlow} 
         style={{ 
@@ -721,7 +733,6 @@ function PackageCard({
         }} 
       />
 
-      {/* شارة الحالة */}
       {(isPurchased || pkg.type === 'offer') && (
         <motion.div 
           className={styles.badge}
@@ -738,7 +749,6 @@ function PackageCard({
         </motion.div>
       )}
 
-      {/* الخصم */}
       {pkg.original_price && (
         <motion.div 
           className={styles.discountBadge}
@@ -752,7 +762,6 @@ function PackageCard({
         </motion.div>
       )}
 
-      {/* الصورة والأيقونة */}
       <div className={styles.cardImageWrapper}>
         <div className={styles.imageBackground} style={{ background: `linear-gradient(135deg, ${theme.light}, white)` }} />
         {pkg.image_url ? (
@@ -782,12 +791,10 @@ function PackageCard({
         </motion.div>
       </div>
 
-      {/* المحتوى */}
       <div className={styles.cardBody}>
         <h3 className={styles.cardTitle} style={{ color: theme.dark }}>{pkg.name}</h3>
         <p className={styles.cardDescription}>{pkg.description}</p>
 
-        {/* المميزات */}
         <ul className={styles.featuresList}>
           {pkg.features?.slice(0, 3).map((feature: string, i: number) => (
             <motion.li 
@@ -804,7 +811,6 @@ function PackageCard({
           ))}
         </ul>
 
-        {/* الإحصائيات */}
         <div className={styles.cardStats}>
           <div className={styles.stat} style={{ background: `${theme.primary}08` }}>
             <PlayCircle size={16} style={{ color: theme.primary }} />
@@ -816,7 +822,6 @@ function PackageCard({
           </div>
         </div>
 
-        {/* تاريخ الانتهاء */}
         {pkg.expires_at && (
           <div className={styles.expiryDate}>
             <Calendar size={14} color={theme.primary} />
@@ -824,7 +829,6 @@ function PackageCard({
           </div>
         )}
 
-        {/* السعر والزر */}
         <div className={styles.cardFooter}>
           <div className={styles.priceWrapper}>
             {pkg.original_price && (
@@ -881,7 +885,7 @@ function PackageCard({
   )
 }
 
-// مكون مودال الشراء المتطور
+// مكون مودال الشراء المعدل - يتحقق من الكود عند الضغط على تأكيد مباشرة
 function PurchaseModal({ 
   pkg, 
   user, 
@@ -895,7 +899,7 @@ function PurchaseModal({
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [codeValid, setCodeValid] = useState<any>(null)
+  const [codeDetails, setCodeDetails] = useState<any>(null)
   const [showSuccess, setShowSuccess] = useState(false)
 
   const supabase = createBrowserClient(
@@ -909,48 +913,89 @@ function PurchaseModal({
     return () => window.removeEventListener('keydown', handleEsc)
   }, [onClose])
 
-  const handleValidateCode = async () => {
-    if (!code.trim()) { setError('أدخل الكود'); return }
-    setLoading(true); setError('')
-    try {
-      const result = await validateCode(code, gradeSlug, pkg.id)
-      if (!result.success) throw new Error("حدث خطأ ما")
-      setCodeValid(result.data)
-    } catch (err: any) {
-      setError(err.message); setCodeValid(null)
-    } finally { setLoading(false) }
-  }
-
+  // دالة الشراء الموحدة التي تتحقق من الكود وتشتري في نفس الوقت إذا لزم الأمر
   const handlePurchase = async () => {
-    setLoading(true); setError('')
+    setLoading(true)
+    setError('')
+
     try {
       if (method === 'wallet') {
-        if (walletBalance < pkg.price) throw new Error('رصيد غير كافٍ')
-        const result = await deductWalletBalance(user.id, pkg.price, pkg.id)
-        if (!result.success) throw new Error("حدث خطأ ما")
+        // التحقق من الرصيد أولاً
+        if (walletBalance < pkg.price) {
+          throw new Error('رصيد غير كافٍ. يرجى شحن المحفظة أولاً.')
+        }
+
+        // الخصم من المحفظة باستخدام الأكشن الحقيقي
+        const deductResult = await deductWalletBalance(user.id, pkg.price, pkg.id)
+        if (!deductResult.success) {
+          throw new Error(deductResult.message || 'فشل في خصم المبلغ من المحفظة')
+        }
+
+        // إنشاء اشتراك المستخدم
         const pkgResult = await createUserPackage(user.id, pkg.id, pkg.duration_days || 30, 'wallet')
-        if (!pkgResult.success) throw new Error("حدث خطأ ما")
-      } else {
-        if (!codeValid) throw new Error('تحقق من الكود أولاً')
-        await markCodeAsUsed(codeValid.id, user.id)
+        if (!pkgResult.success) {
+          // محاولة استرجاع المبلغ في حالة الفشل
+          throw new Error(pkgResult.message || 'فشل في تفعيل الباقة')
+        }
+
+      } else if (method === 'code') {
+        // التحقق من الكود مباشرة عند الضغط على تأكيد
+        if (!code.trim()) {
+          throw new Error('الرجاء إدخال كود التفعيل')
+        }
+
+        // التحقق من صحة الكود
+        const validateResult = await validateCode(code.toUpperCase(), gradeSlug, pkg.id)
+        if (!validateResult.success) {
+          throw new Error(validateResult.message || 'كود غير صالح')
+        }
+
+        // استخدام الكود (تعليمه كمستخدم)
+        const markResult = await markCodeAsUsed(validateResult.data.id, user.id)
+        if (!markResult.success) {
+          throw new Error(markResult.message || 'فشل في استخدام الكود')
+        }
+
+        // إنشاء الاشتراك
         const pkgResult = await createUserPackage(user.id, pkg.id, pkg.duration_days || 30, 'code')
-        if (!pkgResult.success) throw new Error("حدث خطأ ما")
+        if (!pkgResult.success) {
+          throw new Error(pkgResult.message || 'فشل في تفعيل الباقة')
+        }
+
+        setCodeDetails(validateResult.data)
       }
 
+      // نجاح العملية
       setShowSuccess(true)
+      
+      // إرسال إشعار
       await supabase.from('notifications').insert({
         user_id: user.id,
         title: 'تم الشراء بنجاح! 🎉',
-        message: `تم تفعيل ${pkg.name}`,
+        message: `تم تفعيل ${pkg.name} بنجاح`,
         type: 'success'
       })
-      
+
+      // الانتظار قليلاً ثم الإغلاق
       setTimeout(() => {
         onSuccess()
       }, 2000)
+
     } catch (err: any) {
-      setError(err.message)
-    } finally { setLoading(false) }
+      console.error('Purchase error:', err)
+      setError(err.message || 'حدث خطأ أثناء عملية الشراء')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // التحقق من إمكانية الشراء
+  const canPurchase = () => {
+    if (method === 'wallet') {
+      return walletBalance >= pkg.price
+    } else {
+      return code.trim().length > 0
+    }
   }
 
   return (
@@ -962,7 +1007,6 @@ function PurchaseModal({
         className={styles.modal}
         onClick={e => e.stopPropagation()}
       >
-        {/* Modal Glow */}
         <div className={styles.modalGlow} style={{ background: `radial-gradient(circle at 50% 0%, ${theme.primary}30, transparent 70%)` }} />
 
         {showSuccess ? (
@@ -1040,7 +1084,7 @@ function PurchaseModal({
               <div className={styles.methods}>
                 <motion.button 
                   className={`${styles.methodCard} ${method === 'wallet' ? styles.active : ''}`}
-                  onClick={() => setMethod('wallet')}
+                  onClick={() => {setMethod('wallet'); setError('')}}
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   style={method === 'wallet' ? { 
@@ -1054,7 +1098,7 @@ function PurchaseModal({
                   </div>
                   <div className={styles.methodInfo}>
                     <strong style={{ color: theme.dark }}>الدفع من المحفظة</strong>
-                    <span>رصيدك: {walletBalance.toLocaleString()} ج.م</span>
+                    <span>رصيدك: <b style={{color: walletBalance >= pkg.price ? '#10b981' : '#ef4444'}}>{walletBalance.toLocaleString()} ج.م</b></span>
                   </div>
                   <div className={styles.methodStatus}>
                     {walletBalance >= pkg.price ? (
@@ -1067,7 +1111,7 @@ function PurchaseModal({
 
                 <motion.button 
                   className={`${styles.methodCard} ${method === 'code' ? styles.active : ''}`}
-                  onClick={() => setMethod('code')}
+                  onClick={() => {setMethod('code'); setError('')}}
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   style={method === 'code' ? { 
@@ -1081,7 +1125,7 @@ function PurchaseModal({
                   </div>
                   <div className={styles.methodInfo}>
                     <strong style={{ color: theme.dark }}>كود تفعيل</strong>
-                    <span>لديك كود خصم؟</span>
+                    <span>أدخل الكود والتأكد تلقائي</span>
                   </div>
                 </motion.button>
               </div>
@@ -1098,33 +1142,14 @@ function PurchaseModal({
                       value={code} 
                       onChange={e => setCode(e.target.value.toUpperCase())} 
                       placeholder="أدخل الكود هنا (مثال: OFF2024)"
-                      disabled={!!codeValid}
                       maxLength={20}
-                      style={{ borderColor: codeValid ? '#10b981' : error ? '#ef4444' : `${theme.primary}30` }}
+                      disabled={loading}
+                      style={{ textTransform: 'uppercase' }}
                     />
-                    <motion.button 
-                      onClick={handleValidateCode}
-                      disabled={loading || !code || !!codeValid}
-                      style={{ 
-                        background: codeValid ? '#10b981' : `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
-                        opacity: loading || !code || !!codeValid ? 0.7 : 1
-                      }}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      {loading ? <Loader2 className={styles.spinning} size={20} /> : codeValid ? 'تم' : 'تحقق'}
-                    </motion.button>
                   </div>
-                  {codeValid && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={styles.codeSuccess}
-                    >
-                      <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                      <span>كود صالح! {codeValid.discount_percentage && `(خصم ${codeValid.discount_percentage}%)`}</span>
-                    </motion.div>
-                  )}
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
+                    سيتم التحقق من الكود تلقائياً عند الضغط على تأكيد الشراء
+                  </p>
                 </motion.div>
               )}
 
@@ -1158,15 +1183,16 @@ function PurchaseModal({
                 style={{ 
                   background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
                   boxShadow: `0 10px 30px ${theme.primary}40`,
-                  opacity: (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid) ? 0.5 : 1
+                  opacity: !canPurchase() || loading ? 0.6 : 1,
+                  cursor: !canPurchase() || loading ? 'not-allowed' : 'pointer'
                 }}
-                whileHover={{ 
-                  scale: (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid) ? 1 : 1.02,
+                whileHover={canPurchase() && !loading ? { 
+                  scale: 1.02, 
                   boxShadow: `0 15px 40px ${theme.primary}50`
-                }}
-                whileTap={{ scale: (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid) ? 1 : 0.98 }}
+                } : {}}
+                whileTap={canPurchase() && !loading ? { scale: 0.98 } : {}}
                 onClick={handlePurchase}
-                disabled={loading || (method === 'wallet' && walletBalance < pkg.price) || (method === 'code' && !codeValid)}
+                disabled={!canPurchase() || loading}
               >
                 {loading ? (
                   <><Loader2 className={styles.spinning} size={20} /> جاري المعالجة...</>
@@ -1187,7 +1213,7 @@ function PurchaseModal({
   )
 }
 
-// تأثير الاحتفال المحسّن
+// تأثير الاحتفال
 function ConfettiEffect({ theme }: { theme: ThemeType }) {
   return (
     <div className={styles.confettiContainer}>
