@@ -37,7 +37,7 @@ import {
   Wind, Thermometer, Droplets, Umbrella, Snowflake,
  Flame
 } from 'lucide-react'
-import styles from './GradePageNew.module.css'
+import styles from './GradePage.module.css'
 
 // استيراد الأكشنز الحقيقية من ملف الأكشنز
 import { 
