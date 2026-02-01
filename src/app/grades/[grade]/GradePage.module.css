@@ -1,3 +1,4 @@
+/* Reset and Base Styles */
 :root {
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -20,6 +21,8 @@
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   position: relative;
   overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Arabic', 'Helvetica Neue', Arial, sans-serif;
+  direction: rtl;
 }
 
 /* Spotlight Effect */
@@ -55,26 +58,6 @@
   height: 4px;
   border-radius: 50%;
   opacity: 0;
-}
-
-/* Floating Elements */
-.floatingElements {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.floatingElement {
-  position: absolute;
-  width: 60px;
-  height: 60px;
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid;
-  backdrop-filter: blur(10px);
 }
 
 /* Header */
@@ -119,6 +102,8 @@
   color: #334155;
   cursor: pointer;
   transition: all var(--transition-base);
+  border: none;
+  font-family: inherit;
 }
 
 .backButton:hover {
@@ -144,6 +129,8 @@
   color: #64748b;
   cursor: pointer;
   transition: all var(--transition-fast);
+  border: none;
+  font-family: inherit;
 }
 
 .navIconButton:hover {
@@ -187,6 +174,15 @@
   opacity: 0.3;
   filter: blur(12px);
   animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .logoInner {
@@ -294,6 +290,8 @@
   color: #64748b;
   cursor: pointer;
   transition: all var(--transition-fast);
+  border: none;
+  font-family: inherit;
 }
 
 .refreshButton:hover:not(:disabled) {
@@ -304,6 +302,19 @@
 .refreshButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Auth Buttons */
@@ -324,6 +335,7 @@
   border: none;
   cursor: pointer;
   transition: all var(--transition-base);
+  font-family: inherit;
 }
 
 .loginButton {
@@ -540,10 +552,13 @@
   font-size: 1rem;
   background: transparent;
   width: 100%;
+  font-family: inherit;
+  text-align: right;
 }
 
 .searchInput::placeholder {
   color: #94a3b8;
+  text-align: right;
 }
 
 .clearSearch {
@@ -556,6 +571,7 @@
   align-items: center;
   justify-content: center;
   transition: color var(--transition-fast);
+  font-family: inherit;
 }
 
 .clearSearch:hover {
@@ -587,6 +603,7 @@
   color: #64748b;
   cursor: pointer;
   transition: all var(--transition-fast);
+  font-family: inherit;
 }
 
 .viewButton:hover {
@@ -611,6 +628,7 @@
   color: #475569;
   cursor: pointer;
   transition: all var(--transition-fast);
+  font-family: inherit;
 }
 
 .filterDropdown:hover {
@@ -648,6 +666,8 @@
   transition: all var(--transition-base);
   white-space: nowrap;
   flex-shrink: 0;
+  border: none;
+  font-family: inherit;
 }
 
 .tab:hover {
@@ -840,6 +860,7 @@
   font-size: 0.875rem;
   cursor: pointer;
   transition: all var(--transition-fast);
+  font-family: inherit;
 }
 
 .retryButton:hover {
@@ -999,6 +1020,7 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-align: right;
 }
 
 .cardFeatures {
@@ -1010,6 +1032,7 @@
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 0.75rem;
+  text-align: right;
 }
 
 .featureItem:last-child {
@@ -1029,6 +1052,7 @@
 .featureItem span {
   font-size: 0.875rem;
   color: #475569;
+  flex: 1;
 }
 
 .cardStats {
@@ -1044,11 +1068,13 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-direction: row-reverse;
 }
 
 .statInfo {
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
 }
 
 .statValue {
@@ -1073,6 +1099,7 @@
   padding: 0.5rem;
   background: #f8fafc;
   border-radius: var(--radius-md);
+  flex-direction: row-reverse;
 }
 
 .cardFooter {
@@ -1084,6 +1111,7 @@
 .priceSection {
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
 }
 
 .originalPrice {
@@ -1117,6 +1145,8 @@
   cursor: pointer;
   transition: all var(--transition-base);
   box-shadow: var(--shadow-md);
+  font-family: inherit;
+  flex-direction: row-reverse;
 }
 
 .enterButton:hover,
@@ -1159,12 +1189,20 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: white;
+  flex-direction: row-reverse;
 }
 
 .listCardMain {
   display: flex;
   gap: 1.5rem;
   align-items: center;
+}
+
+@media (max-width: 768px) {
+  .listCardMain {
+    flex-direction: column;
+    text-align: center;
+  }
 }
 
 .listCardImage {
@@ -1192,6 +1230,7 @@
 
 .listCardInfo {
   flex: 1;
+  text-align: right;
 }
 
 .listCardHeader {
@@ -1213,6 +1252,7 @@
   gap: 0.375rem;
   font-size: 0.875rem;
   font-weight: 500;
+  flex-direction: row-reverse;
 }
 
 .listCardDescription {
@@ -1220,12 +1260,14 @@
   font-size: 0.875rem;
   line-height: 1.5;
   margin-bottom: 1rem;
+  text-align: right;
 }
 
 .listCardStats {
   display: flex;
   gap: 1.5rem;
   margin-bottom: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .listStat {
@@ -1234,6 +1276,7 @@
   gap: 0.375rem;
   font-size: 0.875rem;
   color: #64748b;
+  flex-direction: row-reverse;
 }
 
 .listExpiry {
@@ -1242,6 +1285,7 @@
   gap: 0.375rem;
   font-size: 0.75rem;
   color: #94a3b8;
+  flex-direction: row-reverse;
 }
 
 .listCardActions {
@@ -1282,6 +1326,8 @@
   transition: all var(--transition-base);
   min-width: 120px;
   justify-content: center;
+  font-family: inherit;
+  flex-direction: row-reverse;
 }
 
 .listActionButton:hover {
@@ -1341,6 +1387,8 @@
   color: #475569;
   cursor: pointer;
   transition: all var(--transition-base);
+  border: none;
+  font-family: inherit;
 }
 
 .clearSearchButton:hover {
@@ -1433,6 +1481,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-direction: row-reverse;
 }
 
 .footerLogo {
@@ -1505,6 +1554,7 @@
   color: #64748b;
   text-decoration: none;
   transition: all var(--transition-base);
+  font-family: inherit;
 }
 
 .socialIcon:hover {
@@ -1525,7 +1575,7 @@
 .backToTop {
   position: fixed;
   bottom: 2rem;
-  left: 1rem;
+  right: 1rem;
   width: 56px;
   height: 56px;
   display: flex;
@@ -1537,6 +1587,7 @@
   cursor: pointer;
   box-shadow: var(--shadow-lg);
   z-index: 100;
+  font-family: inherit;
 }
 
 /* Loading Screen */
@@ -1608,6 +1659,7 @@
   overflow-y: auto;
   position: relative;
   box-shadow: var(--shadow-2xl);
+  direction: rtl;
 }
 
 .modalGlow {
@@ -1630,6 +1682,7 @@
 .modalTitleSection {
   display: flex;
   flex-direction: column;
+  text-align: right;
 }
 
 .modalTitleSection h3 {
@@ -1655,6 +1708,8 @@
   color: #64748b;
   cursor: pointer;
   transition: all var(--transition-fast);
+  border: none;
+  font-family: inherit;
 }
 
 .modalClose:hover {
@@ -1675,6 +1730,7 @@
   background: #f8fafc;
   border-radius: var(--radius-lg);
   margin-bottom: 1.5rem;
+  flex-direction: row-reverse;
 }
 
 .packageImage {
@@ -1689,6 +1745,7 @@
 
 .packageDetails {
   flex: 1;
+  text-align: right;
 }
 
 .packageDetails h4 {
@@ -1701,6 +1758,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-direction: row-reverse;
 }
 
 .currentPrice {
@@ -1721,6 +1779,7 @@
   justify-content: center;
   gap: 0.5rem;
   margin-bottom: 2rem;
+  flex-direction: row-reverse;
 }
 
 .step {
@@ -1786,6 +1845,8 @@
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all var(--transition-base);
+  flex-direction: row-reverse;
+  text-align: right;
 }
 
 .methodCard:hover {
@@ -1836,6 +1897,7 @@
 .codeInputWrapper {
   display: flex;
   gap: 0.75rem;
+  flex-direction: row-reverse;
 }
 
 .codeInput {
@@ -1846,6 +1908,8 @@
   font-size: 1rem;
   outline: none;
   transition: all var(--transition-fast);
+  font-family: inherit;
+  text-align: right;
 }
 
 .codeInput:focus {
@@ -1861,6 +1925,7 @@
   color: white;
   cursor: pointer;
   transition: all var(--transition-base);
+  font-family: inherit;
 }
 
 .validateButton:disabled {
@@ -1883,6 +1948,8 @@
   border: 1px solid #fecaca;
   border-radius: var(--radius-lg);
   margin-bottom: 1.5rem;
+  flex-direction: row-reverse;
+  text-align: right;
 }
 
 .insufficientFunds div {
@@ -1903,6 +1970,7 @@
 /* Confirmation Section */
 .confirmationSection {
   margin-bottom: 1.5rem;
+  text-align: right;
 }
 
 .confirmationHeader {
@@ -1910,6 +1978,7 @@
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
+  flex-direction: row-reverse;
 }
 
 .confirmationHeader h4 {
@@ -1931,6 +2000,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.75rem;
+  flex-direction: row-reverse;
 }
 
 .summaryRow:last-child {
@@ -1959,6 +2029,7 @@
   border-radius: var(--radius-lg);
   padding: 1.25rem;
   margin-bottom: 1.5rem;
+  text-align: right;
 }
 
 .codeInfoHeader {
@@ -1966,6 +2037,7 @@
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+  flex-direction: row-reverse;
 }
 
 .codeInfoHeader span {
@@ -1977,6 +2049,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-direction: row-reverse;
 }
 
 .codeDetails span:first-child {
@@ -2001,6 +2074,8 @@
   border: 1px solid #fecaca;
   border-radius: var(--radius-lg);
   margin-bottom: 1.5rem;
+  flex-direction: row-reverse;
+  text-align: right;
 }
 
 .errorMessage span {
@@ -2029,6 +2104,8 @@
   font-size: 1rem;
   cursor: pointer;
   transition: all var(--transition-base);
+  font-family: inherit;
+  flex-direction: row-reverse;
 }
 
 .nextButton,
@@ -2051,6 +2128,7 @@
 .confirmationActions {
   display: flex;
   gap: 1rem;
+  flex-direction: row-reverse;
 }
 
 .backButton {
@@ -2077,6 +2155,7 @@
   border-radius: var(--radius-lg);
   font-size: 0.75rem;
   color: #64748b;
+  flex-direction: row-reverse;
 }
 
 /* Success Screen */
@@ -2129,6 +2208,8 @@
   cursor: pointer;
   transition: all var(--transition-base);
   box-shadow: var(--shadow-md);
+  font-family: inherit;
+  flex-direction: row-reverse;
 }
 
 .successButton:hover {
@@ -2171,29 +2252,6 @@
   border: 2px solid;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-}
-
-/* Spinning Animation */
-.spinning {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 0.5;
-  }
 }
 
 /* Responsive Design */
@@ -2260,98 +2318,41 @@
   .backButton {
     width: 100%;
   }
+  
+  .footerContent {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  
+  .footerBrand {
+    flex-direction: column;
+    text-align: center;
+  }
 }
 
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .container {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+/* تحسينات للهواتف */
+@media (max-width: 375px) {
+  .heroTitle {
+    font-size: 1.75rem;
   }
   
-  .headerGlass {
-    background: rgba(15, 23, 42, 0.8);
+  .brandTitle {
+    font-size: 1.25rem;
   }
   
-  .heroSection {
-    background: rgba(30, 41, 59, 0.5);
+  .cardContent,
+  .listCard {
+    padding: 1rem;
   }
   
-  .backButton,
-  .navIconButton,
-  .loginButton,
-  .userWalletCard,
-  .searchInputWrapper,
-  .filterDropdown,
-  .viewButton,
-  .tab,
-  .statCard,
-  .gridCard,
-  .listCard,
-  .tipCard,
-  .modalNew,
-  .methodCard,
-  .modalPackageInfo,
-  .orderSummary {
-    background: rgba(30, 41, 59, 0.8);
-    border-color: rgba(51, 65, 85, 0.5);
-    color: #e2e8f0;
+  .packagesGrid {
+    gap: 1rem;
   }
-  
-  .searchInput,
-  .codeInput {
-    background: transparent;
-    color: #e2e8f0;
-  }
-  
-  .brandTitle,
-  .heroTitle,
-  .statsTitle,
-  .tipsTitle,
-  .cardTitle,
-  .listCardTitle,
-  .emptyTitle,
-  .tipTitle,
-  .packageDetails h4 {
-    color: #f1f5f9;
-  }
-  
-  .brandSubtitle,
-  .heroSubtitle,
-  .tabLabel,
-  .statLabel,
-  .statDescription,
-  .cardDescription,
-  .listCardDescription,
-  .emptyDescription,
-  .tipDescription,
-  .footerText p,
-  .footerLinks a,
-  .footerSocial span,
-  .footerBottom,
-  .modalSubtitle,
-  .methodInfo span,
-  .summaryRow span {
-    color: #94a3b8;
-  }
-  
-  .errorAlert,
-  .insufficientFunds,
-  .errorMessage {
-    background: rgba(127, 29, 29, 0.2);
-    border-color: rgba(220, 38, 38, 0.3);
-  }
-  
-  .successScreen p,
-  .securityBadge {
-    color: #cbd5e1;
-  }
-  
-  .footer {
-    background: #0f172a;
-    border-top-color: #1e293b;
-  }
-  
-  .modalOverlay {
-    background: rgba(0, 0, 0, 0.7);
+}
+
+/* تحسينات للأجهزة اللوحية */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .packagesGrid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
