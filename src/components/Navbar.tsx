@@ -251,7 +251,7 @@ const Navbar = ({ toggleTheme, onLogout, theme }: NavbarProps) => {
               <div className={styles.logoWrapper}>
                 <div className={styles.logoImage}>
                   <Image
-                    src="@/public/logo.svg"
+                    src="/logo.svg"
                     alt="Logo"
                     width={50}
                     height={50}
