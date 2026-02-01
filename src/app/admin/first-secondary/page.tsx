@@ -22,6 +22,7 @@ type Package = {
   name: string;
   description: string | null;
   price: number;
+  original_price: number | null;
   image_url: string | null;
   type: string;
   duration_days: number;
@@ -41,6 +42,13 @@ type Lecture = {
   package?: { id: string; name: string };
 };
 
+type ExamQuestion = {
+  question: string;
+  options: string[];
+  correct: number;
+  marks?: number;
+};
+
 type Content = {
   id: string;
   lecture_id: string;
@@ -53,6 +61,7 @@ type Content = {
   is_active: boolean;
   max_attempts: number | null;
   pass_score: number | null;
+  exam_questions: ExamQuestion[] | null;
   created_at: string;
   lecture?: { id: string; title: string; package_id: string };
 };
@@ -78,6 +87,15 @@ export default function FirstSecondaryAdmin() {
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [selectedLectures, setSelectedLectures] = useState<string[]>([]);
   const [contentType, setContentType] = useState<'video' | 'pdf' | 'exam' | 'text'>('video');
+  
+  // Exam states
+  const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<ExamQuestion>({
+    question: '',
+    options: ['', ''],
+    correct: 0,
+    marks: 1
+  });
 
   useEffect(() => {
     loadData();
@@ -90,11 +108,21 @@ export default function FirstSecondaryAdmin() {
         const data = await getPackages();
         setPackages(data);
       } else if (activeTab === 'lectures') {
-        const data = await getLectures();
-        setLectures(data);
+        const [lecturesData, packagesData] = await Promise.all([
+          getLectures(),
+          getPackages()
+        ]);
+        setLectures(lecturesData);
+        setPackages(packagesData);
       } else if (activeTab === 'contents') {
-        const data = await getContents();
-        setContents(data);
+        const [contentsData, lecturesData, packagesData] = await Promise.all([
+          getContents(),
+          getLectures(),
+          getPackages()
+        ]);
+        setContents(contentsData);
+        setLectures(lecturesData);
+        setPackages(packagesData);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -112,6 +140,15 @@ export default function FirstSecondaryAdmin() {
     
     try {
       if (activeTab === 'packages') {
+        const originalPrice = parseFloat(formData.get('original_price') as string) || 0;
+        const price = parseFloat(formData.get('price') as string) || 0;
+        
+        if (originalPrice > 0 && price >= originalPrice) {
+          alert('السعر بعد الخصم يجب أن يكون أقل من السعر الأصلي');
+          setSubmitting(false);
+          return;
+        }
+        
         if (modalMode === 'create') {
           await createPackage(formData);
         } else if (editingId) {
@@ -126,6 +163,12 @@ export default function FirstSecondaryAdmin() {
         }
       } else if (activeTab === 'contents') {
         formData.append('lecture_ids', JSON.stringify(selectedLectures));
+        
+        // إضافة أسئلة الامتحان إذا كان النوع exam
+        if (contentType === 'exam') {
+          formData.append('exam_questions', JSON.stringify(examQuestions));
+        }
+        
         if (modalMode === 'create') {
           await createContent(formData);
         } else if (editingId) {
@@ -168,6 +211,8 @@ export default function FirstSecondaryAdmin() {
     setEditingId(null);
     setSelectedPackages([]);
     setSelectedLectures([]);
+    setExamQuestions([]);
+    setContentType('video');
     setShowModal(true);
   }
 
@@ -178,8 +223,16 @@ export default function FirstSecondaryAdmin() {
     if (activeTab === 'lectures') {
       setSelectedPackages([(item as Lecture).package_id]);
     } else if (activeTab === 'contents') {
-      setSelectedLectures([(item as Content).lecture_id]);
-      setContentType((item as Content).type);
+      const content = item as Content;
+      setSelectedLectures([content.lecture_id]);
+      setContentType(content.type);
+      
+      // استرجاع أسئلة الامتحان إذا وجدت
+      if (content.type === 'exam' && content.exam_questions) {
+        setExamQuestions(content.exam_questions);
+      } else {
+        setExamQuestions([]);
+      }
     }
     
     setShowModal(true);
@@ -190,11 +243,70 @@ export default function FirstSecondaryAdmin() {
     setEditingId(null);
     setSelectedPackages([]);
     setSelectedLectures([]);
+    setExamQuestions([]);
+    setCurrentQuestion({
+      question: '',
+      options: ['', ''],
+      correct: 0,
+      marks: 1
+    });
+  }
+
+  // إدارة الأسئلة
+  function addQuestion() {
+    if (!currentQuestion.question.trim()) {
+      alert('يرجى إدخال نص السؤال');
+      return;
+    }
+    if (currentQuestion.options.some(opt => !opt.trim())) {
+      alert('يرجى ملء جميع الخيارات');
+      return;
+    }
+    
+    setExamQuestions([...examQuestions, { ...currentQuestion }]);
+    setCurrentQuestion({
+      question: '',
+      options: ['', ''],
+      correct: 0,
+      marks: 1
+    });
+  }
+
+  function removeQuestion(index: number) {
+    setExamQuestions(examQuestions.filter((_, i) => i !== index));
+  }
+
+  function updateOption(index: number, value: string) {
+    const newOptions = [...currentQuestion.options];
+    newOptions[index] = value;
+    setCurrentQuestion({ ...currentQuestion, options: newOptions });
+  }
+
+  function addOption() {
+    setCurrentQuestion({
+      ...currentQuestion,
+      options: [...currentQuestion.options, '']
+    });
+  }
+
+  function removeOption(index: number) {
+    if (currentQuestion.options.length <= 2) {
+      alert('يجب أن يكون هناك خياران على الأقل');
+      return;
+    }
+    const newOptions = currentQuestion.options.filter((_, i) => i !== index);
+    const newCorrect = currentQuestion.correct >= newOptions.length ? 0 : currentQuestion.correct;
+    setCurrentQuestion({
+      ...currentQuestion,
+      options: newOptions,
+      correct: newCorrect
+    });
   }
 
   const renderForm = () => {
     if (activeTab === 'packages') {
       const editingPackage = editingId ? packages.find(p => p.id === editingId) : null;
+      const hasDiscount = editingPackage ? (editingPackage.original_price && editingPackage.original_price > editingPackage.price) : false;
       
       return (
         <form onSubmit={handleSubmit} className={styles.form}>
@@ -221,17 +333,39 @@ export default function FirstSecondaryAdmin() {
           
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
-              <label>السعر</label>
+              <label>السعر الأصلي (قبل الخصم)</label>
               <input 
                 type="number" 
-                name="price" 
-                defaultValue={editingPackage?.price || 0} 
-                required 
+                name="original_price" 
+                defaultValue={editingPackage?.original_price || editingPackage?.price || ''} 
                 min="0"
+                step="0.01"
                 className={styles.input}
+                placeholder="اتركه فارغاً إذا لا يوجد خصم"
               />
             </div>
             
+            <div className={styles.formGroup}>
+              <label>السعر النهائي (بعد الخصم) *</label>
+              <input 
+                type="number" 
+                name="price" 
+                defaultValue={editingPackage?.price || ''} 
+                required 
+                min="0"
+                step="0.01"
+                className={styles.input}
+              />
+            </div>
+          </div>
+
+          {hasDiscount && editingPackage && (
+            <div className={styles.discountBadge}>
+              نسبة الخصم: {Math.round((1 - editingPackage.price / (editingPackage.original_price || editingPackage.price)) * 100)}%
+            </div>
+          )}
+          
+          <div className={styles.formRow}>
             <div className={styles.formGroup}>
               <label>المدة (بالأيام)</label>
               <input 
@@ -243,9 +377,7 @@ export default function FirstSecondaryAdmin() {
                 className={styles.input}
               />
             </div>
-          </div>
-          
-          <div className={styles.formRow}>
+            
             <div className={styles.formGroup}>
               <label>النوع</label>
               <select name="type" defaultValue={editingPackage?.type || 'monthly'} className={styles.select}>
@@ -255,17 +387,17 @@ export default function FirstSecondaryAdmin() {
                 <option value="offer">عرض</option>
               </select>
             </div>
-            
-            <div className={styles.formGroup}>
-              <label>رابط الصورة</label>
-              <input 
-                type="url" 
-                name="image_url" 
-                defaultValue={editingPackage?.image_url || ''} 
-                placeholder="https://..." 
-                className={styles.input}
-              />
-            </div>
+          </div>
+          
+          <div className={styles.formGroup}>
+            <label>رابط الصورة</label>
+            <input 
+              type="url" 
+              name="image_url" 
+              defaultValue={editingPackage?.image_url || ''} 
+              placeholder="https://..." 
+              className={styles.input}
+            />
           </div>
           
           {editingPackage && (
@@ -316,7 +448,7 @@ export default function FirstSecondaryAdmin() {
           </div>
           
           <div className={styles.formGroup}>
-            <label>عنوان المحاضرة</label>
+            <label>عنوان المحاضرة *</label>
             <input 
               type="text" 
               name="title" 
@@ -427,7 +559,7 @@ export default function FirstSecondaryAdmin() {
             </div>
             
             <div className={styles.formGroup}>
-              <label>العنوان</label>
+              <label>العنوان *</label>
               <input 
                 type="text" 
                 name="title" 
@@ -450,7 +582,7 @@ export default function FirstSecondaryAdmin() {
           
           {(contentType === 'video' || contentType === 'pdf') && (
             <div className={styles.formGroup}>
-              <label>الرابط (رابط الفيديو أو الملف)</label>
+              <label>الرابط (رابط الفيديو أو الملف) *</label>
               <input 
                 type="url" 
                 name="content_url" 
@@ -477,40 +609,136 @@ export default function FirstSecondaryAdmin() {
           )}
           
           {contentType === 'exam' && (
-            <>
-              <div className={styles.formGroup}>
-                <label>درجة النجاح (%)</label>
-                <input 
-                  type="number" 
-                  name="pass_score" 
-                  defaultValue={editingContent?.pass_score || 70} 
-                  min="0" 
-                  max="100"
-                  required
-                  className={styles.input}
-                />
+            <div className={styles.examSection}>
+              <h3>أسئلة الامتحان ({examQuestions.length} سؤال)</h3>
+              
+              <div className={styles.questionsList}>
+                {examQuestions.map((q, idx) => (
+                  <div key={idx} className={styles.questionCard}>
+                    <div className={styles.questionHeader}>
+                      <span>سؤال {idx + 1} ({q.marks || 1} درجة)</span>
+                      <button 
+                        type="button" 
+                        onClick={() => removeQuestion(idx)}
+                        className={styles.removeQuestionBtn}
+                      >
+                        حذف
+                      </button>
+                    </div>
+                    <div className={styles.questionText}>{q.question}</div>
+                    <div className={styles.optionsList}>
+                      {q.options.map((opt, optIdx) => (
+                        <div 
+                          key={optIdx} 
+                          className={`${styles.option} ${optIdx === q.correct ? styles.correctOption : ''}`}
+                        >
+                          {optIdx + 1}. {opt} {optIdx === q.correct && '✓'}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className={styles.formGroup}>
-                <label>عدد المحاولات المسموحة</label>
-                <input 
-                  type="number" 
-                  name="max_attempts" 
-                  defaultValue={editingContent?.max_attempts || 1} 
-                  min="1"
-                  required
-                  className={styles.input}
-                />
+
+              <div className={styles.addQuestionForm}>
+                <h4>إضافة سؤال جديد</h4>
+                
+                <div className={styles.formGroup}>
+                  <label>نص السؤال</label>
+                  <textarea
+                    value={currentQuestion.question}
+                    onChange={(e) => setCurrentQuestion({...currentQuestion, question: e.target.value})}
+                    rows={2}
+                    className={styles.textarea}
+                    placeholder="اكتب نص السؤال هنا..."
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>الدرجة</label>
+                  <input
+                    type="number"
+                    value={currentQuestion.marks}
+                    onChange={(e) => setCurrentQuestion({...currentQuestion, marks: parseInt(e.target.value) || 1})}
+                    min="1"
+                    className={styles.input}
+                    style={{ width: '100px' }}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>الخيارات (حدد الإجابة الصحيحة)</label>
+                  {currentQuestion.options.map((opt, idx) => (
+                    <div key={idx} className={styles.optionInput}>
+                      <input
+                        type="radio"
+                        name="correctOption"
+                        checked={currentQuestion.correct === idx}
+                        onChange={() => setCurrentQuestion({...currentQuestion, correct: idx})}
+                        title="الإجابة الصحيحة"
+                      />
+                      <input
+                        type="text"
+                        value={opt}
+                        onChange={(e) => updateOption(idx, e.target.value)}
+                        placeholder={`الخيار ${idx + 1}`}
+                        className={styles.input}
+                      />
+                      {currentQuestion.options.length > 2 && (
+                        <button 
+                          type="button" 
+                          onClick={() => removeOption(idx)}
+                          className={styles.removeOptionBtn}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button 
+                    type="button" 
+                    onClick={addOption}
+                    className={styles.addOptionBtn}
+                  >
+                    + إضافة خيار
+                  </button>
+                </div>
+
+                <button 
+                  type="button" 
+                  onClick={addQuestion}
+                  className={styles.addQuestionBtn}
+                >
+                  إضافة السؤال للامتحان
+                </button>
               </div>
-              <div className={styles.formGroup}>
-                <label>أسئلة الامتحان (JSON format)</label>
-                <textarea 
-                  name="exam_questions" 
-                  rows={6}
-                  placeholder={`[{ "question": "...", "options": ["...", "..."], "correct": 0 }]`}
-                  className={styles.textarea}
-                />
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label>درجة النجاح (%)</label>
+                  <input 
+                    type="number" 
+                    name="pass_score" 
+                    defaultValue={editingContent?.pass_score || 70} 
+                    min="0" 
+                    max="100"
+                    required
+                    className={styles.input}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label>عدد المحاولات المسموحة</label>
+                  <input 
+                    type="number" 
+                    name="max_attempts" 
+                    defaultValue={editingContent?.max_attempts || 1} 
+                    min="1"
+                    required
+                    className={styles.input}
+                  />
+                </div>
               </div>
-            </>
+            </div>
           )}
           
           <div className={styles.formRow}>
@@ -553,7 +781,11 @@ export default function FirstSecondaryAdmin() {
           
           <div className={styles.modalActions}>
             <button type="button" onClick={closeModal} className={styles.cancelBtn}>إلغاء</button>
-            <button type="submit" disabled={submitting || (modalMode === 'create' && selectedLectures.length === 0)} className={styles.submitBtn}>
+            <button 
+              type="submit" 
+              disabled={submitting || (modalMode === 'create' && selectedLectures.length === 0) || (contentType === 'exam' && examQuestions.length === 0 && modalMode === 'create')} 
+              className={styles.submitBtn}
+            >
               {submitting ? 'جاري الحفظ...' : (modalMode === 'create' ? 'إنشاء' : 'تحديث')}
             </button>
           </div>
@@ -624,7 +856,21 @@ export default function FirstSecondaryAdmin() {
                       </td>
                       <td>{pkg.name}</td>
                       <td>{pkg.type}</td>
-                      <td>{pkg.price} جنيه</td>
+                      <td>
+                        {pkg.original_price && pkg.original_price > pkg.price ? (
+                          <div>
+                            <span style={{ textDecoration: 'line-through', color: '#999' }}>
+                              {pkg.original_price} جنيه
+                            </span>
+                            <br />
+                            <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>
+                              {pkg.price} جنيه
+                            </span>
+                          </div>
+                        ) : (
+                          `${pkg.price} جنيه`
+                        )}
+                      </td>
                       <td>{pkg.duration_days} يوم</td>
                       <td>
                         <span className={`${styles.status} ${pkg.is_active ? styles.active : styles.inactive}`}>

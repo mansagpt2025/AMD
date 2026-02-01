@@ -23,15 +23,17 @@ export async function createPackage(formData: FormData) {
   
   const name = formData.get('name') as string;
   const description = formData.get('description') as string;
-  const price = parseInt(formData.get('price') as string);
+  const price = parseFloat(formData.get('price') as string);
+  const original_price = parseFloat(formData.get('original_price') as string) || price;
   const type = formData.get('type') as string;
   const duration_days = parseInt(formData.get('duration_days') as string) || 30;
   const image_url = formData.get('image_url') as string;
 
   const { error } = await supabase.from('packages').insert({
     name,
-    description,
+    description: description || null,
     price,
+    original_price: original_price > price ? original_price : null,
     grade: 'first',
     type,
     duration_days,
@@ -48,24 +50,28 @@ export async function updatePackage(id: string, formData: FormData) {
   
   const name = formData.get('name') as string;
   const description = formData.get('description') as string;
-  const price = parseInt(formData.get('price') as string);
+  const price = parseFloat(formData.get('price') as string);
+  const original_price = parseFloat(formData.get('original_price') as string) || price;
   const type = formData.get('type') as string;
   const duration_days = parseInt(formData.get('duration_days') as string) || 30;
   const image_url = formData.get('image_url') as string;
   const is_active = formData.get('is_active') === 'true';
 
+  const updateData: any = {
+    name,
+    description: description || null,
+    price,
+    original_price: original_price > price ? original_price : null,
+    type,
+    duration_days,
+    image_url: image_url || null,
+    is_active,
+    updated_at: new Date().toISOString()
+  };
+
   const { error } = await supabase
     .from('packages')
-    .update({
-      name,
-      description,
-      price,
-      type,
-      duration_days,
-      image_url: image_url || null,
-      is_active,
-      updated_at: new Date().toISOString()
-    })
+    .update(updateData)
     .eq('id', id);
 
   if (error) throw error;
@@ -94,12 +100,6 @@ export async function getLectures() {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  
-  // Get all lecture-package relationships
-  const { data: allLectures } = await supabase
-    .from('lectures')
-    .select('*, packages!inner(id, name)');
-    
   return data || [];
 }
 
@@ -122,14 +122,16 @@ export async function createLecture(formData: FormData) {
   const title = formData.get('title') as string;
   const description = formData.get('description') as string;
   const image_url = formData.get('image_url') as string;
-  const package_ids = JSON.parse(formData.get('package_ids') as string) as string[];
+  const package_ids = JSON.parse(formData.get('package_ids') as string || '[]') as string[];
   const order_number = parseInt(formData.get('order_number') as string) || 0;
+
+  if (!package_ids.length) throw new Error('يجب اختيار باقة واحدة على الأقل');
 
   // Create lecture for each selected package
   for (const package_id of package_ids) {
     const { error } = await supabase.from('lectures').insert({
       title,
-      description,
+      description: description || null,
       image_url: image_url || null,
       package_id,
       order_number,
@@ -151,15 +153,18 @@ export async function updateLecture(id: string, formData: FormData) {
   const order_number = parseInt(formData.get('order_number') as string) || 0;
   const is_active = formData.get('is_active') === 'true';
 
+  const updateData: any = {
+    title,
+    description: description || null,
+    image_url: image_url || null,
+    order_number,
+    is_active,
+    updated_at: new Date().toISOString()
+  };
+
   const { error } = await supabase
     .from('lectures')
-    .update({
-      title,
-      description,
-      image_url: image_url || null,
-      order_number,
-      is_active
-    })
+    .update(updateData)
     .eq('id', id);
 
   if (error) throw error;
@@ -211,29 +216,43 @@ export async function createContent(formData: FormData) {
   const title = formData.get('title') as string;
   const description = formData.get('description') as string;
   const content_url = formData.get('content_url') as string;
-  const lecture_ids = JSON.parse(formData.get('lecture_ids') as string) as string[];
+  const lecture_ids = JSON.parse(formData.get('lecture_ids') as string || '[]') as string[];
   const duration_minutes = parseInt(formData.get('duration_minutes') as string) || 0;
   const order_number = parseInt(formData.get('order_number') as string) || 0;
   const max_attempts = parseInt(formData.get('max_attempts') as string) || 1;
   const pass_score = parseInt(formData.get('pass_score') as string) || 70;
 
-  // If type is exam, store exam questions in description or separate handling
-  const examQuestions = formData.get('exam_questions') as string;
-const finalDescription = description;
+  if (!lecture_ids.length) throw new Error('يجب اختيار محاضرة واحدة على الأقل');
+
+  // معالجة أسئلة الامتحان
+  let exam_questions = null;
+  if (type === 'exam') {
+    const questionsJson = formData.get('exam_questions') as string;
+    if (questionsJson) {
+      try {
+        exam_questions = JSON.parse(questionsJson);
+      } catch (e) {
+        throw new Error('صيغة أسئلة الامتحان غير صحيحة');
+      }
+    }
+  }
 
   for (const lecture_id of lecture_ids) {
-    const { error } = await supabase.from('lecture_contents').insert({
+    const insertData: any = {
       lecture_id,
       type,
       title,
-      description: finalDescription,
+      description: description || null,
       content_url: content_url || null,
       duration_minutes,
       order_number,
       max_attempts: type === 'video' || type === 'exam' ? max_attempts : null,
       pass_score: type === 'exam' ? pass_score : null,
+      exam_questions: type === 'exam' ? exam_questions : null,
       is_active: true
-    });
+    };
+
+    const { error } = await supabase.from('lecture_contents').insert(insertData);
     
     if (error) throw error;
   }
@@ -254,24 +273,35 @@ export async function updateContent(id: string, formData: FormData) {
   const pass_score = parseInt(formData.get('pass_score') as string) || 70;
   const is_active = formData.get('is_active') === 'true';
 
-  const examQuestions = formData.get('exam_questions') as string;
-  const finalDescription = type === 'exam' && examQuestions 
-    ? `${description}\n\n[EXAM_QUESTIONS]:${examQuestions}` 
-    : description;
+  // معالجة أسئلة الامتحان في حالة التعديل
+  let exam_questions = null;
+  if (type === 'exam') {
+    const questionsJson = formData.get('exam_questions') as string;
+    if (questionsJson) {
+      try {
+        exam_questions = JSON.parse(questionsJson);
+      } catch (e) {
+        throw new Error('صيغة أسئلة الامتحان غير صحيحة');
+      }
+    }
+  }
+
+  const updateData: any = {
+    title,
+    description: description || null,
+    content_url: content_url || null,
+    duration_minutes,
+    order_number,
+    max_attempts: type === 'video' || type === 'exam' ? max_attempts : null,
+    pass_score: type === 'exam' ? pass_score : null,
+    exam_questions: type === 'exam' ? exam_questions : null,
+    is_active,
+    updated_at: new Date().toISOString()
+  };
 
   const { error } = await supabase
     .from('lecture_contents')
-    .update({
-      type,
-      title,
-      description: finalDescription,
-      content_url: content_url || null,
-      duration_minutes,
-      order_number,
-      max_attempts: type === 'video' || type === 'exam' ? max_attempts : null,
-      pass_score: type === 'exam' ? pass_score : null,
-      is_active
-    })
+    .update(updateData)
     .eq('id', id);
 
   if (error) throw error;

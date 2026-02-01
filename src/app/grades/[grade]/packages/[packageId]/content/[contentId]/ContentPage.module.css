@@ -1173,3 +1173,752 @@
     flex-direction: column;
   }
 }
+
+/* ==========================================
+   MODERN CONTENT PAGE STYLES
+   Glassmorphism - Animations - Responsive
+   ========================================== */
+
+/* CSS Variables */
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+/* ==========================================
+   LAYOUT & CONTAINERS
+   ========================================== */
+
+.modernPage {
+  min-height: 100vh;
+  direction: rtl;
+  font-family: 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', sans-serif;
+  padding-top: 80px;
+}
+
+.mainContainer {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .mainContainer {
+    padding: 1rem;
+  }
+}
+
+/* ==========================================
+   GLASS HEADER
+   ========================================== */
+
+.glassHeader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 1rem 2rem;
+}
+
+.headerContent {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.backFab {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-smooth);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.backFab:hover {
+  transform: scale(1.1);
+  background: white;
+}
+
+.breadcrumbModern {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.breadcrumbModern button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  transition: color 0.2s;
+  font-size: 0.875rem;
+}
+
+.breadcrumbModern button:hover {
+  color: #1e293b;
+}
+
+.breadcrumbSep {
+  color: #cbd5e1;
+}
+
+.breadcrumbCurrent {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.headerCenter {
+  flex: 0 0 auto;
+}
+
+.typeBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.headerRight {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .glassHeader {
+    padding: 1rem;
+  }
+  
+  .breadcrumbModern {
+    display: none;
+  }
+  
+  .headerRight {
+    display: block;
+  }
+  
+  .menuBtn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ==========================================
+   PRIMARY CONTENT COLUMN
+   ========================================== */
+
+.primaryColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Title Card */
+.titleCard {
+  padding: 1.5rem;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glass-shadow);
+}
+
+.titleCard h1 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.75rem;
+  color: #1e293b;
+  line-height: 1.3;
+}
+
+.titleMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.titleMeta span {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.dotSep {
+  color: #cbd5e1;
+}
+
+@media (max-width: 640px) {
+  .titleCard h1 {
+    font-size: 1.25rem;
+  }
+}
+
+/* Modern Tabs */
+.modernTabs {
+  display: flex;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px);
+  padding: 0.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+}
+
+.tabBtn {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #64748b;
+  transition: var(--transition-smooth);
+  overflow: hidden;
+}
+
+.tabBtn:hover {
+  background: rgba(255, 255, 255, 0.5);
+  color: #1e293b;
+}
+
+.tabBtn.active {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.tabIndicator {
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.contentDisplay {
+  min-height: 400px;
+}
+
+/* ==========================================
+   VIDEO PLAYER - CINEMATIC STYLE
+   ========================================== */
+
+.videoContainer {
+  position: relative;
+  background: #000;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  aspect-ratio: 16/9;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  user-select: none;
+}
+
+.videoWrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.videoElement {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.youtubeFrame {
+  width: 100%;
+  height: 100%;
+}
+
+.youtubeOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  cursor: pointer;
+}
+
+/* Buffering */
+.bufferingOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.spinnerRing {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Center Play Button */
+.centerPlayButton {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.95);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  color: #000;
+}
+
+/* Controls Bar */
+.controlsBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.4), transparent);
+  padding: 20px;
+  z-index: 20;
+  direction: ltr;
+}
+
+.progressContainer {
+  margin-bottom: 12px;
+}
+
+.progressInput {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  background: rgba(255,255,255,0.3);
+}
+
+.progressInput::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  transition: transform 0.2s;
+}
+
+.progressInput::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.timeDisplay {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(255,255,255,0.8);
+  font-size: 0.75rem;
+  margin-top: 4px;
+  font-family: monospace;
+}
+
+.controlsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.leftControls, .rightControls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.controlsRow button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.controlsRow button:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.playPauseBtn {
+  background: rgba(255,255,255,0.2) !important;
+  width: 40px;
+  height: 40px;
+}
+
+.skipButtons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.volumeControl {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.volumeSlider {
+  overflow: hidden;
+  margin-left: 8px;
+}
+
+.volumeSlider input {
+  width: 80px;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.volumeSlider input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+}
+
+.speedBadge {
+  background: rgba(255,255,255,0.2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: white;
+}
+
+.settingsMenu {
+  position: absolute;
+  bottom: 70px;
+  right: 20px;
+  background: rgba(0,0,0,0.95);
+  border-radius: 12px;
+  padding: 0.5rem;
+  min-width: 140px;
+  z-index: 30;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.settingsHeader {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.75rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 0.25rem;
+}
+
+.speedOption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.speedOption:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.speedOption.active {
+  color: var(--primary, #4F46E5);
+}
+
+.protectedBadge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  color: #fbbf24;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 15;
+  font-weight: 600;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+@media (max-width: 640px) {
+  .controlsBar {
+    padding: 12px;
+  }
+  
+  .skipButtons {
+    display: none;
+  }
+  
+  .centerPlayButton {
+    width: 60px;
+    height: 60px;
+  }
+}
+
+/* ==========================================
+   SIDEBAR MODERN
+   ========================================== */
+
+.sidebarModern {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .sidebarModern {
+    position: fixed;
+    top: 80px;
+    left: 0;
+    bottom: 0;
+    width: 320px;
+    background: rgba(248, 250, 252, 0.95);
+    backdrop-filter: blur(20px);
+    padding: 1.5rem;
+    z-index: 90;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+  }
+  
+  .sidebarModern.mobileOpen {
+    transform: translateX(0);
+  }
+}
+
+.statusCardModern, .lectureCard, .packageCard {
+  padding: 1.5rem;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glass-shadow);
+}
+
+.statusCardModern h4, .lectureCard h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  color: #64748b;
+}
+
+.statusDisplay {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.statusIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s;
+}
+
+.statusLabel {
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: #1e293b;
+}
+
+.statusDate {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.markCompleteBtn {
+  width: 100%;
+  padding: 0.875rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.markCompleteBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.markCompleteBtn:disabled {
+  cursor: not-allowed;
+}
+
+.lectureHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.lectureIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lectureHeader h4 {
+  margin: 0 0 0.25rem 0 !important;
+  color: #1e293b;
+}
+
+.lectureHeader p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.packageCard {
+  text-align: center;
+  color: white;
+}
+
+.packageCard h4 {
+  margin: 1rem 0 0.5rem 0;
+  font-size: 1.25rem;
+}
+
+.packageCard p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.875rem;
+}
+
+.mobileOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  z-index: 80;
+}
+
+/* ==========================================
+   BUTTONS
+   ========================================== */
+
+.primaryBtn, .secondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.primaryBtn {
+  color: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.primaryBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+}
+
+.secondaryBtn {
+  background: transparent;
+  border: 2px solid;
+}
+
+.secondaryBtn:hover {
+  background: rgba(0,0,0,0.02);
+}
+
+/* Additional Responsive Utilities */
+@media (max-width: 640px) {
+  .hideMobile {
+    display: none !important;
+  }
+}
