@@ -23,7 +23,7 @@ import {
   SparklesIcon, TrendingUp as TrendingUpIcon,
   ShieldCheck
 } from 'lucide-react'
-import styles from './PackagePageNew.module.css'
+import styles from './PackagePage.module.css'
 
 // Types (نفس الأنواع مع تعديلات طفيفة)
 interface LectureContent {
