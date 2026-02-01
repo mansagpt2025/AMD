@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue, useMotionTemplate } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue, type Transition } from 'framer-motion'
 import { createBrowserClient } from '@supabase/ssr'
 import { 
   Wallet, BookOpen, GraduationCap, Loader2, AlertCircle,
@@ -310,7 +310,7 @@ export default function GradePage() {
             transition={{ 
               rotate: { duration: 2, repeat: Infinity, ease: "linear" },
               scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
-            }}
+            } as Transition}
             className={styles.loadingIcon}
             style={{ background: theme.gradient }}
           >
