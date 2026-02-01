@@ -13,19 +13,10 @@ import {
   Play, FileText, HelpCircle, Crown, Star,
   ChevronDown, Share2, CalendarDays, ChevronLeft,
   Zap, TrendingUp, PlayIcon, LockIcon,
-  MoreHorizontal, Bookmark, CheckIcon, XIcon,
-  ChevronUp, BarChart, Target as TargetIcon,
-  FileVideo, BookCheck, Timer, AwardIcon,
-  Download, Eye, StarIcon, UserCheck,
-  Rocket, Brain, Target as TargetLucide,
-  Medal, Clock4, Globe, Users as UsersIcon,
-  BookmarkIcon, ZapIcon, CrownIcon,
-  SparklesIcon, TrendingUp as TrendingUpIcon,
-  ShieldCheck
+  MoreHorizontal, Bookmark, CheckIcon, XIcon
 } from 'lucide-react'
 import styles from './PackagePage.module.css'
 
-// Types (نفس الأنواع مع تعديلات طفيفة)
 interface LectureContent {
   id: string
   lecture_id: string
@@ -91,104 +82,68 @@ interface UserPackage {
 }
 
 declare global {
-  var __packagePageNewSupabase: ReturnType<typeof createBrowserClient> | undefined
+  var __packagePageSupabase: ReturnType<typeof createBrowserClient> | undefined
 }
 
 const getSupabase = () => {
   if (typeof window === 'undefined') return null
   
-  if (!globalThis.__packagePageNewSupabase) {
-    globalThis.__packagePageNewSupabase = createBrowserClient(
+  if (!globalThis.__packagePageSupabase) {
+    globalThis.__packagePageSupabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
   }
-  return globalThis.__packagePageNewSupabase
+  return globalThis.__packagePageSupabase
 }
 
-// Loading Component الجديد
 function LoadingState() {
   return (
-    <div className={styles.loadingOverlay}>
-      <div className={styles.loadingContainer}>
-        <div className={styles.loadingAnimation}>
-          <div className={styles.loadingOrbit}>
-            <div className={styles.loadingCore}>
-              <GraduationCap className={styles.loadingIcon} size={32} />
-            </div>
-            <div className={styles.orbitRing}></div>
-            <div className={styles.orbitRing}></div>
-            <div className={styles.orbitRing}></div>
-          </div>
+    <div className={styles.loadingScreen}>
+      <div className={styles.loadingContent}>
+        <div className={styles.loadingLogo}>
+          <motion.div 
+            className={styles.loadingRing}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          />
+          <GraduationCap className={styles.loadingIcon} size={28} />
         </div>
-        <div className={styles.loadingText}>
-          <motion.h3
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            جاري تحميل الباقة
-          </motion.h3>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-          >
-            نجهز أفضل تجربة تعليمية لك...
-          </motion.p>
-        </div>
+        <motion.p 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          جاري تحميل البيانات...
+        </motion.p>
       </div>
     </div>
   )
 }
 
-// Error Component الجديد
 function ErrorState({ message, onBack }: { message: string; onBack: () => void }) {
   return (
-    <div className={styles.errorOverlay}>
+    <div className={styles.errorScreen}>
       <motion.div 
-        initial={{ scale: 0.8, opacity: 0 }}
+        initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className={styles.errorCard}
+        className={styles.errorContent}
       >
-        <div className={styles.errorVisual}>
-          <div className={styles.errorOrb}></div>
-          <AlertCircle className={styles.errorIcon} size={64} />
+        <div className={styles.errorIconWrapper}>
+          <AlertCircle size={40} />
         </div>
-        <div className={styles.errorContent}>
-          <h2>عذراً، حدث خطأ</h2>
-          <p>{message}</p>
-          <div className={styles.errorActions}>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={onBack}
-              className={styles.errorButtonPrimary}
-            >
-              <Home size={18} />
-              العودة للرئيسية
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => window.location.reload()}
-              className={styles.errorButtonSecondary}
-            >
-              <RefreshCw size={18} />
-              إعادة المحاولة
-            </motion.button>
-          </div>
-        </div>
+        <h2>حدث خطأ</h2>
+        <p>{message}</p>
+        <button onClick={onBack} className={styles.errorButton}>
+          <ArrowRight size={18} />
+          <span>العودة للصفحة السابقة</span>
+        </button>
       </motion.div>
     </div>
   )
 }
 
-// Import missing icon
-import { RefreshCw } from 'lucide-react'
-
-// Main Component الجديد
-function PackageContentNew() {
+function PackageContent() {
   const router = useRouter()
   const params = useParams()
   const [mounted, setMounted] = useState(false)
@@ -207,7 +162,6 @@ function PackageContentNew() {
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [hoveredContent, setHoveredContent] = useState<string | null>(null)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const supabase = useMemo(() => getSupabase(), [])
 
@@ -240,7 +194,6 @@ function PackageContentNew() {
         }
 
         if (!session?.user) {
-          console.log('No session, redirecting...')
           router.replace(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}`)
           return
         }
@@ -315,7 +268,6 @@ function PackageContentNew() {
           setUserProgress(progressData || [])
           calculateCompletion(progressData || [], contentsData || [])
           
-          // Auto-expand first incomplete lecture
           const firstIncompleteLecture = lecturesData.find((lecture: Lecture) => {
             const lectureContents = contentsData?.filter((c: LectureContent) => c.lecture_id === lecture.id) || []
             const hasIncomplete = lectureContents.some((c: LectureContent) => {
@@ -382,37 +334,24 @@ function PackageContentNew() {
   const getContentIcon = (type: string, status: string) => {
     const isCompleted = status === 'completed' || status === 'passed'
     
+    const iconClass = `${styles.contentTypeIcon} ${
+      type === 'video' ? styles.iconVideo :
+      type === 'pdf' ? styles.iconPdf :
+      type === 'exam' ? styles.iconExam :
+      styles.iconText
+    } ${isCompleted ? styles.iconCompleted : ''}`
+    
     switch (type) {
       case 'video':
-        return (
-          <div className={`${styles.contentIcon} ${styles.iconVideo} ${isCompleted ? styles.iconCompleted : ''}`}>
-            <PlayIcon size={20} />
-          </div>
-        )
+        return <div className={iconClass}><PlayIcon size={18} /></div>
       case 'pdf':
-        return (
-          <div className={`${styles.contentIcon} ${styles.iconPdf} ${isCompleted ? styles.iconCompleted : ''}`}>
-            <FileText size={20} />
-          </div>
-        )
+        return <div className={iconClass}><FileText size={18} /></div>
       case 'exam':
-        return (
-          <div className={`${styles.contentIcon} ${styles.iconExam} ${isCompleted ? styles.iconCompleted : ''}`}>
-            <TargetIcon size={20} />
-          </div>
-        )
+        return <div className={iconClass}><HelpCircle size={18} /></div>
       case 'text':
-        return (
-          <div className={`${styles.contentIcon} ${styles.iconText} ${isCompleted ? styles.iconCompleted : ''}`}>
-            <BookCheck size={20} />
-          </div>
-        )
+        return <div className={iconClass}><BookOpen size={18} /></div>
       default:
-        return (
-          <div className={`${styles.contentIcon} ${isCompleted ? styles.iconCompleted : ''}`}>
-            <PlayCircle size={20} />
-          </div>
-        )
+        return <div className={iconClass}><PlayCircle size={18} /></div>
     }
   }
 
@@ -432,43 +371,24 @@ function PackageContentNew() {
     setActiveSection(prev => prev === sectionId ? null : sectionId)
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-      case 'passed':
-        return styles.statusSuccess
-      case 'failed':
-        return styles.statusDanger
-      case 'in_progress':
-        return styles.statusWarning
-      default:
-        return styles.statusDefault
-    }
-  }
-
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'مكتمل'
-      case 'passed':
-        return 'ناجح'
-      case 'failed':
-        return 'فشل'
-      case 'in_progress':
-        return 'قيد التقدم'
-      default:
-        return 'متاح'
+      case 'completed': return 'مكتمل'
+      case 'passed': return 'ناجح'
+      case 'failed': return 'فشل'
+      case 'in_progress': return 'قيد التقدم'
+      default: return 'متاح'
     }
   }
 
   const getTypeBadge = (type: string) => {
-    const badges = {
-      weekly: { text: 'أسبوعي', color: styles.badgeWeekly, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-      monthly: { text: 'شهري', color: styles.badgeMonthly, gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
-      term: { text: 'ترم كامل', color: styles.badgeTerm, gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
-      offer: { text: 'عرض خاص', color: styles.badgeOffer, gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' }
+    const badges: Record<string, { text: string; className: string }> = {
+      weekly: { text: 'أسبوعي', className: styles.badgeWeekly },
+      monthly: { text: 'شهري', className: styles.badgeMonthly },
+      term: { text: 'ترم كامل', className: styles.badgeTerm },
+      offer: { text: 'عرض خاص', className: styles.badgeOffer }
     }
-    return badges[type as keyof typeof badges] || { text: type, color: styles.badgeDefault, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }
+    return badges[type] || { text: type, className: styles.badgeDefault }
   }
 
   const getGradeName = (slug: string) => {
@@ -478,10 +398,6 @@ function PackageContentNew() {
       'third': 'الصف الثالث الثانوي'
     }
     return grades[slug] || slug
-  }
-
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed)
   }
 
   if (!mounted) return <LoadingState />
@@ -495,332 +411,241 @@ function PackageContentNew() {
   const remainingCount = contents.length - completedCount
 
   return (
-    <div className={styles.pageContainer}>
-      {/* Animated Background */}
-      <div className={styles.backgroundEffects}>
-        <div className={styles.gradientOrb}></div>
-        <div className={styles.gradientOrb}></div>
-        <div className={styles.gradientOrb}></div>
-        <div className={styles.floatingShapes}>
-          <div className={styles.shape}></div>
-          <div className={styles.shape}></div>
-          <div className={styles.shape}></div>
-        </div>
+    <div className={styles.pageWrapper}>
+      {/* Background Effects */}
+      <div className={styles.bgEffects}>
+        <div className={styles.bgGradient1} />
+        <div className={styles.bgGradient2} />
       </div>
 
       {/* Header */}
-      <motion.header 
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ type: 'spring', stiffness: 100 }}
-        className={styles.header}
-      >
-        <div className={styles.headerContent}>
-          {/* Logo and Navigation */}
-          <div className={styles.headerMain}>
-            <motion.div 
-              whileHover={{ scale: 1.05 }}
-              className={styles.logoSection}
-            >
-              <div className={styles.logo}>
-                <CrownIcon size={28} />
-                <span className={styles.logoText}>البارع محمود الديب</span>
-              </div>
-            </motion.div>
-
-            <nav className={styles.navigation}>
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => router.push('/')}
-                className={styles.navButton}
-              >
-                <Home size={20} />
+      <header className={styles.header}>
+        <div className={styles.headerContainer}>
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={styles.headerContent}
+          >
+            {/* Breadcrumb */}
+            <nav className={styles.breadcrumb}>
+              <button onClick={() => router.push('/')} className={styles.breadcrumbItem}>
+                <Home size={16} />
                 <span>الرئيسية</span>
-              </motion.button>
-              
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => router.push(`/grades/${gradeSlug}`)}
-                className={styles.navButton}
-              >
-                <GraduationCap size={20} />
+              </button>
+              <ChevronLeft size={14} className={styles.breadcrumbSep} />
+              <button onClick={() => router.push(`/grades/${gradeSlug}`)} className={styles.breadcrumbItem}>
                 <span>{getGradeName(gradeSlug)}</span>
-              </motion.button>
-              
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className={styles.navButton}
-              >
-                <BarChart3 size={20} />
-                <span>الإحصائيات</span>
-              </motion.button>
+              </button>
+              <ChevronLeft size={14} className={styles.breadcrumbSep} />
+              <span className={styles.breadcrumbCurrent}>{packageData.name}</span>
             </nav>
-          </div>
 
-          {/* User Actions */}
-          <div className={styles.headerActions}>
-            <motion.button 
-              whileHover={{ scale: 1.1, rotate: 180 }}
-              whileTap={{ scale: 0.9 }}
-              className={styles.shareButton}
-            >
-              <Share2 size={22} />
-            </motion.button>
-            
-            <div className={styles.userInfo}>
-              <div className={styles.userProgress}>
-                <div className={styles.progressCircle}>
-                  <motion.svg
-                    viewBox="0 0 36 36"
-                    className={styles.progressCircleSvg}
-                  >
-                    <path
-                      className={styles.progressCircleBg}
-                      d="M18 2.0845
-                        a 15.9155 15.9155 0 0 1 0 31.831
-                        a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                    <motion.path
-                      initial={{ pathLength: 0 }}
-                      animate={{ pathLength: completion / 100 }}
-                      transition={{ duration: 2, ease: "easeOut" }}
-                      className={styles.progressCircleFill}
-                      d="M18 2.0845
-                        a 15.9155 15.9155 0 0 1 0 31.831
-                        a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                  </motion.svg>
-                  <span className={styles.progressText}>{completion}%</span>
-                </div>
-                <span className={styles.progressLabel}>تقدمك</span>
+            {/* Brand */}
+            <div className={styles.headerBrand}>
+              <div className={styles.brandMark}>
+                <Crown size={16} />
               </div>
+              <span>البارع محمود الديب</span>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </motion.header>
+      </header>
 
       <main className={styles.mainContent}>
         {/* Hero Section */}
-        <section className={styles.heroSection}>
-          <motion.div 
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className={styles.heroContainer}
-          >
-            {/* Package Header Card */}
-            <div className={styles.heroCard}>
-              <div className={styles.heroVisual}>
-                <div className={styles.imageContainer}>
-                  <div className={styles.imageWrapper}>
-                    {packageData.image_url ? (
-                      <img 
-                        src={packageData.image_url} 
-                        alt={packageData.name}
-                        className={styles.packageImage}
-                      />
-                    ) : (
-                      <div className={styles.imagePlaceholder}>
-                        <GraduationCap size={64} />
-                      </div>
-                    )}
-                    <div className={styles.imageGradient}></div>
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className={styles.heroSection}
+        >
+          <div className={styles.heroContainer}>
+            {/* Package Visual */}
+            <div className={styles.heroVisual}>
+              <div className={styles.packageImageCard}>
+                <div className={`${styles.packageTypeBadge} ${typeBadge.className}`}>
+                  {typeBadge.text}
+                </div>
+                {packageData.image_url ? (
+                  <img src={packageData.image_url || "/placeholder.svg"} alt={packageData.name} className={styles.packageImage} />
+                ) : (
+                  <div className={styles.packageImagePlaceholder}>
+                    <GraduationCap size={56} />
                   </div>
-                  
-                  {/* Floating Badges */}
-                  <div className={styles.floatingBadges}>
-                    <motion.div 
-                      initial={{ scale: 0, rotate: -180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: 'spring', delay: 0.2 }}
-                      className={`${styles.typeBadge} ${typeBadge.color}`}
-                      style={{ background: typeBadge.gradient }}
-                    >
-                      {typeBadge.text}
-                    </motion.div>
-                    
-                    <motion.div 
-                      initial={{ scale: 0, rotate: 180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: 'spring', delay: 0.4 }}
-                      className={styles.gradeBadge}
-                    >
-                      {getGradeName(gradeSlug)}
-                    </motion.div>
+                )}
+                <div className={styles.imageOverlay} />
+              </div>
+              
+              {/* Quick Stats */}
+              <div className={styles.quickStatsGrid}>
+                <div className={styles.quickStatItem}>
+                  <div className={`${styles.quickStatIcon} ${styles.statIconBlue}`}>
+                    <PlayCircle size={18} />
+                  </div>
+                  <div className={styles.quickStatInfo}>
+                    <span className={styles.quickStatValue}>{lectures.length}</span>
+                    <span className={styles.quickStatLabel}>محاضرة</span>
+                  </div>
+                </div>
+                
+                <div className={styles.quickStatItem}>
+                  <div className={`${styles.quickStatIcon} ${styles.statIconPurple}`}>
+                    <BookOpen size={18} />
+                  </div>
+                  <div className={styles.quickStatInfo}>
+                    <span className={styles.quickStatValue}>{contents.length}</span>
+                    <span className={styles.quickStatLabel}>محتوى</span>
+                  </div>
+                </div>
+                
+                <div className={styles.quickStatItem}>
+                  <div className={`${styles.quickStatIcon} ${styles.statIconOrange}`}>
+                    <Clock size={18} />
+                  </div>
+                  <div className={styles.quickStatInfo}>
+                    <span className={styles.quickStatValue}>{packageData.duration_days}</span>
+                    <span className={styles.quickStatLabel}>يوم</span>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className={styles.heroContent}>
-                <div className={styles.heroHeader}>
-                  <motion.div 
+            {/* Package Info */}
+            <div className={styles.heroInfo}>
+              <div className={styles.heroHeader}>
+                <div>
+                  <motion.h1 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className={styles.packageTitle}
+                  >
+                    {packageData.name}
+                  </motion.h1>
+                  <motion.p 
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 }}
+                    className={styles.packageDescription}
                   >
-                    <h1 className={styles.packageTitle}>{packageData.name}</h1>
-                    <p className={styles.packageDescription}>{packageData.description}</p>
-                  </motion.div>
-                  
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                    className={styles.heroStats}
-                  >
-                    <div className={styles.statItem}>
-                      <div className={styles.statIcon}>
-                        <BookOpen size={24} />
-                      </div>
-                      <div>
-                        <span className={styles.statNumber}>{lectures.length}</span>
-                        <span className={styles.statLabel}>محاضرة</span>
-                      </div>
+                    {packageData.description}
+                  </motion.p>
+                </div>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={styles.shareButton}
+                >
+                  <Share2 size={18} />
+                </motion.button>
+              </div>
+
+              {/* Progress Card */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className={styles.progressCard}
+              >
+                <div className={styles.progressHeader}>
+                  <div className={styles.progressTitleSection}>
+                    <div className={styles.progressIcon}>
+                      <TrendingUp size={18} />
                     </div>
-                    
-                    <div className={styles.statItem}>
-                      <div className={styles.statIcon}>
-                        <Video size={24} />
-                      </div>
-                      <div>
-                        <span className={styles.statNumber}>{contents.length}</span>
-                        <span className={styles.statLabel}>محتوى</span>
-                      </div>
+                    <div>
+                      <h3>تقدمك في الباقة</h3>
+                      <p>أكمل المحتوى لإتقان المادة</p>
                     </div>
-                    
-                    <div className={styles.statItem}>
-                      <div className={styles.statIcon}>
-                        <Clock4 size={24} />
-                      </div>
-                      <div>
-                        <span className={styles.statNumber}>{packageData.duration_days}</span>
-                        <span className={styles.statLabel}>يوم</span>
-                      </div>
-                    </div>
-                  </motion.div>
+                  </div>
+                  <div className={styles.progressPercentage}>
+                    <span>{completion}</span>%
+                  </div>
                 </div>
 
-                {/* Progress Section */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
-                  className={styles.progressSection}
-                >
-                  <div className={styles.progressHeader}>
-                    <div className={styles.progressTitle}>
-                      <TrendingUpIcon size={24} />
-                      <div>
-                        <h3>مسار تقدمك</h3>
-                        <p>تابع رحلتك التعليمية</p>
-                      </div>
-                    </div>
-                    <div className={styles.completionRate}>
-                      <span>{completion}</span>%
-                    </div>
-                  </div>
-
-                  <div className={styles.progressBarContainer}>
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${completion}%` }}
-                      transition={{ duration: 1.5, ease: "easeOut" }}
-                      className={styles.progressBar}
-                      style={{ background: typeBadge.gradient }}
-                    >
-                      <div className={styles.progressGlow}></div>
-                    </motion.div>
-                  </div>
-
-                  <div className={styles.progressDetails}>
-                    <div className={styles.progressStat}>
-                      <div className={`${styles.statDot} ${styles.dotCompleted}`}></div>
-                      <span>{completedCount} مكتمل</span>
-                    </div>
-                    <div className={styles.progressStat}>
-                      <div className={`${styles.statDot} ${styles.dotProgress}`}></div>
-                      <span>{inProgressCount} قيد التقدم</span>
-                    </div>
-                    <div className={styles.progressStat}>
-                      <div className={`${styles.statDot} ${styles.dotPending}`}></div>
-                      <span>{remainingCount} متبقي</span>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Expiry Info */}
-                {userPackage?.expires_at && (
+                <div className={styles.progressBarWrapper}>
                   <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.8 }}
-                    className={styles.expiryInfo}
-                  >
-                    <CalendarDays size={20} />
-                    <span>
-                      ينتهي الاشتراك في: 
-                      <strong>
-                        {new Date(userPackage.expires_at).toLocaleDateString('ar-EG', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </strong>
-                    </span>
-                  </motion.div>
-                )}
-              </div>
+                    initial={{ width: 0 }}
+                    animate={{ width: `${completion}%` }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    className={styles.progressBarFill}
+                  />
+                </div>
+
+                <div className={styles.progressStatsRow}>
+                  <div className={`${styles.progressStatItem} ${styles.statCompleted}`}>
+                    <CheckCircle size={14} />
+                    <span>{completedCount} مكتمل</span>
+                  </div>
+                  <div className={`${styles.progressStatItem} ${styles.statInProgress}`}>
+                    <Clock size={14} />
+                    <span>{inProgressCount} قيد التقدم</span>
+                  </div>
+                  <div className={`${styles.progressStatItem} ${styles.statRemaining}`}>
+                    <Target size={14} />
+                    <span>{remainingCount} متبقي</span>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Expiry Notice */}
+              {userPackage?.expires_at && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className={styles.expiryNotice}
+                >
+                  <CalendarDays size={16} />
+                  <span>ينتهي اشتراكك في: {new Date(userPackage.expires_at).toLocaleDateString('ar-EG', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}</span>
+                </motion.div>
+              )}
             </div>
-          </motion.div>
-        </section>
+          </div>
+        </motion.section>
 
         {/* Content Section */}
         <section className={styles.contentSection}>
           <div className={styles.contentLayout}>
-            {/* Main Content */}
-            <div className={styles.mainContentArea}>
+            {/* Lectures Column */}
+            <div className={styles.lecturesColumn}>
               <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className={styles.contentHeader}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={styles.sectionHeaderCard}
               >
-                <div className={styles.sectionTitle}>
-                  <BookOpen size={32} />
+                <div className={styles.sectionTitleArea}>
+                  <div className={styles.sectionIcon}>
+                    <BookOpen size={22} />
+                  </div>
                   <div>
-                    <h2>المحاضرات والمواد التعليمية</h2>
-                    <p>ابدأ رحلة التعلم والتفوق</p>
+                    <h2>محاضرات الباقة</h2>
+                    <p>تابع تقدمك واستكمل رحلتك التعليمية</p>
                   </div>
                 </div>
-                
-                <div className={styles.contentStats}>
-                  <span className={styles.statPill}>
-                    {lectures.length} محاضرة
-                  </span>
-                  <span className={styles.statPill}>
-                    {contents.length} محتوى
-                  </span>
+                <div className={styles.lectureCounter}>
+                  {lectures.length} محاضرة
                 </div>
               </motion.div>
 
-              {/* Lectures List */}
-              <div className={styles.lecturesContainer}>
-                {lectures.length === 0 ? (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className={styles.emptyState}
-                  >
-                    <div className={styles.emptyIllustration}>
-                      <BookOpen size={64} />
-                    </div>
-                    <h3>لا توجد محاضرات متاحة حالياً</h3>
-                    <p>سيتم إضافة المحتوى قريباً</p>
-                  </motion.div>
-                ) : (
-                  lectures.map((lecture, lectureIndex) => {
+              {lectures.length === 0 ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className={styles.emptyLectures}
+                >
+                  <div className={styles.emptyIcon}>
+                    <BookOpen size={40} />
+                  </div>
+                  <h3>لا توجد محاضرات متاحة</h3>
+                  <p>سيتم إضافة المحاضرات قريباً</p>
+                </motion.div>
+              ) : (
+                <div className={styles.lecturesList}>
+                  {lectures.map((lecture, lectureIndex) => {
                     const lectureContents = contents.filter(c => c.lecture_id === lecture.id)
                     const isExpanded = activeSection === lecture.id
                     const completedContents = lectureContents.filter(c => {
@@ -838,39 +663,39 @@ function PackageContentNew() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: lectureIndex * 0.1 }}
-                        className={`${styles.lectureCard} ${isFullyCompleted ? styles.completed : ''}`}
+                        className={`${styles.lectureCard} ${isFullyCompleted ? styles.lectureCompleted : ''}`}
                       >
                         <div 
                           className={styles.lectureHeader}
                           onClick={() => toggleSection(lecture.id)}
                         >
-                          <div className={styles.lectureInfo}>
+                          <div className={styles.lectureHeaderLeft}>
                             <div className={styles.lectureNumber}>
                               <span>{lectureIndex + 1}</span>
                               {isFullyCompleted && (
                                 <motion.div 
                                   initial={{ scale: 0 }}
                                   animate={{ scale: 1 }}
-                                  className={styles.completedBadge}
+                                  className={styles.completedCheckmark}
                                 >
-                                  <CheckIcon size={16} />
+                                  <CheckIcon size={10} />
                                 </motion.div>
                               )}
                             </div>
                             
-                            <div className={styles.lectureContent}>
+                            <div className={styles.lectureInfo}>
                               <div className={styles.lectureTitleRow}>
                                 <h3>{lecture.title}</h3>
                                 <div className={styles.lectureMeta}>
-                                  <span className={`${styles.statusTag} ${
-                                    isFullyCompleted ? styles.tagSuccess : 
-                                    progressPercent > 0 ? styles.tagWarning : 
-                                    styles.tagInfo
+                                  <span className={`${styles.lectureStatusBadge} ${
+                                    isFullyCompleted ? styles.badgeSuccess : 
+                                    progressPercent > 0 ? styles.badgeWarning : 
+                                    styles.badgeDefault
                                   }`}>
-                                    {isFullyCompleted ? 'مكتمل' : progressPercent > 0 ? 'قيد الدراسة' : 'جديد'}
+                                    {isFullyCompleted ? 'مكتمل' : progressPercent > 0 ? 'قيد التقدم' : 'جديد'}
                                   </span>
-                                  <span className={styles.contentCount}>
-                                    {lectureContents.length} عنصر
+                                  <span className={styles.contentCountBadge}>
+                                    {lectureContents.length} محتوى
                                   </span>
                                 </div>
                               </div>
@@ -879,17 +704,17 @@ function PackageContentNew() {
                                 <p className={styles.lectureDescription}>{lecture.description}</p>
                               )}
                               
-                              <div className={styles.lectureProgress}>
-                                <div className={styles.progressInfo}>
-                                  <span>مستوى الإنجاز</span>
+                              <div className={styles.lectureProgressBar}>
+                                <div className={styles.lectureProgressInfo}>
+                                  <span>التقدم</span>
                                   <span>{progressPercent}%</span>
                                 </div>
-                                <div className={styles.progressTrack}>
+                                <div className={styles.lectureProgressTrack}>
                                   <motion.div 
                                     initial={{ width: 0 }}
                                     animate={{ width: `${progressPercent}%` }}
-                                    transition={{ duration: 1, delay: 0.2 }}
-                                    className={`${styles.progressFill} ${
+                                    transition={{ duration: 0.8, delay: 0.2 }}
+                                    className={`${styles.lectureProgressFill} ${
                                       isFullyCompleted ? styles.fillSuccess : 
                                       progressPercent > 0 ? styles.fillWarning : ''
                                     }`}
@@ -904,7 +729,7 @@ function PackageContentNew() {
                             transition={{ duration: 0.3 }}
                             className={styles.expandButton}
                           >
-                            <ChevronDown size={24} />
+                            <ChevronDown size={22} />
                           </motion.div>
                         </div>
 
@@ -915,123 +740,102 @@ function PackageContentNew() {
                               animate={{ height: 'auto', opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
                               transition={{ duration: 0.4, ease: "easeInOut" }}
-                              className={styles.lectureContents}
+                              className={styles.lectureContentsWrapper}
                             >
-                              <div className={styles.contentsGrid}>
+                              <div className={styles.contentsList}>
                                 {lectureContents.map((content, contentIndex) => {
                                   const isAccessible = isContentAccessible(lectureIndex, contentIndex, content)
                                   const status = getContentStatus(content.id)
                                   const isCompleted = status === 'completed' || status === 'passed'
                                   const isFailed = status === 'failed'
-                                  const isInProgress = status === 'in_progress'
+                                  const isInProgressStatus = status === 'in_progress'
                                   
                                   return (
                                     <motion.div
                                       key={content.id}
-                                      initial={{ opacity: 0, scale: 0.95 }}
-                                      animate={{ opacity: 1, scale: 1 }}
+                                      initial={{ opacity: 0, x: -20 }}
+                                      animate={{ opacity: 1, x: 0 }}
                                       transition={{ delay: contentIndex * 0.05 }}
-                                      className={`${styles.contentCard} ${
-                                        !isAccessible ? styles.locked : 
-                                        isCompleted ? styles.completed : 
-                                        isFailed ? styles.failed : ''
+                                      className={`${styles.contentItem} ${
+                                        isCompleted ? styles.contentCompleted : ''
+                                      } ${!isAccessible ? styles.contentLocked : ''} ${
+                                        isFailed ? styles.contentFailed : ''
                                       }`}
                                       onMouseEnter={() => setHoveredContent(content.id)}
                                       onMouseLeave={() => setHoveredContent(null)}
                                       onClick={() => handleContentClick(content, lectureIndex, contentIndex)}
                                     >
-                                      <div className={styles.contentCardInner}>
-                                        <div className={styles.contentHeader}>
-                                          <div className={styles.contentIconWrapper}>
-                                            {getContentIcon(content.type, status)}
-                                          </div>
-                                          
-                                          <div className={styles.contentDetails}>
+                                      <div className={styles.contentMain}>
+                                        {getContentIcon(content.type, status)}
+                                        
+                                        <div className={styles.contentDetails}>
+                                          <div className={styles.contentTitleRow}>
                                             <h4>{content.title}</h4>
-                                            {content.description && (
-                                              <p className={styles.contentDescription}>{content.description}</p>
-                                            )}
-                                            
-                                            <div className={styles.contentMeta}>
-                                              <span className={styles.metaTag}>
-                                                {content.type === 'video' ? 'فيديو' : 
-                                                 content.type === 'pdf' ? 'PDF' : 
-                                                 content.type === 'exam' ? 'امتحان' : 'مقال'}
-                                              </span>
-                                              {content.duration_minutes > 0 && (
-                                                <span className={styles.metaTag}>
-                                                  <Clock size={14} />
-                                                  {content.duration_minutes} دقيقة
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                          
-                                          <div className={styles.contentStatus}>
-                                            <span className={`${styles.statusBadge} ${getStatusColor(status)}`}>
+                                            <span className={`${styles.contentStatusBadge} ${
+                                              isCompleted ? styles.statusSuccess :
+                                              isFailed ? styles.statusDanger :
+                                              isInProgressStatus ? styles.statusWarning :
+                                              styles.statusDefault
+                                            }`}>
                                               {getStatusText(status)}
                                             </span>
-                                            
+                                          </div>
+                                          
+                                          {content.description && (
+                                            <p className={styles.contentDescription}>{content.description}</p>
+                                          )}
+                                          
+                                          <div className={styles.contentMetaTags}>
+                                            <span className={styles.metaTag}>
+                                              {content.type === 'video' ? 'فيديو' : 
+                                               content.type === 'pdf' ? 'PDF' : 
+                                               content.type === 'exam' ? 'امتحان' : 'مقال'}
+                                            </span>
+                                            {content.duration_minutes > 0 && (
+                                              <span className={styles.metaTag}>
+                                                <Clock size={12} />
+                                                {content.duration_minutes} دقيقة
+                                              </span>
+                                            )}
                                             {content.type === 'exam' && content.pass_score && (
-                                              <span className={styles.passScore}>
-                                                <TargetIcon size={14} />
-                                                {content.pass_score}% للنجاح
+                                              <span className={styles.metaTag}>
+                                                <Target size={12} />
+                                                النجاح: {content.pass_score}%
                                               </span>
                                             )}
                                           </div>
-                                        </div>
-                                        
-                                        <div className={styles.contentActions}>
-                                          {!isAccessible ? (
-                                            <div className={styles.lockedMessage}>
-                                              <Lock size={18} />
-                                              <span>محظور - أكمل المتطلبات السابقة</span>
-                                            </div>
-                                          ) : (
-                                            <motion.button
-                                              whileHover={{ scale: 1.05 }}
-                                              whileTap={{ scale: 0.95 }}
-                                              className={`${styles.actionButton} ${
-                                                isCompleted ? styles.buttonSuccess : 
-                                                isFailed ? styles.buttonDanger : 
-                                                isInProgress ? styles.buttonWarning : 
-                                                styles.buttonPrimary
-                                              }`}
-                                            >
-                                              {isCompleted ? (
-                                                <>
-                                                  <CheckCircle size={18} />
-                                                  <span>تم الإكمال</span>
-                                                </>
-                                              ) : isFailed ? (
-                                                <>
-                                                  <XCircle size={18} />
-                                                  <span>إعادة المحاولة</span>
-                                                </>
-                                              ) : isInProgress ? (
-                                                <>
-                                                  <Play size={18} />
-                                                  <span>استكمال</span>
-                                                </>
-                                              ) : (
-                                                <>
-                                                  <Play size={18} />
-                                                  <span>بدء الدرس</span>
-                                                </>
-                                              )}
-                                            </motion.button>
-                                          )}
                                         </div>
                                       </div>
                                       
-                                      {/* Hover Effect */}
-                                      {hoveredContent === content.id && isAccessible && (
-                                        <motion.div
-                                          layoutId="contentHover"
-                                          className={styles.cardHoverEffect}
-                                          transition={{ duration: 0.2 }}
-                                        />
-                                      )}
+                                      <div className={styles.contentAction}>
+                                        {!isAccessible ? (
+                                          <div className={styles.lockedBadge}>
+                                            <LockIcon size={14} />
+                                            <span>مقفل</span>
+                                          </div>
+                                        ) : (
+                                          <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            className={`${styles.actionButton} ${
+                                              isCompleted ? styles.btnSuccess : 
+                                              isFailed ? styles.btnDanger : 
+                                              isInProgressStatus ? styles.btnWarning : 
+                                              styles.btnPrimary
+                                            }`}
+                                          >
+                                            {isCompleted ? (
+                                              <><CheckCircle size={14} /> مكتمل</>
+                                            ) : isFailed ? (
+                                              <><XIcon size={14} /> إعادة</>
+                                            ) : isInProgressStatus ? (
+                                              <><Play size={14} /> استكمال</>
+                                            ) : (
+                                              <><Play size={14} /> بدء</>
+                                            )}
+                                          </motion.button>
+                                        )}
+                                      </div>
                                     </motion.div>
                                   )
                                 })}
@@ -1041,185 +845,185 @@ function PackageContentNew() {
                         </AnimatePresence>
                       </motion.div>
                     )
-                  })
-                )}
-              </div>
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Sidebar */}
-            <motion.aside 
-              initial={{ x: 100, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className={`${styles.sidebar} ${sidebarCollapsed ? styles.collapsed : ''}`}
-            >
-              <button 
-                onClick={toggleSidebar}
-                className={styles.sidebarToggle}
+            <aside className={styles.sidebar}>
+              {/* Tips Card */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+                className={styles.sidebarCard}
               >
-                <ChevronLeft size={20} />
-              </button>
-
-              <div className={styles.sidebarContent}>
-                {/* Content Distribution */}
-                <div className={styles.sidebarCard}>
-                  <div className={styles.cardHeader}>
-                    <BarChart3 size={24} />
-                    <div>
-                      <h3>توزيع المحتوى</h3>
-                      <p>تحليل تفصيلي</p>
-                    </div>
+                <div className={styles.cardHeader}>
+                  <div className={`${styles.cardIcon} ${styles.iconWarning}`}>
+                    <Sparkles size={18} />
                   </div>
-                  
-                  <div className={styles.distribution}>
-                    {[
-                      { type: 'video', label: 'فيديوهات', icon: Video, color: styles.distBlue },
-                      { type: 'pdf', label: 'ملفات PDF', icon: File, color: styles.distRed },
-                      { type: 'exam', label: 'امتحانات', icon: TargetIcon, color: styles.distPurple },
-                      { type: 'text', label: 'نصوص', icon: BookOpen, color: styles.distGreen }
-                    ].map((item) => {
-                      const count = contents.filter(c => c.type === item.type).length
-                      if (count === 0) return null
-                      const percentage = Math.round((count / contents.length) * 100)
-                      
-                      return (
-                        <div key={item.type} className={styles.distItem}>
-                          <div className={styles.distHeader}>
-                            <div className={styles.distLabel}>
-                              <item.icon size={18} />
-                              <span>{item.label}</span>
-                            </div>
-                            <span className={styles.distValue}>{count}</span>
-                          </div>
-                          <div className={styles.distBar}>
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${percentage}%` }}
-                              transition={{ duration: 0.8, delay: 0.2 }}
-                              className={`${styles.distFill} ${item.color}`}
-                            />
-                            <span className={styles.distPercent}>{percentage}%</span>
-                          </div>
-                        </div>
-                      )
-                    })}
+                  <div>
+                    <h3>نصائح مهمة</h3>
+                    <p>للحصول على أفضل النتائج</p>
                   </div>
                 </div>
-
-                {/* Study Tips */}
-                <div className={styles.sidebarCard}>
-                  <div className={styles.cardHeader}>
-                    <SparklesIcon size={24} />
-                    <div>
-                      <h3>نصائح للتفوق</h3>
-                      <p>استراتيجيات التعلم</p>
+                
+                <div className={styles.notesList}>
+                  {(packageData.type === 'monthly' || packageData.type === 'term') && (
+                    <>
+                      <div className={styles.noteItem}>
+                        <div className={`${styles.noteIcon} ${styles.noteBlue}`}>
+                          <Shield size={14} />
+                        </div>
+                        <p>يجب إتمام كل محتوى قبل الانتقال للتالي</p>
+                      </div>
+                      <div className={styles.noteItem}>
+                        <div className={`${styles.noteIcon} ${styles.notePurple}`}>
+                          <Target size={14} />
+                        </div>
+                        <p>اجتياز الامتحان إلزامي للمتابعة</p>
+                      </div>
+                    </>
+                  )}
+                  
+                  <div className={styles.noteItem}>
+                    <div className={`${styles.noteIcon} ${styles.noteGreen}`}>
+                      <Clock size={14} />
                     </div>
+                    <p>خصص وقتاً يومياً للدراسة</p>
                   </div>
                   
-                  <div className={styles.tipsList}>
-                    {[
-                      { icon: Brain, text: 'ابدأ بالمحتوى بالترتيب المحدد' },
-                      { icon: Clock, text: 'خصص وقتاً يومياً للدراسة' },
-                      { icon: BookmarkIcon, text: 'خذ ملاحظات أثناء المشاهدة' },
-                      { icon: RefreshCw, text: 'راجع المواد السابقة بانتظام' }
-                    ].map((tip, index) => (
-                      <div key={index} className={styles.tipItem}>
-                        <div className={styles.tipIcon}>
-                          <tip.icon size={18} />
-                        </div>
-                        <p>{tip.text}</p>
-                      </div>
-                    ))}
+                  <div className={styles.noteItem}>
+                    <div className={`${styles.noteIcon} ${styles.noteOrange}`}>
+                      <Bookmark size={14} />
+                    </div>
+                    <p>دوّن ملاحظاتك أثناء الدراسة</p>
                   </div>
                 </div>
+              </motion.div>
 
-                {/* System Requirements */}
-                <div className={styles.sidebarCard}>
-                  <div className={styles.cardHeader}>
-                    <ShieldCheck size={24} />
-                    <div>
-                      <h3>متطلبات النظام</h3>
-                      <p>قواعد الباقة</p>
-                    </div>
+              {/* Content Distribution */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
+                className={styles.sidebarCard}
+              >
+                <div className={styles.cardHeader}>
+                  <div className={`${styles.cardIcon} ${styles.iconInfo}`}>
+                    <BarChart3 size={18} />
                   </div>
-                  
-                  <div className={styles.systemInfo}>
-                    {(packageData.type === 'monthly' || packageData.type === 'term') && (
-                      <div className={styles.infoItem}>
-                        <div className={styles.infoIcon}>
-                          <Lock size={16} />
-                        </div>
-                        <p>يجب إكمال كل درس قبل الانتقال للآخر</p>
-                      </div>
-                    )}
+                  <div>
+                    <h3>توزيع المحتوى</h3>
+                    <p>إحصائيات الباقة</p>
+                  </div>
+                </div>
+                
+                <div className={styles.distributionList}>
+                  {[
+                    { type: 'video', label: 'فيديوهات', colorClass: styles.distBlue, icon: Video },
+                    { type: 'pdf', label: 'ملفات PDF', colorClass: styles.distRed, icon: File },
+                    { type: 'exam', label: 'امتحانات', colorClass: styles.distPurple, icon: HelpCircle },
+                    { type: 'text', label: 'مقالات', colorClass: styles.distGreen, icon: BookOpen }
+                  ].map(({ type, label, colorClass, icon: Icon }) => {
+                    const count = contents.filter(c => c.type === type).length
+                    if (count === 0) return null
+                    const percent = Math.round((count / contents.length) * 100)
                     
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoIcon}>
-                        <Award size={16} />
+                    return (
+                      <div key={type} className={styles.distItem}>
+                        <div className={styles.distHeader}>
+                          <div className={styles.distLabel}>
+                            <Icon size={14} />
+                            <span>{label}</span>
+                          </div>
+                          <span className={styles.distValue}>{count}</span>
+                        </div>
+                        <div className={styles.distBar}>
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${percent}%` }}
+                            transition={{ duration: 0.8, delay: 0.5 }}
+                            className={`${styles.distFill} ${colorClass}`}
+                          />
+                        </div>
                       </div>
-                      <p>احصل على شهادة عند إكمال جميع المحتويات</p>
-                    </div>
-                    
-                    <div className={styles.infoItem}>
-                      <div className={styles.infoIcon}>
-                        <Download size={16} />
-                      </div>
-                      <p>يمكنك تحميل المواد للدراسة دون اتصال</p>
-                    </div>
+                    )
+                  })}
+                </div>
+              </motion.div>
+
+              {/* Study Strategy */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 }}
+                className={styles.sidebarCard}
+              >
+                <div className={styles.cardHeader}>
+                  <div className={`${styles.cardIcon} ${styles.iconSuccess}`}>
+                    <Zap size={18} />
+                  </div>
+                  <div>
+                    <h3>استراتيجية الدراسة</h3>
+                    <p>خطة للتفوق</p>
                   </div>
                 </div>
-              </div>
-            </motion.aside>
+                
+                <div className={styles.tipsList}>
+                  {[
+                    'ابدأ بالمحاضرة الأولى واتبع الترتيب',
+                    'شاهد الفيديوهات بتركيز دون تسريع',
+                    'حل الامتحانات بصدق لقياس مستواك',
+                    'راجع ملاحظاتك باستمرار'
+                  ].map((tip, idx) => (
+                    <div key={idx} className={styles.tipItem}>
+                      <div className={styles.tipNumber}>{idx + 1}</div>
+                      <p>{tip}</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </aside>
           </div>
         </section>
+
+        {/* Back Button */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className={styles.backSection}
+        >
+          <button onClick={() => router.push(`/grades/${gradeSlug}`)} className={styles.backButton}>
+            <ArrowRight size={18} />
+            <span>العودة إلى الباقات</span>
+          </button>
+        </motion.div>
       </main>
 
       {/* Footer */}
-      <motion.footer 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-        className={styles.footer}
-      >
+      <footer className={styles.footer}>
         <div className={styles.footerContent}>
           <div className={styles.footerBrand}>
-            <div className={styles.brandLogo}>
-              <Crown size={32} />
-            </div>
-            <div className={styles.brandInfo}>
-              <h3>منصة البارع محمود الديب</h3>
-              <p>رحلة تعليمية نحو التفوق والتميز</p>
-            </div>
+            <Crown size={20} />
+            <span>البارع محمود الديب</span>
           </div>
-          
-          <div className={styles.footerLinks}>
-            <button onClick={() => router.push('/')} className={styles.footerLink}>
-              الرئيسية
-            </button>
-            <button onClick={() => router.push('/about')} className={styles.footerLink}>
-              عن المنصة
-            </button>
-            <button onClick={() => router.push('/contact')} className={styles.footerLink}>
-              تواصل معنا
-            </button>
-            <button onClick={() => router.push('/privacy')} className={styles.footerLink}>
-              الخصوصية
-            </button>
-          </div>
-          
-          <div className={styles.footerCopyright}>
-            © {new Date().getFullYear()} جميع الحقوق محفوظة لمنصة البارع محمود الديب
+          <p className={styles.footerText}>منصة تعليمية متكاملة للتفوق الدراسي</p>
+          <div className={styles.footerCopy}>
+            جميع الحقوق محفوظة {new Date().getFullYear()}
           </div>
         </div>
-      </motion.footer>
+      </footer>
     </div>
   )
 }
 
-export default function PackagePageNew() {
+export default function PackagePage() {
   return (
     <Suspense fallback={<LoadingState />}>
-      <PackageContentNew />
+      <PackageContent />
     </Suspense>
   )
 }
