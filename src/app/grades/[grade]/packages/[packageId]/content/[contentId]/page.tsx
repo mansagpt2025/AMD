@@ -10,12 +10,16 @@ import {
   Target, Lock, Eye, Home, ChevronRight, Shield, 
   Award, Zap, Play, Pause, Volume2, Maximize,
   ExternalLink, Trophy, ArrowLeft, RefreshCw, XCircle,
-  ChevronLeft, Info, BarChart3, FileCheck
+  ChevronLeft, Info, BarChart3, FileCheck, Menu,
+  MoreVertical, Share2, Heart, Bookmark, Sparkles,
+  Timer, TrendingUp, CheckCheck, Circle, RotateCcw,
+  GraduationCap, Calendar, User, FileQuestion,
+  PanelLeft, Minimize2, VolumeX, Settings, Subtitles
 } from 'lucide-react'
 import styles from './ContentPage.module.css'
 
 // ==========================================
-// SUPABASE CLIENT
+// SUPABASE CLIENT (Unchanged)
 // ==========================================
 declare global {
   var __contentPageSupabase: ReturnType<typeof createBrowserClient> | undefined
@@ -46,18 +50,23 @@ interface Question {
 interface Theme {
   primary: string
   primaryLight: string
+  primaryDark: string
   success: string
+  warning: string
+  error: string
   background: string
+  surface: string
   card: string
   text: string
   textLight: string
   border: string
+  gradient: string
 }
 
 // ==========================================
-// VIDEO PLAYER - تصميم جديد
+// ENHANCED VIDEO PLAYER
 // ==========================================
-function ProtectedVideoPlayer({ 
+function CinematicVideoPlayer({ 
   videoUrl, contentId, userId, packageId, onProgress, theme 
 }: { 
   videoUrl: string; contentId: string; userId: string; packageId: string
@@ -67,20 +76,23 @@ function ProtectedVideoPlayer({
   const containerRef = useRef<HTMLDivElement>(null)
   const youtubePlayerRef = useRef<any>(null)
   const youtubeContainerRef = useRef<HTMLDivElement>(null)
+const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
+  const [isMuted, setIsMuted] = useState(false)
   const [playbackRate, setPlaybackRate] = useState(1)
   const [showControls, setShowControls] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [showQualityMenu, setShowQualityMenu] = useState(false)
-  const [availableQualities, setAvailableQualities] = useState<string[]>([])
-  const [currentQuality, setCurrentQuality] = useState('auto')
+  const [showSettings, setShowSettings] = useState(false)
   const [isYouTubeReady, setIsYouTubeReady] = useState(false)
+  const [buffering, setBuffering] = useState(false)
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false)
 
   const isYouTube = videoUrl?.includes('youtube.com') || videoUrl?.includes('youtu.be')
+  
   const getYouTubeId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/|live\/)([^#\&\?]*).*/
     const match = url.match(regExp)
@@ -88,13 +100,12 @@ function ProtectedVideoPlayer({
   }
   const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null
 
-  // تحميل YouTube API والمشغل
   useEffect(() => {
     if (!isYouTube || !youtubeId) return
-
+    
     const loadYouTubeAPI = () => {
       if ((window as any).YT && (window as any).YT.Player) {
-        initYouTubePlayer()
+        initPlayer()
         return
       }
       
@@ -103,102 +114,68 @@ function ProtectedVideoPlayer({
       const firstScriptTag = document.getElementsByTagName('script')[0]
       firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag)
       
-      ;(window as any).onYouTubeIframeAPIReady = initYouTubePlayer
+      ;(window as any).onYouTubeIframeAPIReady = initPlayer
     }
 
-    const initYouTubePlayer = () => {
+    const initPlayer = () => {
       if (!youtubeContainerRef.current) return
       
       youtubePlayerRef.current = new (window as any).YT.Player(youtubeContainerRef.current, {
         videoId: youtubeId,
         playerVars: {
-          autoplay: 0,
-          controls: 0,
-          disablekb: 1,
-          modestbranding: 1,
-          rel: 0,
-          showinfo: 0,
-          fs: 0,
-          iv_load_policy: 3,
-          playsinline: 1,
-          enablejsapi: 1
+          autoplay: 0, controls: 0, disablekb: 1, modestbranding: 1,
+          rel: 0, showinfo: 0, fs: 0, iv_load_policy: 3,
+          playsinline: 1, enablejsapi: 1
         },
         events: {
-          onReady: onPlayerReady,
-          onStateChange: onPlayerStateChange
+          onReady: (e: any) => {
+            setIsYouTubeReady(true)
+            setDuration(e.target.getDuration())
+            e.target.setVolume(100)
+          },
+          onStateChange: (e: any) => {
+            setIsPlaying(e.data === 1)
+            setBuffering(e.data === 3)
+            if (e.data === 0) onProgress(100)
+          }
         }
       })
     }
 
     loadYouTubeAPI()
-    
-    return () => {
-      if (youtubePlayerRef.current) {
-        youtubePlayerRef.current.destroy()
-      }
-    }
+    return () => { if (youtubePlayerRef.current) youtubePlayerRef.current.destroy() }
   }, [isYouTube, youtubeId])
 
-  const onPlayerReady = (event: any) => {
-    setIsYouTubeReady(true)
-    setDuration(event.target.getDuration())
-    const qualities = event.target.getAvailableQualityLevels()
-    if (qualities && qualities.length > 0) {
-      setAvailableQualities(qualities)
-    }
-    event.target.setVolume(100)
-  }
-
-  const onPlayerStateChange = (event: any) => {
-    setIsPlaying(event.data === 1)
-    if (event.data === 0) {
-      onProgress(100)
-    }
-  }
-
-  // تحديث التقدم والوقت لليوتيوب
   useEffect(() => {
     if (!isYouTube || !isPlaying) return
-    
     const interval = setInterval(() => {
       if (youtubePlayerRef.current && isYouTubeReady) {
         const current = youtubePlayerRef.current.getCurrentTime()
         const dur = youtubePlayerRef.current.getDuration()
         setCurrentTime(current)
         setDuration(dur)
-        if (dur > 0) {
-          onProgress((current / dur) * 100)
-        }
+        if (dur > 0) onProgress((current / dur) * 100)
       }
     }, 1000)
-    
     return () => clearInterval(interval)
   }, [isYouTube, isPlaying, isYouTubeReady, onProgress])
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
-      if (isPlaying) {
-        youtubePlayerRef.current.pauseVideo()
-      } else {
-        youtubePlayerRef.current.playVideo()
-      }
+      isPlaying ? youtubePlayerRef.current.pauseVideo() : youtubePlayerRef.current.playVideo()
     } else if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause()
-      } else {
-        videoRef.current.play()
-      }
+      isPlaying ? videoRef.current.pause() : videoRef.current.play()
     }
-  }
+  }, [isPlaying, isYouTube, isYouTubeReady])
 
-  const skip = (seconds: number) => {
+  const skip = useCallback((seconds: number) => {
     if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
       const current = youtubePlayerRef.current.getCurrentTime()
       youtubePlayerRef.current.seekTo(current + seconds, true)
     } else if (videoRef.current) {
       videoRef.current.currentTime += seconds
     }
-  }
+  }, [isYouTube, isYouTubeReady])
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value)
@@ -210,51 +187,57 @@ function ProtectedVideoPlayer({
     setCurrentTime(time)
   }
 
-  const changeSpeed = () => {
-    const speeds = [0.5, 1, 1.25, 1.5, 2]
-    const currentIndex = speeds.indexOf(playbackRate)
-    const next = speeds[(currentIndex + 1) % speeds.length]
-    
+  const changeSpeed = (speed: number) => {
     if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
-      youtubePlayerRef.current.setPlaybackRate(next)
+      youtubePlayerRef.current.setPlaybackRate(speed)
     } else if (videoRef.current) {
-      videoRef.current.playbackRate = next
+      videoRef.current.playbackRate = speed
     }
-    setPlaybackRate(next)
+    setPlaybackRate(speed)
+    setShowSettings(false)
   }
 
-  const changeQuality = (quality: string) => {
+  const toggleMute = () => {
     if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
-      youtubePlayerRef.current.setPlaybackQuality(quality)
-      setCurrentQuality(quality)
+      isMuted ? youtubePlayerRef.current.unMute() : youtubePlayerRef.current.mute()
+    } else if (videoRef.current) {
+      videoRef.current.muted = !isMuted
     }
-    setShowQualityMenu(false)
+    setIsMuted(!isMuted)
+  }
+
+  const handleVolumeChange = (v: number) => {
+    setVolume(v)
+    if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
+      youtubePlayerRef.current.setVolume(v * 100)
+    } else if (videoRef.current) {
+      videoRef.current.volume = v
+    }
+    if (v === 0) setIsMuted(true)
+    else if (isMuted) setIsMuted(false)
   }
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return
-    
     if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable fullscreen: ${err.message}`)
-      })
+      containerRef.current.requestFullscreen().catch(console.error)
     } else {
       document.exitFullscreen()
     }
   }
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
-    }
+    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement)
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
-  // منع القائمة اليمنى والنسخ
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault()
-    return false
+  const handleMouseMove = () => {
+    setShowControls(true)
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
+    if (isPlaying) {
+      controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000)
+    }
   }
 
   const formatTime = (seconds: number) => {
@@ -263,349 +246,200 @@ function ProtectedVideoPlayer({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // واجهة التحكم الموحدة
-  const renderControls = () => (
-    <div style={{
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      background: 'linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.6), transparent)',
-      padding: '20px 16px 16px',
-      transition: 'opacity 0.3s',
-      opacity: showControls ? 1 : 0,
-      pointerEvents: showControls ? 'auto' : 'none',
-      zIndex: 20,
-      direction: 'rtl'
-    }}>
-      {/* شريط التقدم */}
-      <div style={{ marginBottom: '12px' }}>
-        <input
-          type="range"
-          min={0}
-          max={duration || 100}
-          value={currentTime}
-          onChange={handleSeek}
-          style={{
-            width: '100%',
-            height: '6px',
-            cursor: 'pointer',
-            accentColor: theme.primary,
-            background: 'rgba(255,255,255,0.3)',
-            borderRadius: '3px',
-            outline: 'none',
-            direction: 'ltr'
-          }}
-        />
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          color: 'white', 
-          fontSize: '0.8rem',
-          marginTop: '4px',
-          fontFamily: 'monospace',
-          direction: 'ltr'
-        }}>
-          <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(duration)}</span>
-        </div>
-      </div>
-
-      {/* أزرار التحكم */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '12px',
-        justifyContent: 'center',
-        flexWrap: 'wrap'
-      }}>
-        {/* تأخير 10 ثواني */}
-        <button 
-          onClick={() => skip(-10)}
-          style={buttonStyle}
-          title="تأخير 10 ثواني"
-        >
-          <RefreshCw size={20} style={{ transform: 'scaleX(-1)' }} />
-        </button>
-
-        {/* تشغيل/إيقاف */}
-        <button 
-          onClick={togglePlay}
-          style={{
-            ...buttonStyle,
-            background: 'rgba(255,255,255,0.2)',
-            borderRadius: '50%',
-            padding: '12px',
-            transform: 'scale(1.1)'
-          }}
-        >
-          {isPlaying ? <Pause size={28} fill="white" /> : <Play size={28} fill="white" />}
-        </button>
-
-        {/* تقديم 10 ثواني */}
-        <button 
-          onClick={() => skip(10)}
-          style={buttonStyle}
-          title="تقديم 10 ثواني"
-        >
-          <RefreshCw size={20} />
-        </button>
-
-        {/* فاصل */}
-        <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.3)', margin: '0 8px' }} />
-
-        {/* الصوت */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Volume2 size={20} color="white" />
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.1}
-            value={volume}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value)
-              setVolume(v)
-              if (isYouTube && youtubePlayerRef.current && isYouTubeReady) {
-                youtubePlayerRef.current.setVolume(v * 100)
-              } else if (videoRef.current) {
-                videoRef.current.volume = v
-              }
-            }}
-            style={{ width: '80px', accentColor: 'white', cursor: 'pointer' }}
-          />
-        </div>
-
-        {/* السرعة */}
-        <button 
-          onClick={changeSpeed}
-          style={{ ...buttonStyle, fontSize: '0.85rem', fontWeight: 'bold', minWidth: '48px' }}
-          title="سرعة التشغيل"
-        >
-          {playbackRate}x
-        </button>
-
-        {/* الجودة - لليوتيوب فقط */}
-        {isYouTube && (
-          <div style={{ position: 'relative' }}>
-            <button 
-              onClick={() => setShowQualityMenu(!showQualityMenu)}
-              style={{ ...buttonStyle, fontSize: '0.8rem', fontWeight: 'bold', minWidth: '50px' }}
-              title="جودة الفيديو"
-            >
-              {currentQuality === 'auto' ? 'جودة' : currentQuality}
-            </button>
-            {showQualityMenu && (
-              <div style={{
-                position: 'absolute',
-                bottom: '40px',
-                right: '50%',
-                transform: 'translateX(50%)',
-                background: 'rgba(0,0,0,0.95)',
-                borderRadius: '8px',
-                padding: '8px',
-                minWidth: '100px',
-                zIndex: 30,
-                border: '1px solid rgba(255,255,255,0.2)'
-              }}>
-                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.7rem', padding: '4px 8px', textAlign: 'center' }}>
-                  الجودة
-                </div>
-                {['auto', ...availableQualities].map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => changeQuality(q)}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '6px 12px',
-                      color: 'white',
-                      background: currentQuality === q ? theme.primary : 'transparent',
-                      border: 'none',
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                      borderRadius: '4px',
-                      marginBottom: '2px'
-                    }}
-                  >
-                    {q === 'auto' ? 'تلقائي' : q}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ملء الشاشة */}
-        <button 
-          onClick={toggleFullscreen}
-          style={buttonStyle}
-          title={isFullscreen ? 'إخراج من ملء الشاشة' : 'ملء الشاشة'}
-        >
-          <Maximize size={20} />
-        </button>
-      </div>
-    </div>
-  )
+  const progress = duration ? (currentTime / duration) * 100 : 0
 
   return (
     <div 
       ref={containerRef}
-      style={{ 
-        position: 'relative', 
-        background: '#000', 
-        borderRadius: '12px', 
-        overflow: 'hidden',
-        aspectRatio: '16/9',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        msUserSelect: 'none',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
-      }}
-      onMouseEnter={() => setShowControls(true)}
+      className={styles.videoContainer}
+      onMouseMove={handleMouseMove}
       onMouseLeave={() => isPlaying && setShowControls(false)}
-      onContextMenu={handleContextMenu}
-      onCopy={(e) => e.preventDefault()}
-      onCut={(e) => e.preventDefault()}
     >
-      {isYouTube && youtubeId ? (
-        <>
-          <div 
-            ref={youtubeContainerRef}
-            style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
-          />
-          {/* طبقة حماية لليوتيوب */}
-          <div 
-            onClick={togglePlay}
-            onContextMenu={handleContextMenu}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 10,
-              cursor: 'pointer',
-              background: 'transparent'
-            }}
-          />
-        </>
-      ) : (
-        <video
-          ref={videoRef}
-          src={videoUrl}
-          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-          onTimeUpdate={() => {
-            if (videoRef.current) {
-              setCurrentTime(videoRef.current.currentTime)
-              setDuration(videoRef.current.duration || 0)
-              if (videoRef.current.duration > 0) {
-                onProgress((videoRef.current.currentTime / videoRef.current.duration) * 100)
+      <div className={styles.videoWrapper}>
+        {isYouTube && youtubeId ? (
+          <>
+            <div ref={youtubeContainerRef} className={styles.youtubeFrame} />
+            <div className={styles.youtubeOverlay} onClick={togglePlay} />
+          </>
+        ) : (
+          <video
+            ref={videoRef}
+            src={videoUrl}
+            className={styles.videoElement}
+            onTimeUpdate={(e) => {
+              setCurrentTime(e.currentTarget.currentTime)
+              setDuration(e.currentTarget.duration || 0)
+              if (e.currentTarget.duration > 0) {
+                onProgress((e.currentTarget.currentTime / e.currentTarget.duration) * 100)
               }
-            }
-          }}
-          onLoadedMetadata={() => {
-            if (videoRef.current) setDuration(videoRef.current.duration || 0)
-          }}
-          onEnded={() => setIsPlaying(false)}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onVolumeChange={() => {
-            if (videoRef.current) setVolume(videoRef.current.volume)
-          }}
-          onRateChange={() => {
-            if (videoRef.current) setPlaybackRate(videoRef.current.playbackRate)
-          }}
-          controls={false}
-          playsInline
-          disablePictureInPicture
-          controlsList="nodownload noplaybackrate nofullscreen"
-          onContextMenu={handleContextMenu}
-        />
-      )}
+            }}
+            onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
+            onEnded={() => setIsPlaying(false)}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onWaiting={() => setBuffering(true)}
+            onCanPlay={() => setBuffering(false)}
+            playsInline
+            disablePictureInPicture
+            controlsList="nodownload noplaybackrate nofullscreen"
+          />
+        )}
+      </div>
 
-      {/* طبقة حماية إضافية */}
-      <div 
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 5,
-          pointerEvents: 'none'
-        }}
-        onContextMenu={handleContextMenu}
-      />
+      <AnimatePresence>
+        {buffering && (
+          <motion.div 
+            className={styles.bufferingOverlay}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className={styles.spinnerRing} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {renderControls()}
+      <AnimatePresence>
+        {!isPlaying && (
+          <motion.button
+            className={styles.centerPlayButton}
+            onClick={togglePlay}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Play size={40} fill="white" />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
-      {/* أيقونة التشغيل في المنتصف */}
-      {!isPlaying && (
-        <div 
-          onClick={togglePlay}
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: 'rgba(0,0,0,0.7)',
-            borderRadius: '50%',
-            padding: '24px',
-            cursor: 'pointer',
-            zIndex: 15,
-            border: '2px solid rgba(255,255,255,0.3)'
-          }}
-        >
-          <Play size={40} color="white" fill="white" />
+      <motion.div 
+        className={styles.controlsBar}
+        initial={false}
+        animate={{ opacity: showControls ? 1 : 0, y: showControls ? 0 : 20 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className={styles.progressContainer}>
+          <input
+            type="range"
+            min={0}
+            max={duration || 100}
+            value={currentTime}
+            onChange={handleSeek}
+            className={styles.progressInput}
+            style={{ background: `linear-gradient(to right, ${theme.primary} ${progress}%, rgba(255,255,255,0.3) ${progress}%)` }}
+          />
+          <div className={styles.timeDisplay}>
+            <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(duration)}</span>
+          </div>
         </div>
-      )}
 
-      {/* شارة المحتوى المحمي */}
-      <div style={{
-        position: 'absolute',
-        top: '12px',
-        left: '12px',
-        background: 'rgba(0,0,0,0.8)',
-        color: '#fbbf24',
-        padding: '6px 12px',
-        borderRadius: '20px',
-        fontSize: '0.75rem',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-        zIndex: 15,
-        userSelect: 'none',
-        pointerEvents: 'none',
-        fontWeight: 'bold',
-        border: '1px solid rgba(251, 191, 36, 0.3)'
-      }}>
+        <div className={styles.controlsRow}>
+          <div className={styles.leftControls}>
+            <motion.button 
+              whileHover={{ scale: 1.1 }} 
+              whileTap={{ scale: 0.9 }}
+              onClick={togglePlay}
+              className={styles.playPauseBtn}
+            >
+              {isPlaying ? <Pause size={20} fill="white" /> : <Play size={20} fill="white" />}
+            </motion.button>
+            
+            <div className={styles.skipButtons}>
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => skip(-10)}>
+                <RotateCcw size={18} />
+              </motion.button>
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => skip(10)}>
+                <RefreshCw size={18} />
+              </motion.button>
+            </div>
+
+            <div 
+              className={styles.volumeControl}
+              onMouseEnter={() => setShowVolumeSlider(true)}
+              onMouseLeave={() => setShowVolumeSlider(false)}
+            >
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={toggleMute}>
+                {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+              </motion.button>
+              <AnimatePresence>
+                {showVolumeSlider && (
+                  <motion.div 
+                    className={styles.volumeSlider}
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 80, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                  >
+                    <input 
+                      type="range" 
+                      min={0} 
+                      max={1} 
+                      step={0.1} 
+                      value={isMuted ? 0 : volume}
+                      onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                      style={{ background: `linear-gradient(to right, white ${(isMuted ? 0 : volume) * 100}%, rgba(255,255,255,0.3) ${(isMuted ? 0 : volume) * 100}%)` }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          <div className={styles.rightControls}>
+            <div className={styles.speedBadge} onClick={() => setShowSettings(!showSettings)}>
+              {playbackRate}x
+            </div>
+            
+            <motion.button 
+              whileHover={{ scale: 1.1 }} 
+              whileTap={{ scale: 0.9 }}
+              onClick={toggleFullscreen}
+              className={styles.fullscreenBtn}
+            >
+              {isFullscreen ? <Minimize2 size={20} /> : <Maximize size={20} />}
+            </motion.button>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div 
+              className={styles.settingsMenu}
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            >
+              <div className={styles.settingsHeader}>سرعة التشغيل</div>
+              {[0.5, 1, 1.25, 1.5, 2].map((speed) => (
+                <button
+                  key={speed}
+                  className={`${styles.speedOption} ${playbackRate === speed ? styles.active : ''}`}
+                  onClick={() => changeSpeed(speed)}
+                >
+                  {speed === 1 ? 'عادي' : `${speed}x`}
+                  {playbackRate === speed && <CheckCheck size={16} />}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      <div className={styles.protectedBadge}>
         <Shield size={14} />
-        <span>محمي من النسخ</span>
+        <span>محتوى محمي</span>
       </div>
     </div>
   )
 }
 
-// style للأزرار
-const buttonStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  color: 'white',
-  cursor: 'pointer',
-  padding: '8px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderRadius: '8px',
-  transition: 'all 0.2s'
-}
-
 // ==========================================
-// PDF VIEWER - تصميم جديد
+// ENHANCED PDF VIEWER
 // ==========================================
-function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: { 
+function GlassPDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: { 
   pdfUrl: string; contentId: string; userId: string; packageId: string
   theme: Theme; onProgress?: (progress: number) => void
 }) {
@@ -613,6 +447,7 @@ function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: 
   const [error, setError] = useState<string | null>(null)
   const [timeSpent, setTimeSpent] = useState(0)
   const [progressSaved, setProgressSaved] = useState(false)
+  const [showToolbar, setShowToolbar] = useState(false)
 
   const isGoogleDrive = pdfUrl?.includes('drive.google.com') || pdfUrl?.includes('docs.google.com')
   const getGoogleDriveId = (url: string) => {
@@ -654,7 +489,7 @@ function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: 
     const timer = setTimeout(() => {
       if (pdfUrl) { setIsLoading(false); saveProgress() }
       else { setError('رابط الملف غير متوفر'); setIsLoading(false) }
-    }, 1000)
+    }, 1500)
     const interval = setInterval(() => { if (document.hasFocus()) setTimeSpent(prev => prev + 1) }, 1000)
     return () => { clearTimeout(timer); clearInterval(interval) }
   }, [pdfUrl, saveProgress])
@@ -673,27 +508,17 @@ function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: 
 
   if (error) {
     return (
-      <div className={styles.pdfViewerContainer}>
-        <div className={styles.pdfErrorContainer}>
-          <AlertCircle className={styles.errorIcon} size={48} color="#ef4444" />
+      <div className={styles.glassContainer}>
+        <div className={styles.errorState}>
+          <div className={styles.errorIconWrapper} style={{ background: `${theme.error}20` }}>
+            <AlertCircle size={48} color={theme.error} />
+          </div>
           <h3>حدث خطأ في تحميل الملف</h3>
+          <p>تعذر الوصول إلى الملف المطلوب</p>
           <div className={styles.errorActions}>
-            <button 
-              onClick={handleOpenOriginal} 
-              className={styles.openButton}
-              style={{ borderColor: theme.primary, color: theme.primary }}
-            >
+            <button onClick={handleOpenOriginal} className={styles.secondaryBtn} style={{ borderColor: theme.primary, color: theme.primary }}>
               <ExternalLink size={18} /> فتح الرابط الأصلي
             </button>
-            {isGoogleDrive && (
-              <button 
-                onClick={handleDownload} 
-                className={styles.downloadButton}
-                style={{ background: theme.primary }}
-              >
-                <Download size={18} /> تحميل
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -701,74 +526,79 @@ function PDFViewer({ pdfUrl, contentId, userId, packageId, theme, onProgress }: 
   }
 
   return (
-    <div className={styles.pdfViewerContainer}>
-      <div className={styles.pdfHeader}>
-        <div className={styles.headerLeft}>
-          <div className={styles.iconContainer} style={{ background: theme.primary }}>
-            <BookOpen size={24} color="white" />
-          </div>
-          <div>
-            <h3 className={styles.title}>ملف PDF</h3>
-            <p className={styles.subtitle}>
-              {isGoogleDrive ? 'Google Drive' : 'PDF'}
-              {timeSpent > 0 && ` | ${Math.floor(timeSpent / 60)}:${(timeSpent % 60).toString().padStart(2, '0')}`}
-            </p>
+    <div className={styles.glassContainer} onMouseEnter={() => setShowToolbar(true)} onMouseLeave={() => setShowToolbar(false)}>
+      <motion.div 
+        className={styles.pdfToolbar}
+        initial={false}
+        animate={{ y: showToolbar ? 0 : -60, opacity: showToolbar ? 1 : 0 }}
+      >
+        <div className={styles.toolbarLeft}>
+          <div className={styles.fileInfo}>
+            <div className={styles.fileIcon} style={{ background: theme.primary }}>
+              <FileText size={20} color="white" />
+            </div>
+            <div>
+              <h4>ملف PDF</h4>
+              <span>{isGoogleDrive ? 'Google Drive' : 'PDF Document'}</span>
+            </div>
           </div>
         </div>
-        <div className={styles.headerActionsPdf}>
-          <button 
-            onClick={handleOpenOriginal} 
-            className={styles.openButton}
-            style={{ borderColor: theme.primary, color: theme.primary }}
-          >
-            <ExternalLink size={18} /><span>فتح في Drive</span>
+        <div className={styles.toolbarRight}>
+          <span className={styles.timeBadge}>
+            <Clock size={14} />
+            {Math.floor(timeSpent / 60)}:{(timeSpent % 60).toString().padStart(2, '0')}
+          </span>
+          <button onClick={handleOpenOriginal} className={styles.iconBtn} title="فتح في نافذة جديدة">
+            <ExternalLink size={18} />
           </button>
-          <button 
-            onClick={handleDownload} 
-            className={styles.downloadButton}
-            style={{ background: theme.primary }}
-          >
-            <Download size={18} /><span>تحميل</span>
+          <button onClick={handleDownload} className={styles.downloadFab} style={{ background: theme.primary }}>
+            <Download size={18} />
           </button>
         </div>
-      </div>
-      <div className={styles.viewerContainer}>
+      </motion.div>
+
+      <div className={styles.pdfViewerWrapper}>
         {isLoading ? (
-          <div className={styles.pdfLoadingContainer}>
-            <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
+          <div className={styles.pdfSkeleton}>
+            <div className={styles.skeletonLine} style={{ width: '80%' }} />
+            <div className={styles.skeletonLine} style={{ width: '60%' }} />
+            <div className={styles.skeletonLine} style={{ width: '90%' }} />
+            <div className={styles.skeletonLine} style={{ width: '70%' }} />
+            <div className={styles.skeletonShimmer} />
           </div>
         ) : (
-          <div className={styles.iframeContainer}>
-            <iframe 
-              src={getViewerUrl()} 
-              className={styles.pdfFrame} 
-              title="PDF Viewer" 
-              sandbox="allow-scripts allow-same-origin allow-popups"
-            />
-            <div className={styles.protectionOverlay} onContextMenu={(e) => e.preventDefault()} />
-          </div>
+          <iframe 
+            src={getViewerUrl()} 
+            className={styles.pdfFrame} 
+            title="PDF Viewer" 
+            sandbox="allow-scripts allow-same-origin allow-popups"
+          />
         )}
       </div>
-      <div className={styles.pdfFooter}>
-        <div className={styles.progressBarContainer}>
-          <div className={styles.progressBarFill} style={{ width: '100%', background: theme.success }} />
+
+      <div className={styles.pdfFooterBar}>
+        <div className={styles.progressTrack}>
+          <motion.div 
+            className={styles.progressThumb}
+            initial={{ width: 0 }}
+            animate={{ width: progressSaved ? '100%' : '0%' }}
+            transition={{ duration: 1 }}
+            style={{ background: theme.success }}
+          />
         </div>
-        <div className={styles.progressText}>{progressSaved ? '✓ تم التحميل' : 'جاري التحميل...'}</div>
-        {isGoogleDrive && (
-          <p className={styles.driveNotice}>
-            <AlertCircle size={14} /> قد تحتاج لتسجيل الدخول في Google
-          </p>
-        )}
-        <p className={styles.watermark}>منصة التعلم الذكي © 2024</p>
+        <div className={styles.footerInfo}>
+          <span>{progressSaved ? '✓ تم حفظ التقدم' : 'جاري قراءة الملف...'}</span>
+          <span className={styles.watermark}>منصة التعلم الذكي</span>
+        </div>
       </div>
     </div>
   )
 }
 
 // ==========================================
-// EXAM VIEWER - تصميم جديد
+// ENHANCED EXAM VIEWER
 // ==========================================
-function ExamViewer({ examContent, contentId, packageId, userId, theme, onComplete }: {
+function ModernExamViewer({ examContent, contentId, packageId, userId, theme, onComplete }: {
   examContent: any; contentId: string; packageId: string; userId: string
   theme: Theme; onComplete: () => void
 }) {
@@ -783,47 +613,37 @@ function ExamViewer({ examContent, contentId, packageId, userId, theme, onComple
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [results, setResults] = useState<{correct: number, wrong: number} | null>(null)
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
 
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        // البحث عن الأسئلة في content_url أو description
         const contentText = examContent?.content_url || examContent?.description || '';
-        
-        // البحث عن النمط [EXAM_QUESTIONS]:{...}
         const match = contentText.match(/\[EXAM_QUESTIONS\]:(\{[\s\S]*\})/);
         
         if (match && match[1]) {
           try {
             const parsedData = JSON.parse(match[1]);
-            
             if (parsedData.questions && Array.isArray(parsedData.questions) && parsedData.questions.length > 0) {
               const formattedQuestions: Question[] = parsedData.questions.map((q: any, index: number) => ({
                 id: index + 1,
                 text: q.question,
                 options: q.options.map((opt: string, optIndex: number) => ({
-                  id: String.fromCharCode(65 + optIndex), // A, B, C, D
+                  id: String.fromCharCode(65 + optIndex),
                   text: opt
                 })),
-                correctAnswer: q.correct // يجب أن تطابق نص أحد الخيارات
+                correctAnswer: q.correct
               }));
-              
               setQuestions(formattedQuestions);
               setTimeLeft((examContent?.duration_minutes || 10) * 60);
               setLoading(false);
               return;
-            } else {
-              throw new Error('لا توجد أسئلة في البيانات');
             }
           } catch (parseErr) {
             console.error('JSON Parse Error:', parseErr);
-            setError('تنسيق الأسئلة غير صحيح');
-            setLoading(false);
-            return;
           }
         }
         
-        // Fallback: محاولة الجلب من قاعدة البيانات إذا لم يوجد JSON
         const supabase = getSupabase()
         if (!supabase) {
           setError('لا توجد أسئلة متاحة');
@@ -904,7 +724,7 @@ function ExamViewer({ examContent, contentId, packageId, userId, theme, onComple
     const finalScore = Math.round((correctCount / questions.length) * 100)
     
     setScore(finalScore)
-    setResults({ correct: correctCount, wrong: wrongCount }) // 👈 حفظ النتيجة
+    setResults({ correct: correctCount, wrong: wrongCount })
     setShowResults(true)
     setIsSubmitting(false)
     
@@ -932,23 +752,24 @@ function ExamViewer({ examContent, contentId, packageId, userId, theme, onComple
   }
 
   if (loading) return (
-    <div className={styles.examLoadingContainer}>
-      <Loader2 className={styles.loadingSpinner} style={{ color: theme.primary }} />
+    <div className={styles.examLoading}>
+      <motion.div 
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+      >
+        <Loader2 size={48} color={theme.primary} />
+      </motion.div>
       <p>جاري تحميل الامتحان...</p>
     </div>
   )
 
   if (error) return (
-    <div className={styles.examErrorContainer}>
-      <div className={styles.examErrorContent}>
-        <AlertCircle className={styles.errorIcon} size={48} />
-        <h3 className={styles.errorTitle}>خطأ</h3>
-        <p className={styles.errorMessage}>{error}</p>
-        <button 
-          onClick={() => router.back()} 
-          className={styles.backButtonExam}
-          style={{ background: theme.primary }}
-        >
+    <div className={styles.examError}>
+      <div className={styles.errorCard}>
+        <AlertCircle size={48} color={theme.error} />
+        <h3>خطأ</h3>
+        <p>{error}</p>
+        <button onClick={() => router.back()} className={styles.primaryBtn} style={{ background: theme.primary }}>
           العودة
         </button>
       </div>
@@ -958,34 +779,42 @@ function ExamViewer({ examContent, contentId, packageId, userId, theme, onComple
   if (showResults) {
     const passed = score >= (examContent?.pass_score || 50)
     return (
-      <div className={styles.examResultsContainer}>
-        <div 
-          className={`${styles.resultCard} ${passed ? styles.passed : styles.failed}`} 
+      <div className={styles.resultsContainer}>
+        <motion.div 
+          className={styles.resultCard}
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
         >
-          <div className={styles.resultIcon}>
-            {passed ? <Trophy size={64} color="#10b981" /> : <AlertCircle size={64} color="#ef4444" />}
+          <div className={`${styles.resultIcon} ${passed ? styles.passed : styles.failed}`}>
+            {passed ? <Trophy size={64} /> : <AlertCircle size={64} />}
           </div>
-          <h2>{passed ? 'مبروك! لقد نجحت' : 'للأسف، لم تنجح'}</h2>
-          <div className={styles.scoreCircle} style={{ borderColor: passed ? theme.success : '#ef4444' }}>
-            <span className={styles.scoreText}>{score}%</span>
+          <h2 className={passed ? styles.passText : styles.failText}>
+            {passed ? 'مبروك! لقد نجحت' : 'للأسف، لم تنجح'}
+          </h2>
+          
+          <div className={styles.scoreCircle} style={{ 
+            background: `conic-gradient(${passed ? theme.success : theme.error} ${score}%, #e5e7eb ${score}%)` 
+          }}>
+            <span>{score}%</span>
           </div>
-          <p className={styles.passScoreText}>درجة النجاح: {examContent?.pass_score || 50}%</p>
-          <div className={styles.stats}>
-            <div className={styles.stat}>
-              <CheckCircle color="#10b981" />
-              <span>صحيحة: {results?.correct ?? 0}</span>  {/* 👈 استخدم results */}
+          
+          <p className={styles.passScore}>درجة النجاح المطلوبة: {examContent?.pass_score || 50}%</p>
+          
+          <div className={styles.statsGrid}>
+            <div className={styles.statCard} style={{ borderColor: theme.success }}>
+              <CheckCircle size={24} color={theme.success} />
+              <span className={styles.statNumber} style={{ color: theme.success }}>{results?.correct ?? 0}</span>
+              <span>إجابات صحيحة</span>
             </div>
-            <div className={styles.stat}>
-              <XCircle color="#ef4444" />
-              <span>خاطئة: {results?.wrong ?? 0}</span>    {/* 👈 استخدم results */}
+            <div className={styles.statCard} style={{ borderColor: theme.error }}>
+              <XCircle size={24} color={theme.error} />
+              <span className={styles.statNumber} style={{ color: theme.error }}>{results?.wrong ?? 0}</span>
+              <span>إجابات خاطئة</span>
             </div>
           </div>
-          <div className={styles.resultButtons}>
-            <button 
-              onClick={() => router.back()} 
-              className={styles.backButtonExam}
-              style={{ background: theme.primary }}
-            >
+          
+          <div className={styles.resultActions}>
+            <button onClick={() => router.back()} className={styles.primaryBtn} style={{ background: theme.primary }}>
               العودة للباقة
             </button>
             {!passed && (
@@ -996,90 +825,131 @@ function ExamViewer({ examContent, contentId, packageId, userId, theme, onComple
                   setCurrentQuestion(0); 
                   setTimeLeft((examContent?.duration_minutes || 10) * 60) 
                 }} 
-                className={styles.retryButton}
+                className={styles.secondaryBtn}
                 style={{ borderColor: theme.primary, color: theme.primary }}
               >
                 <RefreshCw size={18} /> إعادة المحاولة
               </button>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
     )
   }
 
   const currentQ = questions[currentQuestion]
   const isLastQuestion = currentQuestion === questions.length - 1
-
-  if (!currentQ) return null
+  const progress = ((currentQuestion + 1) / questions.length) * 100
 
   return (
-    <div className={styles.examContainer}>
-      <div className={styles.examHeader}>
-        <div className={styles.examInfo}>
-          <div className={styles.examIconContainer} style={{ background: theme.primaryLight }}>
-            <Target style={{ color: theme.primary }} />
+    <div className={styles.examWrapper}>
+      <div className={styles.examHeader} style={{ background: `${theme.primary}10` }}>
+        <div className={styles.examHeaderLeft}>
+          <div className={styles.examIcon} style={{ background: theme.primary }}>
+            <Target size={24} color="white" />
           </div>
           <div>
             <h3>{examContent?.title || 'امتحان'}</h3>
-            <p>سؤال {currentQuestion + 1} من {questions.length}</p>
+            <p>{questions.length} سؤال</p>
           </div>
         </div>
         <div 
-          className={styles.timer} 
+          className={styles.timer}
           style={{ 
-            background: timeLeft < 60 ? '#fee2e2' : timeLeft < 300 ? '#fef3c7' : '#d1fae5', 
-            color: timeLeft < 60 ? '#dc2626' : timeLeft < 300 ? '#d97706' : '#059669' 
+            background: timeLeft < 60 ? `${theme.error}20` : timeLeft < 300 ? `${theme.warning}20` : `${theme.success}20`,
+            color: timeLeft < 60 ? theme.error : timeLeft < 300 ? theme.warning : theme.success
           }}
         >
-          <Clock size={20} />
+          <Timer size={20} />
           <span>{formatTime(timeLeft)}</span>
         </div>
       </div>
-      
-      <div className={styles.questionCard}>
-        <div className={styles.questionHeader}>
-          <span className={styles.questionNumber}>سؤال {currentQuestion + 1}</span>
-          <div className={styles.questionProgress}>
-            {Math.round(((currentQuestion + 1) / questions.length) * 100)}%
-          </div>
+
+      <div className={styles.examProgress}>
+        <div className={styles.progressBarBg}>
+          <motion.div 
+            className={styles.progressBarFill}
+            style={{ background: theme.primary }}
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+          />
         </div>
-        <h4 className={styles.questionText}>{currentQ.text}</h4>
-        <div className={styles.options}>
-          {currentQ.options.map(option => (
-            <button 
-              key={option.id} 
-              onClick={() => handleAnswer(currentQ.id, option.id)} 
-              className={`${styles.option} ${answers[currentQ.id] === option.id ? styles.selected : ''}`}
-              style={answers[currentQ.id] === option.id ? { borderColor: theme.primary, background: theme.primaryLight } : {}}
-            >
-              <span className={styles.optionLabel}>{option.id}</span>
-              <span className={styles.optionText}>{option.text}</span>
-              <div className={styles.radio}>
-                {answers[currentQ.id] === option.id && <div className={styles.radioInner} style={{ background: theme.primary }} />}
-              </div>
-            </button>
-          ))}
-        </div>
+        <span className={styles.progressText}>{Math.round(progress)}%</span>
       </div>
-      
-      <div className={styles.navigation}>
+
+      <AnimatePresence mode="wait">
+        <motion.div 
+          key={currentQuestion}
+          className={styles.questionCard}
+          initial={{ x: 50, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: -50, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        >
+          <div className={styles.questionHeader}>
+            <span className={styles.questionNumber}>سؤال {currentQuestion + 1}</span>
+            <span className={styles.questionBadge}>{questions.length} / {currentQuestion + 1}</span>
+          </div>
+          
+          <h4 className={styles.questionText}>{currentQ.text}</h4>
+          
+          <div className={styles.optionsGrid}>
+            {currentQ.options.map((option, idx) => (
+              <motion.button 
+                key={option.id}
+                className={`${styles.optionCard} ${answers[currentQ.id] === option.id ? styles.selected : ''}`}
+                onClick={() => handleAnswer(currentQ.id, option.id)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                style={answers[currentQ.id] === option.id ? { 
+                  borderColor: theme.primary, 
+                  background: `${theme.primary}10` 
+                } : {}}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+              >
+                <span className={styles.optionLetter} style={{ 
+                  background: answers[currentQ.id] === option.id ? theme.primary : '#e5e7eb',
+                  color: answers[currentQ.id] === option.id ? 'white' : '#6b7280'
+                }}>
+                  {option.id}
+                </span>
+                <span className={styles.optionText}>{option.text}</span>
+                {answers[currentQ.id] === option.id && (
+                  <motion.div 
+                    className={styles.checkIcon}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                  >
+                    <CheckCircle size={20} color={theme.primary} />
+                  </motion.div>
+                )}
+              </motion.button>
+            ))}
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      <div className={styles.examNavigation}>
         <button 
           onClick={() => setCurrentQuestion(prev => prev - 1)} 
-          disabled={currentQuestion === 0} 
-          className={styles.navButton}
-          style={{ opacity: currentQuestion === 0 ? 0.5 : 1 }}
+          disabled={currentQuestion === 0}
+          className={styles.navBtn}
         >
-          <ArrowRight size={20} /> السابق
+          <ChevronRight size={20} />
+          السابق
         </button>
         
-        <div className={styles.progressDots}>
+        <div className={styles.dotsContainer}>
           {questions.map((_, idx) => (
-            <div 
-              key={idx} 
-              className={`${styles.dot} ${idx === currentQuestion ? styles.active : ''} ${answers[questions[idx].id] ? styles.answered : ''}`} 
+            <motion.div 
+              key={idx}
+              className={`${styles.dot} ${idx === currentQuestion ? styles.active : ''} ${answers[questions[idx].id] ? styles.answered : ''}`}
+              onClick={() => setCurrentQuestion(idx)}
+              whileHover={{ scale: 1.2 }}
               style={{ 
-                background: idx === currentQuestion ? theme.primary : answers[questions[idx].id] ? theme.success : '#e5e7eb' 
+                background: idx === currentQuestion ? theme.primary : answers[questions[idx].id] ? theme.success : '#e5e7eb'
               }}
             />
           ))}
@@ -1087,83 +957,144 @@ function ExamViewer({ examContent, contentId, packageId, userId, theme, onComple
         
         {isLastQuestion ? (
           <button 
-            onClick={handleSubmit} 
-            disabled={isSubmitting || Object.keys(answers).length < questions.length} 
-            className={styles.submitButton}
+            onClick={() => setShowExitConfirm(true)}
+            disabled={Object.keys(answers).length < questions.length}
+            className={styles.submitBtn}
             style={{ 
-              background: isSubmitting || Object.keys(answers).length < questions.length ? '#9ca3af' : theme.success,
-              opacity: Object.keys(answers).length < questions.length ? 0.5 : 1 
+              background: Object.keys(answers).length < questions.length ? '#9ca3af' : theme.success
             }}
           >
-            {isSubmitting ? <Loader2 className={styles.loadingSpinner} /> : 'تسليم الإجابات'}
+            تسليم
           </button>
         ) : (
           <button 
-            onClick={() => setCurrentQuestion(prev => prev + 1)} 
-            className={styles.navButton}
-            style={{ background: theme.primary, color: 'white', border: 'none' }}
+            onClick={() => setCurrentQuestion(prev => prev + 1)}
+            className={styles.navBtnPrimary}
+            style={{ background: theme.primary }}
           >
-            التالي <ArrowLeft size={20} />
+            التالي
+            <ChevronLeft size={20} />
           </button>
         )}
       </div>
+
+      <AnimatePresence>
+        {showExitConfirm && (
+          <motion.div 
+            className={styles.modalOverlay}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className={styles.modal}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <h3>تأكيد التسليم</h3>
+              <p>هل أنت متأكد من تسليم الإجابات؟ لا يمكن التراجع عن هذا الإجراء.</p>
+              <div className={styles.modalActions}>
+                <button 
+                  onClick={() => setShowExitConfirm(false)} 
+                  className={styles.secondaryBtn}
+                >
+                  إلغاء
+                </button>
+                <button 
+                  onClick={handleSubmit} 
+                  className={styles.primaryBtn}
+                  style={{ background: theme.success }}
+                >
+                  {isSubmitting ? <Loader2 className={styles.spin} /> : 'تأكيد التسليم'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
 // ==========================================
-// UTILS
+// UTILS & THEME CONFIG
 // ==========================================
 function getGradeTheme(gradeSlug: string): Theme {
   const themes: Record<string, Theme> = {
     first: { 
-      primary: '#3b82f6', 
-      primaryLight: '#dbeafe',
+      primary: '#4F46E5', 
+      primaryLight: '#E0E7FF',
+      primaryDark: '#4338CA',
       success: '#10b981', 
-      background: '#f8fafc',
-      card: '#ffffff',
+      warning: '#f59e0b',
+      error: '#ef4444',
+      background: '#F8FAFC',
+      surface: '#FFFFFF',
+      card: '#FFFFFF',
       text: '#1e293b',
       textLight: '#64748b',
-      border: '#e2e8f0'
+      border: '#e2e8f0',
+      gradient: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)'
     },
     second: { 
-      primary: '#8b5cf6', 
-      primaryLight: '#ede9fe',
+      primary: '#7C3AED', 
+      primaryLight: '#EDE9FE',
+      primaryDark: '#6D28D9',
       success: '#10b981', 
-      background: '#f8fafc',
-      card: '#ffffff',
+      warning: '#f59e0b',
+      error: '#ef4444',
+      background: '#F8FAFC',
+      surface: '#FFFFFF',
+      card: '#FFFFFF',
       text: '#1e293b',
       textLight: '#64748b',
-      border: '#e2e8f0'
+      border: '#e2e8f0',
+      gradient: 'linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)'
     },
     third: { 
-      primary: '#f59e0b', 
-      primaryLight: '#fef3c7',
+      primary: '#059669', 
+      primaryLight: '#D1FAE5',
+      primaryDark: '#047857',
       success: '#10b981', 
-      background: '#f8fafc',
-      card: '#ffffff',
+      warning: '#f59e0b',
+      error: '#ef4444',
+      background: '#F8FAFC',
+      surface: '#FFFFFF',
+      card: '#FFFFFF',
       text: '#1e293b',
       textLight: '#64748b',
-      border: '#e2e8f0'
+      border: '#e2e8f0',
+      gradient: 'linear-gradient(135deg, #059669 0%, #0EA5E9 100%)'
     }
   }
   return themes[gradeSlug] || themes.first
 }
 
 // ==========================================
-// MAIN PAGE - تصميم جديد كليًا
+// SKELETON LOADING COMPONENTS
 // ==========================================
-function LoadingState() {
+function ContentSkeleton() {
   return (
-    <div className={styles.loadingContainer}>
-      <div className={styles.loadingContent}>
-        <Loader2 className={styles.loadingSpinner} />
-        <p className={styles.loadingText}>جاري تحميل المحتوى...</p>
+    <div className={styles.skeletonPage}>
+      <div className={styles.skeletonHeader}>
+        <div className={styles.skeletonLine} style={{ width: '30%' }} />
+        <div className={styles.skeletonLine} style={{ width: '50%' }} />
+      </div>
+      <div className={styles.skeletonContent}>
+        <div className={styles.skeletonVideo} />
+        <div className={styles.skeletonSidebar}>
+          <div className={styles.skeletonCard} />
+          <div className={styles.skeletonCard} />
+        </div>
       </div>
     </div>
   )
 }
 
+// ==========================================
+// MAIN CONTENT VIEWER
+// ==========================================
 function ContentViewer() {
   const router = useRouter()
   const params = useParams()
@@ -1185,6 +1116,7 @@ function ContentViewer() {
   const [activeTab, setActiveTab] = useState<'viewer' | 'info'>('viewer')
   const [videoProgress, setVideoProgress] = useState(0)
   const [authChecked, setAuthChecked] = useState(false)
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false)
   
   const supabase = useMemo(() => getSupabase(), [])
 
@@ -1198,7 +1130,6 @@ function ContentViewer() {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError || !session?.user) {
-          console.log('No session, redirecting...')
           router.replace(`/login?returnUrl=/grades/${gradeSlug}/packages/${packageId}/content/${contentId}`)
           return
         }
@@ -1339,35 +1270,35 @@ function ContentViewer() {
     switch (content.type) {
       case 'video': 
         return (
-          <ProtectedVideoPlayer 
+          <CinematicVideoPlayer 
             videoUrl={content.content_url || ''} 
             {...commonProps}
             onProgress={handleVideoProgress}
           />
         )
       case 'pdf': 
-        return <PDFViewer pdfUrl={content.content_url || ''} {...commonProps} />
+        return <GlassPDFViewer pdfUrl={content.content_url || ''} {...commonProps} />
       case 'exam': 
-        return <ExamViewer examContent={content} {...commonProps} onComplete={markAsCompleted} />
+        return <ModernExamViewer examContent={content} {...commonProps} onComplete={markAsCompleted} />
       case 'text': 
         return (
-          <div className={styles.textContent}>
-            <div className={styles.textContentHeader}>
-              <FileText size={24} color={theme.primary} />
+          <div className={styles.textContentCard}>
+            <div className={styles.textHeader}>
+              <FileText size={32} color={theme.primary} />
               <h3>المحتوى النصي</h3>
             </div>
             <div 
-              className={styles.textContentInner}
-              dangerouslySetInnerHTML={{ 
-                __html: content.content_url || 'لا يوجد محتوى' 
-              }} 
+              className={styles.textBody}
+              dangerouslySetInnerHTML={{ __html: content.content_url || 'لا يوجد محتوى' }} 
             />
           </div>
         )
       default: 
         return (
-          <div className={styles.unsupportedContent}>
-            <AlertCircle className={styles.unsupportedIcon} size={48} />
+          <div className={styles.unsupportedCard}>
+            <div className={styles.unsupportedIcon}>
+              <AlertCircle size={48} color={theme.warning} />
+            </div>
             <h3>نوع المحتوى غير مدعوم</h3>
             <p>عذرًا، نوع المحتوى هذا غير متاح حاليًا للعرض.</p>
           </div>
@@ -1377,10 +1308,10 @@ function ContentViewer() {
 
   const getContentTypeLabel = useCallback(() => {
     switch (content?.type) {
-      case 'video': return 'فيديو'
-      case 'pdf': return 'PDF'
-      case 'exam': return 'امتحان'
-      case 'text': return 'نص'
+      case 'video': return 'فيديو تعليمي'
+      case 'pdf': return 'ملف PDF'
+      case 'exam': return 'اختبار'
+      case 'text': return 'محتوى نصي'
       default: return 'محتوى'
     }
   }, [content])
@@ -1395,283 +1326,339 @@ function ContentViewer() {
     }
   }, [content])
 
-  if (loading) return <LoadingState />
+  if (loading) return <ContentSkeleton />
   
   if (error) {
     return (
-      <div className={styles.errorContainer}>
-        <div className={styles.errorContent}>
-          <AlertCircle className={styles.errorIcon} size={64} />
-          <h2 className={styles.errorTitle}>حدث خطأ</h2>
-          <p className={styles.errorMessage}>{error}</p>
-          <button onClick={handleBack} className={styles.backBtn} style={{ background: theme.primary }}>
+      <div className={styles.errorPage}>
+        <motion.div 
+          className={styles.errorCard}
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+        >
+          <div className={styles.errorIconLarge} style={{ background: `${theme.error}20` }}>
+            <AlertCircle size={64} color={theme.error} />
+          </div>
+          <h2>حدث خطأ</h2>
+          <p>{error}</p>
+          <button onClick={handleBack} className={styles.primaryBtn} style={{ background: theme.primary }}>
             العودة للباقة
           </button>
-        </div>
+        </motion.div>
       </div>
     )
   }
   
-  if (!content) {
-    return (
-      <div className={styles.errorContainer}>
-        <div className={styles.errorContent}>
-          <AlertCircle className={styles.errorIcon} size={64} />
-          <h2 className={styles.errorTitle}>حدث خطأ</h2>
-          <p className={styles.errorMessage}>المحتوى غير موجود</p>
-          <button onClick={handleBack} className={styles.backBtn} style={{ background: theme.primary }}>
-            العودة للباقة
-          </button>
-        </div>
-      </div>
-    )
-  }
+  if (!content) return null
 
   return (
-    <div className={styles.pageContainer} style={{ background: theme.background }}>
-      <header className={styles.header}>
-        <div className={styles.headerContainer}>
-          <div className={styles.breadcrumb}>
-            <button onClick={() => router.push('/')} className={styles.breadcrumbItem}>
-              <Home size={16} /> الرئيسية
+    <div className={styles.modernPage} style={{ background: theme.background }}>
+      <motion.header 
+        className={styles.glassHeader}
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        style={{
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.3)'
+        }}
+      >
+        <div className={styles.headerContent}>
+          <div className={styles.headerLeft}>
+            <button onClick={handleBack} className={styles.backFab}>
+              <ArrowRight size={20} />
             </button>
-            <ChevronRight size={16} className={styles.breadcrumbSeparator} />
-            <button 
-              onClick={() => router.push(`/grades/${gradeSlug}`)} 
-              className={styles.breadcrumbItem}
-            >
-              {gradeSlug === 'first' ? 'الصف الأول الثانوي' : gradeSlug === 'second' ? 'الصف الثاني الثانوي' : 'الصف الثالث الثانوي'}
-            </button>
-            <ChevronRight size={16} className={styles.breadcrumbSeparator} />
-            <button 
-              onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)} 
-              className={styles.breadcrumbItem}
-            >
-              {packageData?.name || 'الباقة'}
-            </button>
-            <ChevronRight size={16} className={styles.breadcrumbSeparator} />
-            <span className={styles.currentPage}>{content.title}</span>
+            <nav className={styles.breadcrumbModern}>
+              <button onClick={() => router.push('/')} className={styles.breadcrumbItem}>
+                <Home size={14} />
+              </button>
+              <ChevronLeft size={14} className={styles.breadcrumbSep} />
+              <button onClick={() => router.push(`/grades/${gradeSlug}`)}>
+                {gradeSlug === 'first' ? 'الأول' : gradeSlug === 'second' ? 'الثاني' : 'الثالث'}
+              </button>
+              <ChevronLeft size={14} className={styles.breadcrumbSep} />
+              <button onClick={() => router.push(`/grades/${gradeSlug}/packages/${packageId}`)}>
+                الباقة
+              </button>
+              <ChevronLeft size={14} className={styles.breadcrumbSep} />
+              <span className={styles.breadcrumbCurrent}>{content.title}</span>
+            </nav>
           </div>
           
-          <div className={styles.contentHeader}>
-            <div className={styles.contentInfo}>
-              <div className={styles.contentTypeBadge} style={{ background: theme.primaryLight, color: theme.primary }}>
-                {getContentTypeIcon()}
-                <span>{getContentTypeLabel()}</span>
-              </div>
-              <h1 className={styles.contentTitle}>{content.title}</h1>
-              <div className={styles.contentMeta}>
-                <span className={styles.metaItem}>
-                  <BookOpen size={14} />
-                  <span>{lecture?.title}</span>
-                </span>
-                <span className={styles.metaSeparator}>•</span>
-                <span className={styles.metaItem}>
-                  <Award size={14} />
-                  <span>{packageData?.name}</span>
-                </span>
-              </div>
-            </div>
-            <div className={styles.headerActions}>
-              <button 
-                onClick={handleBack} 
-                className={styles.backActionBtn}
-                style={{ borderColor: theme.primary, color: theme.primary }}
-              >
-                <ChevronLeft size={18} /> العودة للباقة
-              </button>
+          <div className={styles.headerCenter}>
+            <div 
+              className={styles.typeBadge}
+              style={{ 
+                background: `${theme.primary}15`,
+                color: theme.primary,
+                border: `1px solid ${theme.primary}30`
+              }}
+            >
+              {getContentTypeIcon()}
+              <span>{getContentTypeLabel()}</span>
             </div>
           </div>
-        </div>
-      </header>
 
-      <main className={styles.mainContent}>
-        <div className={styles.contentLayout}>
-          <div className={styles.leftColumn}>
-            <div className={styles.tabs}>
+          <div className={styles.headerRight}>
+            <button 
+              className={styles.menuBtn}
+              onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+            >
+              <PanelLeft size={20} />
+            </button>
+          </div>
+        </div>
+      </motion.header>
+
+      <main className={styles.mainContainer}>
+        <div className={styles.contentGrid}>
+          <div className={styles.primaryColumn}>
+            <motion.div 
+              className={styles.titleCard}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.7)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.5)'
+              }}
+            >
+              <h1>{content.title}</h1>
+              <div className={styles.titleMeta}>
+                <span><BookOpen size={16} /> {lecture?.title}</span>
+                <span className={styles.dotSep}>•</span>
+                <span><Calendar size={16} /> {new Date(content.created_at).toLocaleDateString('ar-EG')}</span>
+              </div>
+            </motion.div>
+
+            <div className={styles.modernTabs}>
               <button 
                 onClick={() => setActiveTab('viewer')} 
-                className={`${styles.tabButton} ${activeTab === 'viewer' ? styles.activeTab : ''}`}
-                style={activeTab === 'viewer' ? { 
-                  borderBottomColor: theme.primary, 
-                  color: theme.primary,
-                  background: theme.primaryLight 
-                } : {}}
+                className={`${styles.tabBtn} ${activeTab === 'viewer' ? styles.active : ''}`}
               >
-                <Eye size={18} /><span>عرض المحتوى</span>
+                <Eye size={18} />
+                <span>عرض المحتوى</span>
+                {activeTab === 'viewer' && (
+                  <motion.div 
+                    className={styles.tabIndicator}
+                    style={{ background: theme.primary }}
+                    layoutId="tabIndicator"
+                  />
+                )}
               </button>
               <button 
                 onClick={() => setActiveTab('info')} 
-                className={`${styles.tabButton} ${activeTab === 'info' ? styles.activeTab : ''}`}
-                style={activeTab === 'info' ? { 
-                  borderBottomColor: theme.primary, 
-                  color: theme.primary,
-                  background: theme.primaryLight 
-                } : {}}
+                className={`${styles.tabBtn} ${activeTab === 'info' ? styles.active : ''}`}
               >
-                <Info size={18} /><span>معلومات المحتوى</span>
+                <Info size={18} />
+                <span>المعلومات</span>
+                {activeTab === 'info' && (
+                  <motion.div 
+                    className={styles.tabIndicator}
+                    style={{ background: theme.primary }}
+                    layoutId="tabIndicator"
+                  />
+                )}
               </button>
             </div>
-            
-            <div className={styles.contentArea}>
-              {activeTab === 'viewer' ? (
-                <>
-                  {renderContent()}
-                  
-                  {content.type === 'video' && (
-                    <div className={styles.progressTracking}>
-                      <div className={styles.progressHeader}>
-                        <h4>تقدم المشاهدة</h4>
-                        <span>{videoProgress}%</span>
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={styles.contentDisplay}
+              >
+                {activeTab === 'viewer' ? (
+                  <>
+                    {renderContent()}
+                    
+                    {content.type === 'video' && (
+                      <motion.div 
+                        className={styles.progressCard}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.6)',
+                          backdropFilter: 'blur(8px)'
+                        }}
+                      >
+                        <div className={styles.progressHeader}>
+                          <div>
+                            <h4>تقدم المشاهدة</h4>
+                            <p>أكمل 80% للحصول على علامة اجتياز</p>
+                          </div>
+                          <span className={styles.progressPercent} style={{ color: theme.primary }}>
+                            {videoProgress}%
+                          </span>
+                        </div>
+                        <div className={styles.progressBarModern}>
+                          <motion.div 
+                            className={styles.progressFill}
+                            style={{ background: theme.gradient }}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${videoProgress}%` }}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.infoGridModern}>
+                    <div className={styles.infoCard}>
+                      <div className={styles.infoIcon} style={{ background: `${theme.primary}15` }}>
+                        <FileText color={theme.primary} size={24} />
                       </div>
-                      <div className={styles.progressBar}>
-                        <div 
-                          className={styles.progressFill} 
-                          style={{ width: `${videoProgress}%`, background: theme.primary }} 
-                        />
-                      </div>
-                      <div className={styles.progressHint}>
-                        سيتم وضع علامة كمكتمل تلقائيًا عند إكمال 80% من المحتوى
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className={styles.infoContainer}>
-                  <div className={styles.infoHeader}>
-                    <h3 className={styles.infoTitle}>معلومات المحتوى</h3>
-                    <div className={styles.infoBadge} style={{ background: theme.primaryLight, color: theme.primary }}>
-                      {getContentTypeIcon()}
-                      <span>{getContentTypeLabel()}</span>
-                    </div>
-                  </div>
-                  <div className={styles.infoContent}>
-                    <div className={styles.infoSection}>
                       <h4>الوصف</h4>
                       <p>{content.description || 'لا يوجد وصف'}</p>
                     </div>
                     
-                    <div className={styles.infoGrid}>
-                      <div className={styles.infoCard}>
-                        <div className={styles.infoIcon} style={{ background: theme.primaryLight }}>
-                          <Clock color={theme.primary} size={20} />
-                        </div>
-                        <div>
-                          <h5>تاريخ الإنشاء</h5>
-                          <p>{new Date(content.created_at || Date.now()).toLocaleDateString('ar-EG')}</p>
-                        </div>
+                    <div className={styles.infoCard}>
+                      <div className={styles.infoIcon} style={{ background: `${theme.success}15` }}>
+                        <Clock color={theme.success} size={24} />
                       </div>
-                      
-                      <div className={styles.infoCard}>
-                        <div className={styles.infoIcon} style={{ background: theme.primaryLight }}>
-                          <BarChart3 color={theme.primary} size={20} />
-                        </div>
-                        <div>
-                          <h5>الحالة</h5>
-                          <p>{userProgress?.status === 'completed' ? 'مكتمل' : 
-                              userProgress?.status === 'passed' ? 'ناجح' : 
-                              userProgress?.status === 'failed' ? 'فاشل' : 
-                              userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}</p>
-                        </div>
+                      <h4>تاريخ الإضافة</h4>
+                      <p>{new Date(content.created_at).toLocaleDateString('ar-EG', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}</p>
+                    </div>
+                    
+                    <div className={styles.infoCard}>
+                      <div className={styles.infoIcon} style={{ background: `${theme.warning}15` }}>
+                        <BarChart3 color={theme.warning} size={24} />
                       </div>
+                      <h4>الحالة</h4>
+                      <p>{userProgress?.status === 'completed' ? '✓ مكتمل' : 
+                          userProgress?.status === 'passed' ? '✓ ناجح' : 
+                          userProgress?.status === 'in_progress' ? '⏳ قيد التقدم' : '○ جديد'}</p>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
 
-          <div className={styles.rightColumn}>
-            <div className={styles.sidebar}>
-              <div className={styles.statusCard}>
-                <h4 className={styles.cardTitle}>حالة المحتوى</h4>
-                <div 
-                  className={`${styles.statusContent} ${
-                    userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.completed :
-                    userProgress?.status === 'failed' ? styles.failed :
-                    userProgress?.status === 'in_progress' ? styles.inProgress : styles.notStarted
-                  }`}
+          <motion.aside 
+            className={`${styles.sidebarModern} ${showMobileSidebar ? styles.mobileOpen : ''}`}
+            initial={{ x: 50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <div 
+              className={styles.statusCardModern}
+              style={{
+                background: 'rgba(255, 255, 255, 0.7)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.5)'
+              }}
+            >
+              <h4>حالة التقدم</h4>
+              <div className={styles.statusDisplay}>
+                <motion.div 
+                  className={styles.statusIcon}
+                  animate={{ 
+                    background: userProgress?.status === 'completed' || userProgress?.status === 'passed' 
+                      ? theme.success 
+                      : userProgress?.status === 'in_progress' 
+                        ? theme.warning 
+                        : '#e5e7eb'
+                  }}
                 >
                   {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
-                    <CheckCircle size={32} /> : 
-                    userProgress?.status === 'failed' ? 
-                      <X size={32} /> : 
+                    <CheckCheck size={24} color="white" /> : 
                     userProgress?.status === 'in_progress' ? 
-                      <Loader2 className={styles.loadingSpinner} size={32} /> : 
-                      <BookOpen size={32} />
+                      <Loader2 size={24} color="white" className={styles.spin} /> : 
+                      <Circle size={24} color="#9ca3af" />
                   }
-                  <div className={styles.statusInfo}>
-                    <div className={styles.statusText}>
-                      {userProgress?.status === 'completed' ? 'مكتمل' : 
-                       userProgress?.status === 'passed' ? 'ناجح' : 
-                       userProgress?.status === 'failed' ? 'فاشل' : 
-                       userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'لم يبدأ'}
-                    </div>
-                    <p className={styles.statusSubtext}>
-                      {userProgress?.last_accessed_at ? 
-                        `آخر زيارة: ${new Date(userProgress.last_accessed_at).toLocaleDateString('ar-EG')}` : 
-                        'لم يتم البدء بعد'}
-                    </p>
+                </motion.div>
+                <div>
+                  <div className={styles.statusLabel}>
+                    {userProgress?.status === 'completed' ? 'مكتمل' : 
+                     userProgress?.status === 'passed' ? 'ناجح' : 
+                     userProgress?.status === 'in_progress' ? 'قيد التقدم' : 'جديد'}
                   </div>
-                </div>
-                
-                {content.type !== 'exam' && (
-                  <button 
-                    onClick={markAsCompleted} 
-                    disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'} 
-                    className={`${styles.completeButton} ${
-                      userProgress?.status === 'completed' || userProgress?.status === 'passed' ? styles.disabled : ''
-                    }`}
-                    style={
-                      userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
-                        {} : 
-                        { background: theme.success }
-                    }
-                  >
-                    {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
-                      <><CheckCircle size={18} />تم إكمال المحتوى</> : 
-                      <><CheckCircle size={18} />تمييز كمكتمل</>
-                    }
-                  </button>
-                )}
-              </div>
-              
-              <div className={styles.lectureInfo}>
-                <h4 className={styles.cardTitle}>المحاضرة</h4>
-                <div className={styles.lectureContent}>
-                  <div className={styles.lectureIcon} style={{ background: theme.primaryLight }}>
-                    <BookOpen color={theme.primary} size={20} />
-                  </div>
-                  <div>
-                    <h5>{lecture?.title}</h5>
-                    <p>{lecture?.description || 'لا يوجد وصف'}</p>
+                  <div className={styles.statusDate}>
+                    آخر زيارة: {userProgress?.last_accessed_at ? 
+                      new Date(userProgress.last_accessed_at).toLocaleDateString('ar-EG') : 
+                      'لم تبدأ بعد'}
                   </div>
                 </div>
               </div>
               
-              <div className={styles.packageInfo}>
-                <h4 className={styles.cardTitle}>الباقة</h4>
-                <div className={styles.packageContent}>
-                  <div className={styles.packageIcon} style={{ background: theme.primaryLight }}>
-                    <Award color={theme.primary} size={20} />
-                  </div>
-                  <div>
-                    <h5>{packageData?.name}</h5>
-                    <p>تاريخ الانتهاء: {new Date(userPackage?.expires_at || Date.now()).toLocaleDateString('ar-EG')}</p>
-                  </div>
+              {content.type !== 'exam' && (
+                <button 
+                  onClick={markAsCompleted}
+                  disabled={userProgress?.status === 'completed' || userProgress?.status === 'passed'}
+                  className={styles.markCompleteBtn}
+                  style={{ 
+                    background: userProgress?.status === 'completed' || userProgress?.status === 'passed' 
+                      ? '#e5e7eb' 
+                      : theme.gradient,
+                    color: userProgress?.status === 'completed' || userProgress?.status === 'passed' 
+                      ? '#6b7280' 
+                      : 'white'
+                  }}
+                >
+                  {userProgress?.status === 'completed' || userProgress?.status === 'passed' ? 
+                    <><CheckCheck size={18} /> تم الإكمال</> : 
+                    <><CheckCircle size={18} /> تحديد كمكتمل</>
+                  }
+                </button>
+              )}
+            </div>
+
+            <div 
+              className={styles.lectureCard}
+              style={{
+                background: 'rgba(255, 255, 255, 0.7)',
+                backdropFilter: 'blur(10px)'
+              }}
+            >
+              <div className={styles.lectureHeader}>
+                <div className={styles.lectureIcon} style={{ background: theme.gradient }}>
+                  <BookOpen size={20} color="white" />
+                </div>
+                <div>
+                  <h4>{lecture?.title}</h4>
+                  <p>المحاضرة الحالية</p>
                 </div>
               </div>
             </div>
-          </div>
+
+            <div 
+              className={styles.packageCard}
+              style={{
+                background: theme.gradient,
+                color: 'white'
+              }}
+            >
+              <Award size={32} />
+              <h4>{packageData?.name}</h4>
+              <p>صالح حتى: {new Date(userPackage?.expires_at || Date.now()).toLocaleDateString('ar-EG')}</p>
+            </div>
+          </motion.aside>
         </div>
       </main>
+
+      {showMobileSidebar && (
+        <motion.div 
+          className={styles.mobileOverlay}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setShowMobileSidebar(false)}
+        />
+      )}
     </div>
   )
 }
 
 export default function ContentPage() {
   return (
-    <Suspense fallback={<LoadingState />}>
+    <Suspense fallback={<ContentSkeleton />}>
       <ContentViewer />
     </Suspense>
   )

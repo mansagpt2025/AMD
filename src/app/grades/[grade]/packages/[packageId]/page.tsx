@@ -15,9 +15,9 @@ import {
   Zap, TrendingUp, PlayIcon, LockIcon,
   MoreHorizontal, Bookmark, CheckIcon, XIcon
 } from 'lucide-react'
-import { getGradeTheme } from '@/lib/utils/grade-themes'
 import styles from './PackagePage.module.css'
 
+// Types
 interface LectureContent {
   id: string
   lecture_id: string
@@ -154,8 +154,6 @@ function PackageContent() {
   
   const gradeSlug = params?.grade as string
   const packageId = params?.packageId as string
-  
-  const theme = getGradeTheme(gradeSlug as any)
 
   const [packageData, setPackageData] = useState<Package | null>(null)
   const [lectures, setLectures] = useState<Lecture[]>([])
@@ -341,36 +339,35 @@ function PackageContent() {
 
   const getContentIcon = (type: string, status: string) => {
     const isCompleted = status === 'completed' || status === 'passed'
-    const iconClass = `${styles.contentIcon} ${isCompleted ? styles.iconCompleted : ''}`
     
     switch (type) {
       case 'video':
         return (
-          <div className={`${iconClass} ${styles.iconVideo}`}>
+          <div className={`${styles.contentIcon} ${styles.iconVideo} ${isCompleted ? styles.iconCompleted : ''}`}>
             <PlayIcon size={20} />
           </div>
         )
       case 'pdf':
         return (
-          <div className={`${iconClass} ${styles.iconPdf}`}>
+          <div className={`${styles.contentIcon} ${styles.iconPdf} ${isCompleted ? styles.iconCompleted : ''}`}>
             <FileText size={20} />
           </div>
         )
       case 'exam':
         return (
-          <div className={`${iconClass} ${styles.iconExam}`}>
+          <div className={`${styles.contentIcon} ${styles.iconExam} ${isCompleted ? styles.iconCompleted : ''}`}>
             <HelpCircle size={20} />
           </div>
         )
       case 'text':
         return (
-          <div className={`${iconClass} ${styles.iconText}`}>
+          <div className={`${styles.contentIcon} ${styles.iconText} ${isCompleted ? styles.iconCompleted : ''}`}>
             <BookOpen size={20} />
           </div>
         )
       default:
         return (
-          <div className={iconClass}>
+          <div className={`${styles.contentIcon} ${isCompleted ? styles.iconCompleted : ''}`}>
             <PlayCircle size={20} />
           </div>
         )
@@ -384,7 +381,6 @@ function PackageContent() {
 
   const handleContentClick = (content: LectureContent, lectureIndex: number, contentIndex: number) => {
     if (!isContentAccessible(lectureIndex, contentIndex, content)) {
-      // Show toast or shake animation instead of alert
       return
     }
     router.push(`/grades/${gradeSlug}/packages/${packageId}/content/${content.id}`)
@@ -450,7 +446,6 @@ function PackageContent() {
   const typeBadge = getTypeBadge(packageData.type)
   const completedCount = userProgress.filter(p => p.status === 'completed' || p.status === 'passed').length
   const inProgressCount = userProgress.filter(p => p.status === 'in_progress').length
-  const failedCount = userProgress.filter(p => p.status === 'failed').length
   const remainingCount = contents.length - completedCount
 
   return (

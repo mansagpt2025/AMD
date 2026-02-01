@@ -104,6 +104,9 @@ export default function GradePage() {
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
   
+  // FIX: Move useMotionTemplate to top level (before any return statement)
+  const spotlightBackground = useMotionTemplate`radial-gradient(600px circle at ${mouseX}px ${mouseY}px, ${theme.primary}15, transparent 40%)`
+  
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect()
     mouseX.set(e.clientX - rect.left)
@@ -304,11 +307,11 @@ export default function GradePage() {
       ref={containerRef}
       onMouseMove={handleMouseMove}
     >
-      {/* Spotlight Effect */}
+      {/* Spotlight Effect - استخدام المتغير بدلاً من استدعاء الهوك مباشرة */}
       <motion.div
         className={styles.spotlight}
         style={{
-          background: useMotionTemplate`radial-gradient(600px circle at ${mouseX}px ${mouseY}px, ${theme.primary}15, transparent 40%)`
+          background: spotlightBackground
         }}
       />
 

@@ -3,315 +3,447 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
+// Helper function للتعامل مع الأخطاء
+function handleError(error: any, context: string) {
+  console.error(`Error in ${context}:`, error);
+  if (error?.message) {
+    throw new Error(error.message);
+  }
+  throw new Error(`حدث خطأ في ${context}`);
+}
+
 // ==================== Packages ====================
 
 export async function getPackages() {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from('packages')
-    .select('*')
-    .eq('grade', 'first')
-    .order('created_at', { ascending: false });
+  try {
+    const supabase = await createClient();
+    
+    const { data, error } = await supabase
+      .from('packages')
+      .select('*')
+      .eq('grade', 'first')
+      .order('created_at', { ascending: false });
 
-  if (error) throw error;
-  return data || [];
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    handleError(error, 'getPackages');
+    return [];
+  }
 }
 
 export async function createPackage(formData: FormData) {
-  const supabase = await createClient();
-  
-  const name = formData.get('name') as string;
-  const description = formData.get('description') as string;
-  const price = parseFloat(formData.get('price') as string);
-  const original_price = parseFloat(formData.get('original_price') as string) || price;
-  const type = formData.get('type') as string;
-  const duration_days = parseInt(formData.get('duration_days') as string) || 30;
-  const image_url = formData.get('image_url') as string;
+  try {
+    const supabase = await createClient();
+    
+    const name = formData.get('name') as string;
+    const description = formData.get('description') as string;
+    const priceStr = formData.get('price') as string;
+    const originalPriceStr = formData.get('original_price') as string;
+    const type = formData.get('type') as string;
+    const durationStr = formData.get('duration_days') as string;
+    const image_url = formData.get('image_url') as string;
+    const is_active = formData.get('is_active') === 'true';
 
-  const { error } = await supabase.from('packages').insert({
-    name,
-    description: description || null,
-    price,
-    original_price: original_price > price ? original_price : null,
-    grade: 'first',
-    type,
-    duration_days,
-    image_url: image_url || null,
-    is_active: true
-  });
+    // Validation
+    if (!name?.trim()) throw new Error('اسم الباقة مطلوب');
+    if (!priceStr) throw new Error('السعر مطلوب');
+    
+    const price = parseFloat(priceStr);
+    const original_price = originalPriceStr ? parseFloat(originalPriceStr) : null;
+    const duration_days = parseInt(durationStr) || 30;
 
-  if (error) throw error;
-  revalidatePath('/admin/first-secondary');
+    if (isNaN(price) || price < 0) throw new Error('السعر غير صالح');
+
+    const insertData = {
+      name: name.trim(),
+      description: description?.trim() || null,
+      price,
+      original_price: original_price && original_price > price ? original_price : null,
+      grade: 'first',
+      type: type || 'monthly',
+      duration_days,
+      image_url: image_url?.trim() || null,
+      is_active: is_active !== undefined ? is_active : true
+    };
+
+    console.log('Creating package:', insertData);
+
+    const { error } = await supabase.from('packages').insert(insertData);
+
+    if (error) throw error;
+    
+    revalidatePath('/admin/first-secondary');
+    return { success: true };
+  } catch (error) {
+    handleError(error, 'createPackage');
+  }
 }
 
 export async function updatePackage(id: string, formData: FormData) {
-  const supabase = await createClient();
-  
-  const name = formData.get('name') as string;
-  const description = formData.get('description') as string;
-  const price = parseFloat(formData.get('price') as string);
-  const original_price = parseFloat(formData.get('original_price') as string) || price;
-  const type = formData.get('type') as string;
-  const duration_days = parseInt(formData.get('duration_days') as string) || 30;
-  const image_url = formData.get('image_url') as string;
-  const is_active = formData.get('is_active') === 'true';
+  try {
+    const supabase = await createClient();
+    
+    if (!id) throw new Error('معرف الباقة مطلوب');
 
-  const updateData: any = {
-    name,
-    description: description || null,
-    price,
-    original_price: original_price > price ? original_price : null,
-    type,
-    duration_days,
-    image_url: image_url || null,
-    is_active,
-    updated_at: new Date().toISOString()
-  };
+    const name = formData.get('name') as string;
+    const description = formData.get('description') as string;
+    const priceStr = formData.get('price') as string;
+    const originalPriceStr = formData.get('original_price') as string;
+    const type = formData.get('type') as string;
+    const durationStr = formData.get('duration_days') as string;
+    const image_url = formData.get('image_url') as string;
+    const is_active = formData.get('is_active') === 'true';
 
-  const { error } = await supabase
-    .from('packages')
-    .update(updateData)
-    .eq('id', id);
+    if (!name?.trim()) throw new Error('اسم الباقة مطلوب');
+    
+    const price = parseFloat(priceStr);
+    const original_price = originalPriceStr ? parseFloat(originalPriceStr) : null;
+    const duration_days = parseInt(durationStr) || 30;
 
-  if (error) throw error;
-  revalidatePath('/admin/first-secondary');
+    if (isNaN(price)) throw new Error('السعر غير صالح');
+
+    const updateData = {
+      name: name.trim(),
+      description: description?.trim() || null,
+      price,
+      original_price: original_price && original_price > price ? original_price : null,
+      type: type || 'monthly',
+      duration_days,
+      image_url: image_url?.trim() || null,
+      is_active,
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('Updating package:', id, updateData);
+
+    const { error } = await supabase
+      .from('packages')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    revalidatePath('/admin/first-secondary');
+    return { success: true };
+  } catch (error) {
+    handleError(error, 'updatePackage');
+  }
 }
 
 export async function deletePackage(id: string) {
-  const supabase = await createClient();
-  
-  const { error } = await supabase.from('packages').delete().eq('id', id);
-  if (error) throw error;
-  revalidatePath('/admin/first-secondary');
+  try {
+    const supabase = await createClient();
+    
+    const { error } = await supabase.from('packages').delete().eq('id', id);
+    if (error) throw error;
+    
+    revalidatePath('/admin/first-secondary');
+    return { success: true };
+  } catch (error) {
+    handleError(error, 'deletePackage');
+  }
 }
 
 // ==================== Lectures ====================
 
 export async function getLectures() {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from('lectures')
-    .select(`
-      *,
-      package:packages(id, name)
-    `)
-    .order('created_at', { ascending: false });
+  try {
+    const supabase = await createClient();
+    
+    const { data, error } = await supabase
+      .from('lectures')
+      .select(`
+        *,
+        package:packages(id, name)
+      `)
+      .order('created_at', { ascending: false });
 
-  if (error) throw error;
-  return data || [];
-}
-
-export async function getLecturesByPackage(packageId: string) {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from('lectures')
-    .select('*')
-    .eq('package_id', packageId)
-    .order('order_number', { ascending: true });
-
-  if (error) throw error;
-  return data || [];
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    handleError(error, 'getLectures');
+    return [];
+  }
 }
 
 export async function createLecture(formData: FormData) {
-  const supabase = await createClient();
-  
-  const title = formData.get('title') as string;
-  const description = formData.get('description') as string;
-  const image_url = formData.get('image_url') as string;
-  const package_ids = JSON.parse(formData.get('package_ids') as string || '[]') as string[];
-  const order_number = parseInt(formData.get('order_number') as string) || 0;
-
-  if (!package_ids.length) throw new Error('يجب اختيار باقة واحدة على الأقل');
-
-  // Create lecture for each selected package
-  for (const package_id of package_ids) {
-    const { error } = await supabase.from('lectures').insert({
-      title,
-      description: description || null,
-      image_url: image_url || null,
-      package_id,
-      order_number,
-      is_active: true
-    });
+  try {
+    const supabase = await createClient();
     
-    if (error) throw error;
-  }
+    const title = formData.get('title') as string;
+    const description = formData.get('description') as string;
+    const image_url = formData.get('image_url') as string;
+    const packageIdsJson = formData.get('package_ids') as string;
+    const orderStr = formData.get('order_number') as string;
 
-  revalidatePath('/admin/first-secondary');
+    if (!title?.trim()) throw new Error('عنوان المحاضرة مطلوب');
+    
+    let package_ids: string[] = [];
+    try {
+      package_ids = JSON.parse(packageIdsJson || '[]');
+    } catch (e) {
+      throw new Error('بيانات الباقات غير صالحة');
+    }
+
+    if (!package_ids.length) throw new Error('يجب اختيار باقة واحدة على الأقل');
+
+    const order_number = parseInt(orderStr) || 0;
+
+    // Create lecture for each selected package
+    const promises = package_ids.map(async (package_id) => {
+      const { error } = await supabase.from('lectures').insert({
+        title: title.trim(),
+        description: description?.trim() || null,
+        image_url: image_url?.trim() || null,
+        package_id,
+        order_number,
+        is_active: true
+      });
+      
+      if (error) throw error;
+    });
+
+    await Promise.all(promises);
+    
+    revalidatePath('/admin/first-secondary');
+    return { success: true };
+  } catch (error) {
+    handleError(error, 'createLecture');
+  }
 }
 
 export async function updateLecture(id: string, formData: FormData) {
-  const supabase = await createClient();
-  
-  const title = formData.get('title') as string;
-  const description = formData.get('description') as string;
-  const image_url = formData.get('image_url') as string;
-  const order_number = parseInt(formData.get('order_number') as string) || 0;
-  const is_active = formData.get('is_active') === 'true';
+  try {
+    const supabase = await createClient();
+    
+    if (!id) throw new Error('معرف المحاضرة مطلوب');
 
-  const updateData: any = {
-    title,
-    description: description || null,
-    image_url: image_url || null,
-    order_number,
-    is_active,
-    updated_at: new Date().toISOString()
-  };
+    const title = formData.get('title') as string;
+    const description = formData.get('description') as string;
+    const image_url = formData.get('image_url') as string;
+    const orderStr = formData.get('order_number') as string;
+    const is_active = formData.get('is_active') === 'true';
 
-  const { error } = await supabase
-    .from('lectures')
-    .update(updateData)
-    .eq('id', id);
+    if (!title?.trim()) throw new Error('عنوان المحاضرة مطلوب');
 
-  if (error) throw error;
-  revalidatePath('/admin/first-secondary');
+    const order_number = parseInt(orderStr) || 0;
+
+    const updateData = {
+      title: title.trim(),
+      description: description?.trim() || null,
+      image_url: image_url?.trim() || null,
+      order_number,
+      is_active,
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('Updating lecture:', id, updateData);
+
+    const { error } = await supabase
+      .from('lectures')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    revalidatePath('/admin/first-secondary');
+    return { success: true };
+  } catch (error) {
+    handleError(error, 'updateLecture');
+  }
 }
 
 export async function deleteLecture(id: string) {
-  const supabase = await createClient();
-  
-  const { error } = await supabase.from('lectures').delete().eq('id', id);
-  if (error) throw error;
-  revalidatePath('/admin/first-secondary');
+  try {
+    const supabase = await createClient();
+    
+    const { error } = await supabase.from('lectures').delete().eq('id', id);
+    if (error) throw error;
+    
+    revalidatePath('/admin/first-secondary');
+    return { success: true };
+  } catch (error) {
+    handleError(error, 'deleteLecture');
+  }
 }
 
-// ==================== Lecture Contents ====================
+// ==================== Contents ====================
 
 export async function getContents() {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from('lecture_contents')
-    .select(`
-      *,
-      lecture:lectures(id, title, package_id)
-    `)
-    .order('created_at', { ascending: false });
+  try {
+    const supabase = await createClient();
+    
+    const { data, error } = await supabase
+      .from('lecture_contents')
+      .select(`
+        *,
+        lecture:lectures(id, title, package_id)
+      `)
+      .order('created_at', { ascending: false });
 
-  if (error) throw error;
-  return data || [];
-}
-
-export async function getContentsByLecture(lectureId: string) {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from('lecture_contents')
-    .select('*')
-    .eq('lecture_id', lectureId)
-    .order('order_number', { ascending: true });
-
-  if (error) throw error;
-  return data || [];
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    handleError(error, 'getContents');
+    return [];
+  }
 }
 
 export async function createContent(formData: FormData) {
-  const supabase = await createClient();
-  
-  const type = formData.get('type') as 'video' | 'pdf' | 'exam' | 'text';
-  const title = formData.get('title') as string;
-  const description = formData.get('description') as string;
-  const content_url = formData.get('content_url') as string;
-  const lecture_ids = JSON.parse(formData.get('lecture_ids') as string || '[]') as string[];
-  const duration_minutes = parseInt(formData.get('duration_minutes') as string) || 0;
-  const order_number = parseInt(formData.get('order_number') as string) || 0;
-  const max_attempts = parseInt(formData.get('max_attempts') as string) || 1;
-  const pass_score = parseInt(formData.get('pass_score') as string) || 70;
+  try {
+    const supabase = await createClient();
+    
+    const type = formData.get('type') as 'video' | 'pdf' | 'exam' | 'text';
+    const title = formData.get('title') as string;
+    const description = formData.get('description') as string;
+    const content_url = formData.get('content_url') as string;
+    const lectureIdsJson = formData.get('lecture_ids') as string;
+    const durationStr = formData.get('duration_minutes') as string;
+    const orderStr = formData.get('order_number') as string;
+    const maxAttemptsStr = formData.get('max_attempts') as string;
+    const passScoreStr = formData.get('pass_score') as string;
 
-  if (!lecture_ids.length) throw new Error('يجب اختيار محاضرة واحدة على الأقل');
+    if (!title?.trim()) throw new Error('عنوان المحتوى مطلوب');
+    if (!type) throw new Error('نوع المحتوى مطلوب');
+    
+    let lecture_ids: string[] = [];
+    try {
+      lecture_ids = JSON.parse(lectureIdsJson || '[]');
+    } catch (e) {
+      throw new Error('بيانات المحاضرات غير صالحة');
+    }
 
-  // معالجة أسئلة الامتحان
-  let exam_questions = null;
-  if (type === 'exam') {
-    const questionsJson = formData.get('exam_questions') as string;
-    if (questionsJson) {
-      try {
-        exam_questions = JSON.parse(questionsJson);
-      } catch (e) {
-        throw new Error('صيغة أسئلة الامتحان غير صحيحة');
+    if (!lecture_ids.length) throw new Error('يجب اختيار محاضرة واحدة على الأقل');
+
+    const duration_minutes = parseInt(durationStr) || 0;
+    const order_number = parseInt(orderStr) || 0;
+    const max_attempts = parseInt(maxAttemptsStr) || 1;
+    const pass_score = parseInt(passScoreStr) || 70;
+
+    // معالجة أسئلة الامتحان
+    let exam_questions = null;
+    if (type === 'exam') {
+      const questionsJson = formData.get('exam_questions') as string;
+      if (questionsJson) {
+        try {
+          exam_questions = JSON.parse(questionsJson);
+          if (!Array.isArray(exam_questions) || exam_questions.length === 0) {
+            throw new Error('يجب إضافة سؤال واحد على الأقل للامتحان');
+          }
+        } catch (e) {
+          throw new Error('صيغة أسئلة الامتحان غير صالحة');
+        }
+      } else {
+        throw new Error('يجب إضافة أسئلة للامتحان');
       }
     }
-  }
 
-  for (const lecture_id of lecture_ids) {
-    const insertData: any = {
-      lecture_id,
-      type,
-      title,
-      description: description || null,
-      content_url: content_url || null,
-      duration_minutes,
-      order_number,
-      max_attempts: type === 'video' || type === 'exam' ? max_attempts : null,
-      pass_score: type === 'exam' ? pass_score : null,
-      exam_questions: type === 'exam' ? exam_questions : null,
-      is_active: true
-    };
+    // Create content for each selected lecture
+    const promises = lecture_ids.map(async (lecture_id) => {
+      const insertData: any = {
+        lecture_id,
+        type,
+        title: title.trim(),
+        description: description?.trim() || null,
+        content_url: content_url?.trim() || null,
+        duration_minutes,
+        order_number,
+        max_attempts: (type === 'video' || type === 'exam') ? max_attempts : null,
+        pass_score: type === 'exam' ? pass_score : null,
+        exam_questions: type === 'exam' ? exam_questions : null,
+        is_active: true
+      };
 
-    const { error } = await supabase.from('lecture_contents').insert(insertData);
+      const { error } = await supabase.from('lecture_contents').insert(insertData);
+      
+      if (error) throw error;
+    });
+
+    await Promise.all(promises);
     
-    if (error) throw error;
+    revalidatePath('/admin/first-secondary');
+    return { success: true };
+  } catch (error) {
+    handleError(error, 'createContent');
   }
-
-  revalidatePath('/admin/first-secondary');
 }
 
 export async function updateContent(id: string, formData: FormData) {
-  const supabase = await createClient();
-  
-  const type = formData.get('type') as 'video' | 'pdf' | 'exam' | 'text';
-  const title = formData.get('title') as string;
-  const description = formData.get('description') as string;
-  const content_url = formData.get('content_url') as string;
-  const duration_minutes = parseInt(formData.get('duration_minutes') as string) || 0;
-  const order_number = parseInt(formData.get('order_number') as string) || 0;
-  const max_attempts = parseInt(formData.get('max_attempts') as string) || 1;
-  const pass_score = parseInt(formData.get('pass_score') as string) || 70;
-  const is_active = formData.get('is_active') === 'true';
+  try {
+    const supabase = await createClient();
+    
+    if (!id) throw new Error('معرف المحتوى مطلوب');
 
-  // معالجة أسئلة الامتحان في حالة التعديل
-  let exam_questions = null;
-  if (type === 'exam') {
-    const questionsJson = formData.get('exam_questions') as string;
-    if (questionsJson) {
-      try {
-        exam_questions = JSON.parse(questionsJson);
-      } catch (e) {
-        throw new Error('صيغة أسئلة الامتحان غير صحيحة');
+    const title = formData.get('title') as string;
+    const description = formData.get('description') as string;
+    const content_url = formData.get('content_url') as string;
+    const durationStr = formData.get('duration_minutes') as string;
+    const orderStr = formData.get('order_number') as string;
+    const maxAttemptsStr = formData.get('max_attempts') as string;
+    const passScoreStr = formData.get('pass_score') as string;
+    const is_active = formData.get('is_active') === 'true';
+    const type = formData.get('type') as 'video' | 'pdf' | 'exam' | 'text';
+
+    if (!title?.trim()) throw new Error('عنوان المحتوى مطلوب');
+
+    const duration_minutes = parseInt(durationStr) || 0;
+    const order_number = parseInt(orderStr) || 0;
+    const max_attempts = parseInt(maxAttemptsStr) || 1;
+    const pass_score = parseInt(passScoreStr) || 70;
+
+    // معالجة أسئلة الامتحان في حالة التعديل
+    let exam_questions = null;
+    if (type === 'exam') {
+      const questionsJson = formData.get('exam_questions') as string;
+      if (questionsJson) {
+        try {
+          exam_questions = JSON.parse(questionsJson);
+        } catch (e) {
+          throw new Error('صيغة أسئلة الامتحان غير صالحة');
+        }
       }
     }
+
+    const updateData: any = {
+      title: title.trim(),
+      description: description?.trim() || null,
+      content_url: content_url?.trim() || null,
+      duration_minutes,
+      order_number,
+      max_attempts: (type === 'video' || type === 'exam') ? max_attempts : null,
+      pass_score: type === 'exam' ? pass_score : null,
+      exam_questions: type === 'exam' ? exam_questions : null,
+      is_active,
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('Updating content:', id, updateData);
+
+    const { error } = await supabase
+      .from('lecture_contents')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    revalidatePath('/admin/first-secondary');
+    return { success: true };
+  } catch (error) {
+    handleError(error, 'updateContent');
   }
-
-  const updateData: any = {
-    title,
-    description: description || null,
-    content_url: content_url || null,
-    duration_minutes,
-    order_number,
-    max_attempts: type === 'video' || type === 'exam' ? max_attempts : null,
-    pass_score: type === 'exam' ? pass_score : null,
-    exam_questions: type === 'exam' ? exam_questions : null,
-    is_active,
-    updated_at: new Date().toISOString()
-  };
-
-  const { error } = await supabase
-    .from('lecture_contents')
-    .update(updateData)
-    .eq('id', id);
-
-  if (error) throw error;
-  revalidatePath('/admin/first-secondary');
 }
 
 export async function deleteContent(id: string) {
-  const supabase = await createClient();
-  
-  const { error } = await supabase.from('lecture_contents').delete().eq('id', id);
-  if (error) throw error;
-  revalidatePath('/admin/first-secondary');
+  try {
+    const supabase = await createClient();
+    
+    const { error } = await supabase.from('lecture_contents').delete().eq('id', id);
+    if (error) throw error;
+    
+    revalidatePath('/admin/first-secondary');
+    return { success: true };
+  } catch (error) {
+    handleError(error, 'deleteContent');
+  }
 }

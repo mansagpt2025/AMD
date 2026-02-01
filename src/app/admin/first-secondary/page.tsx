@@ -132,60 +132,60 @@ export default function FirstSecondaryAdmin() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setSubmitting(true);
+async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  e.preventDefault();
+  setSubmitting(true);
+  
+  const formData = new FormData(e.currentTarget);
+  
+  try {
+    let result;
     
-    const formData = new FormData(e.currentTarget);
-    
-    try {
-      if (activeTab === 'packages') {
-        const originalPrice = parseFloat(formData.get('original_price') as string) || 0;
-        const price = parseFloat(formData.get('price') as string) || 0;
-        
-        if (originalPrice > 0 && price >= originalPrice) {
-          alert('السعر بعد الخصم يجب أن يكون أقل من السعر الأصلي');
-          setSubmitting(false);
-          return;
-        }
-        
-        if (modalMode === 'create') {
-          await createPackage(formData);
-        } else if (editingId) {
-          await updatePackage(editingId, formData);
-        }
-      } else if (activeTab === 'lectures') {
-        formData.append('package_ids', JSON.stringify(selectedPackages));
-        if (modalMode === 'create') {
-          await createLecture(formData);
-        } else if (editingId) {
-          await updateLecture(editingId, formData);
-        }
-      } else if (activeTab === 'contents') {
-        formData.append('lecture_ids', JSON.stringify(selectedLectures));
-        
-        // إضافة أسئلة الامتحان إذا كان النوع exam
-        if (contentType === 'exam') {
-          formData.append('exam_questions', JSON.stringify(examQuestions));
-        }
-        
-        if (modalMode === 'create') {
-          await createContent(formData);
-        } else if (editingId) {
-          await updateContent(editingId, formData);
-        }
+    if (activeTab === 'packages') {
+      if (modalMode === 'create') {
+        result = await createPackage(formData);
+      } else if (editingId) {
+        result = await updatePackage(editingId, formData);
+      }
+    } else if (activeTab === 'lectures') {
+      formData.append('package_ids', JSON.stringify(selectedPackages));
+      if (modalMode === 'create') {
+        result = await createLecture(formData);
+      } else if (editingId) {
+        result = await updateLecture(editingId, formData);
+      }
+    } else if (activeTab === 'contents') {
+      formData.append('lecture_ids', JSON.stringify(selectedLectures));
+      
+      // إضافة نوع المحتوى للـ formData في حالة التعديل
+      if (modalMode === 'edit') {
+        formData.append('type', contentType);
       }
       
-      closeModal();
-      loadData();
-      alert(modalMode === 'create' ? 'تم الإنشاء بنجاح' : 'تم التحديث بنجاح');
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      alert('حدث خطأ أثناء حفظ البيانات');
-    } finally {
-      setSubmitting(false);
+      // إضافة أسئلة الامتحان إذا كان النوع exam
+      if (contentType === 'exam') {
+        formData.append('exam_questions', JSON.stringify(examQuestions));
+      }
+      
+      if (modalMode === 'create') {
+        result = await createContent(formData);
+      } else if (editingId) {
+        result = await updateContent(editingId, formData);
+      }
     }
+    
+    if (result && 'success' in result) {
+      closeModal();
+      await loadData();
+      alert(modalMode === 'create' ? 'تم الإنشاء بنجاح' : 'تم التحديث بنجاح');
+    }
+  } catch (error: any) {
+    console.error('Error submitting form:', error);
+    alert(error?.message || 'حدث خطأ أثناء حفظ البيانات');
+  } finally {
+    setSubmitting(false);
   }
+}
 
   async function handleDelete(id: string) {
     if (!confirm('هل أنت متأكد من الحذف؟')) return;
@@ -984,7 +984,7 @@ export default function FirstSecondaryAdmin() {
                 }
               </h2>
               <button onClick={closeModal} className={styles.closeBtn}>×</button>
-            </div>
+          </div>
             <div className={styles.modalBody}>
               {renderForm()}
             </div>
