@@ -1,41 +1,47 @@
 'use client'
 
+import React from "react"
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useRouter, useParams } from 'next/navigation'
 import { motion, AnimatePresence, useScroll, useSpring, useMotionValue, useMotionTemplate } from 'framer-motion'
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 import {
   Wallet, BookOpen, GraduationCap, Loader2, AlertCircle,
   Crown, Sparkles, Clock, Calendar, Medal, PlayCircle,
-  CheckCircle2, ShoppingCart, RefreshCw,
-  Ticket, CreditCard, X, Shield, Gift, Zap,
-  ChevronLeft, BookMarked, ArrowLeft
+  CheckCircle2, ArrowRight, ShoppingCart, RefreshCw,
+  Ticket, CreditCard, X, Shield, Gift, Zap, Star,
+  ChevronLeft, Award, BookMarked, ArrowLeft, Users,
+  Award as AwardIcon, Book, Video, FileText, Check
 } from 'lucide-react'
 import styles from './GradePage.module.css'
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-)
+// Import actions
+import {
+  deductWalletBalance,
+  markCodeAsUsed,
+  createUserPackage,
+  validateCode,
+  getWalletBalance
+} from './actions'
 
 interface Package {
   id: string
   name: string
   description: string
   price: number
-  image_url: string | null
+  image_url: string
   type: 'weekly' | 'monthly' | 'term' | 'offer'
   lecture_count: number
   grade: string
   duration_days: number
   is_active: boolean
-  original_price?: number | null
-  discount_percentage?: number | null
-  features?: string[] | null
-  instructor?: string | null
-  rating?: number | null
-  students_count?: number | null
+  original_price?: number
+  discount_percentage?: number
+  features?: string[]
+  instructor?: string
+  rating?: number
+  students_count?: number
+  created_at?: string
   updated_at?: string
 }
 
@@ -54,6 +60,7 @@ interface ThemeType {
   gradient: string
   light: string
   dark: string
+  glow: string
 }
 
 const themes: Record<string, ThemeType> = {
@@ -63,7 +70,8 @@ const themes: Record<string, ThemeType> = {
     accent: '#e94560',
     gradient: 'from-slate-900 via-slate-800 to-rose-900',
     light: '#f8fafc',
-    dark: '#0f172a'
+    dark: '#0f172a',
+    glow: 'rgba(233, 69, 96, 0.3)'
   },
   second: {
     primary: '#1a1a2e',
@@ -71,7 +79,8 @@ const themes: Record<string, ThemeType> = {
     accent: '#00b4d8',
     gradient: 'from-slate-900 via-blue-900 to-cyan-900',
     light: '#f0f9ff',
-    dark: '#0c4a6e'
+    dark: '#0c4a6e',
+    glow: 'rgba(0, 180, 216, 0.3)'
   },
   third: {
     primary: '#1a1a2e',
@@ -79,14 +88,20 @@ const themes: Record<string, ThemeType> = {
     accent: '#ee6c4d',
     gradient: 'from-slate-900 via-rose-900 to-orange-900',
     light: '#fff7ed',
-    dark: '#7c2d12'
+    dark: '#7c2d12',
+    glow: 'rgba(238, 108, 77, 0.3)'
   }
 }
 
 export default function GradePage() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const params = useParams()
-  const gradeSlug = params?.grade as 'first' | 'second' | 'third' || 'first'
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const gradeSlug = params?.grade as 'first' | 'second' | 'third'
   const theme = themes[gradeSlug] || themes.first
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -96,7 +111,7 @@ export default function GradePage() {
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
 
-  const spotlightBackground = useMotionTemplate`radial-gradient(800px circle at ${mouseX}px ${mouseY}px, ${theme.accent}08, transparent 40%)`
+  const spotlightBackground = useMotionTemplate`radial-gradient(800px circle at ${mouseX}px ${mouseY}px, ${theme.accent}15, transparent 40%)`
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -116,33 +131,11 @@ export default function GradePage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
 
-  // Helper function to get lecture count for a package
-  const getLectureCount = useCallback(async (packageId: string): Promise<number> => {
-    try {
-      const { count, error } = await supabase
-        .from('lectures')
-        .select('*', { count: 'exact', head: true })
-        .eq('package_id', packageId)
-        .eq('is_active', true)
-      
-      if (error) {
-        console.error('Error fetching lecture count:', error)
-        return 0
-      }
-      
-      return count || 0
-    } catch (err) {
-      console.error('Error in getLectureCount:', err)
-      return 0
-    }
-  }, [])
-
   const fetchData = useCallback(async () => {
     try {
       if (!isRefreshing) setLoading(true)
       setError(null)
 
-      // Get current user
       const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
 
       if (userError || !currentUser) {
@@ -164,50 +157,34 @@ export default function GradePage() {
 
       if (packagesError) throw packagesError
 
-      // Enhance packages with real data
-      const enhancedPackages = await Promise.all((packagesData || []).map(async (pkg: any) => {
-        // Get real lecture count
-        const realLectureCount = await getLectureCount(pkg.id)
-        
-        return {
-          ...pkg,
-          lecture_count: realLectureCount,
-          features: pkg.features || [
-            `${realLectureCount} محاضرة تفاعلية`,
-            `وصول كامل لمدة ${pkg.duration_days} يوم`,
-            'دعم فني على مدار الساعة',
-            'شهادة إتمام'
-          ],
-          original_price: pkg.original_price || (pkg.type === 'offer' ? Math.round(pkg.price * 1.3) : undefined),
-          instructor: pkg.instructor || 'أستاذ محمود الديب',
-          rating: pkg.rating || 4.9,
-          students_count: pkg.students_count || 0,
-          updated_at: pkg.updated_at
-        }
-      }))
+      const enhancedPackages = packagesData?.map(pkg => ({
+        ...pkg,
+        features: pkg.features || [
+          `${pkg.lecture_count} محاضرة تفاعلية`,
+          'وصول كامل لمدة ' + pkg.duration_days + ' يوم',
+          'دعم فني على مدار الساعة',
+          'شهادة إتمام'
+        ],
+        original_price: pkg.type === 'offer' ? Math.round(pkg.price * 1.3) : undefined,
+        instructor: pkg.instructor || 'أستاذ محمود الديب',
+        rating: pkg.rating || 4.9,
+        students_count: pkg.students_count || 1500,
+        created_at: pkg.created_at,
+        updated_at: pkg.updated_at
+      })) || []
 
       setPackages(enhancedPackages)
 
       // Fetch wallet balance
-      const { data: walletData, error: walletError } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', currentUser.id)
-        .single()
-
-      if (walletError && walletError.code !== 'PGRST116') {
-        console.error('Failed to fetch wallet:', walletError)
+      const walletResult = await getWalletBalance(currentUser.id)
+      if (walletResult.success && walletResult.data) {
+        setWalletBalance(walletResult.data.balance || 0)
       }
-      
-      setWalletBalance(walletData?.balance || 0)
 
-      // Fetch user's active packages
+      // Fetch user packages
       const { data: userPkgs, error: userPkgsError } = await supabase
         .from('user_packages')
-        .select(`
-          *,
-          packages:package_id(*)
-        `)
+        .select('*, packages:package_id(*)')
         .eq('user_id', currentUser.id)
         .eq('is_active', true)
         .gt('expires_at', new Date().toISOString())
@@ -222,42 +199,37 @@ export default function GradePage() {
       setLoading(false)
       setIsRefreshing(false)
     }
-  }, [gradeSlug, isRefreshing, getLectureCount])
+  }, [gradeSlug, supabase, isRefreshing])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  // Real-time wallet updates
   useEffect(() => {
     if (!user?.id) return
 
     const channel = supabase
       .channel(`wallet-${user.id}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'wallets', 
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'wallets',
         filter: `user_id=eq.${user.id}`
       }, async (payload: any) => {
         if (payload.new?.balance !== undefined) {
           setWalletBalance(payload.new.balance)
         } else {
-          const { data } = await supabase
-            .from('wallets')
-            .select('balance')
-            .eq('user_id', user.id)
-            .single()
-          setWalletBalance(data?.balance ?? 0)
+          const result = await getWalletBalance(user.id)
+          if (result.success && result.data) {
+            setWalletBalance(result.data.balance ?? 0)
+          }
         }
         setShowConfetti(true)
         setTimeout(() => setShowConfetti(false), 3000)
       })
       .subscribe()
 
-    return () => { 
-      supabase.removeChannel(channel) 
-    }
+    return () => { supabase.removeChannel(channel) }
   }, [user?.id, supabase])
 
   const { purchased, available, offers } = useMemo(() => {
@@ -292,7 +264,7 @@ export default function GradePage() {
 
   const handlePurchaseClick = (pkg: Package) => {
     if (!user) {
-      navigate(`/login?returnUrl=/grades/${gradeSlug}`)
+      router.push(`/login?returnUrl=/grades/${gradeSlug}`)
       return
     }
     setSelectedPackage(pkg)
@@ -300,7 +272,7 @@ export default function GradePage() {
   }
 
   const handleEnterPackage = (pkgId: string) => {
-    navigate(`/grades/${gradeSlug}/packages/${pkgId}`)
+    router.push(`/grades/${gradeSlug}/packages/${pkgId}`)
   }
 
   const handleRefresh = () => {
@@ -317,19 +289,13 @@ export default function GradePage() {
     }
   }
 
-  // Format date for last update
-  const formatLastUpdate = (dateString?: string) => {
-    if (!dateString) return 'غير محدد'
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffTime = Math.abs(now.getTime() - date.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
-    if (diffDays === 1) return 'اليوم'
-    if (diffDays === 2) return 'أمس'
-    if (diffDays <= 7) return `${diffDays} أيام`
-    if (diffDays <= 30) return `${Math.ceil(diffDays / 7)} أسابيع`
-    return date.toLocaleDateString('ar-EG')
+  const getGradeSubtitle = () => {
+    switch(gradeSlug) {
+      case 'first': return 'المرحلة الأولى من التعليم الثانوي - بناء أساس قوي'
+      case 'second': return 'المرحلة المتوسطة - تطوير المهارات والمعرفة'
+      case 'third': return 'المرحلة النهائية - الاستعداد للجامعة'
+      default: return 'اختر باقتك المثالية'
+    }
   }
 
   if (loading) {
@@ -364,16 +330,8 @@ export default function GradePage() {
   }
 
   return (
-    <div 
-      className={styles.pageWrapper} 
-      ref={containerRef} 
-      onMouseMove={handleMouseMove}
-    >
-      <motion.div 
-        className={styles.spotlight} 
-        style={{ background: spotlightBackground }} 
-      />
-      
+    <div className={styles.pageWrapper} ref={containerRef} onMouseMove={handleMouseMove}>
+      <motion.div className={styles.spotlight} style={{ background: spotlightBackground }} />
       <motion.div
         className={styles.progressIndicator}
         style={{ scaleX }}
@@ -382,8 +340,8 @@ export default function GradePage() {
       {/* Floating Elements */}
       <div className={styles.floatingElements}>
         {[...Array(6)].map((_, i) => (
-          <motion.div
-            key={i}
+          <motion.div 
+            key={i} 
             className={styles.floatingOrb}
             animate={{ 
               y: [0, -30, 0], 
@@ -398,7 +356,7 @@ export default function GradePage() {
             }}
             style={{ 
               left: `${15 + i * 15}%`, 
-              top: `${20 + (i % 3) * 25}%`, 
+              top: `${20 + (i % 3) * 25}%`,
             }}
           />
         ))}
@@ -410,8 +368,8 @@ export default function GradePage() {
           <div className={styles.headerContent}>
             {/* Logo */}
             <motion.div 
-              initial={{ x: -30, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
+              initial={{ x: -30, opacity: 0 }} 
+              animate={{ x: 0, opacity: 1 }} 
               className={styles.brand}
             >
               <div className={styles.logoMark}>
@@ -436,9 +394,7 @@ export default function GradePage() {
                   </div>
                   <div className={styles.walletInfo}>
                     <span className={styles.walletLabel}>رصيدك</span>
-                    <span className={styles.walletAmount}>
-                      {walletBalance.toLocaleString()} ج.م
-                    </span>
+                    <span className={styles.walletAmount}>{walletBalance.toLocaleString()} ج.م</span>
                   </div>
                 </div>
                 <motion.button 
@@ -448,10 +404,7 @@ export default function GradePage() {
                   whileHover={{ rotate: 180 }}
                   whileTap={{ scale: 0.9 }}
                 >
-                  <RefreshCw 
-                    size={16} 
-                    className={isRefreshing ? styles.spinning : ''} 
-                  />
+                  <RefreshCw size={16} className={isRefreshing ? styles.spinning : ''} />
                 </motion.button>
               </motion.div>
             ) : (
@@ -459,7 +412,7 @@ export default function GradePage() {
                 initial={{ x: 30, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 className={styles.loginButton}
-                onClick={() => navigate(`/login?returnUrl=/grades/${gradeSlug}`)}
+                onClick={() => router.push(`/login?returnUrl=/grades/${gradeSlug}`)}
               >
                 <span>تسجيل الدخول</span>
                 <ArrowLeft size={18} />
@@ -473,38 +426,36 @@ export default function GradePage() {
       <section className={styles.heroSection}>
         <div className={styles.heroContainer}>
           <motion.div 
-            initial={{ y: 40, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
+            initial={{ y: 40, opacity: 0 }} 
+            animate={{ y: 0, opacity: 1 }} 
+            transition={{ delay: 0.1 }} 
             className={styles.heroContent}
           >
             <div className={styles.gradeIconWrapper}>
               <motion.div 
-                className={styles.gradeIcon}
-                whileHover={{ scale: 1.1, rotate: 5 }}
+                className={styles.gradeIcon} 
+                whileHover={{ scale: 1.1, rotate: 5 }} 
               >
                 <GraduationCap size={40} />
               </motion.div>
             </div>
-            
             <h1 className={styles.heroTitle}>{getGradeName()}</h1>
-            <p className={styles.heroSubtitle}>
-              اختر باقتك المثالية وانطلق في رحلة التميز الأكاديمي
-            </p>
-
+            <p className={styles.heroSubtitle}>{getGradeSubtitle()}</p>
+            
             <div className={styles.heroStats}>
               <div className={styles.heroStatItem}>
-                <span className={styles.heroStatValue}>
-                  {packages.length}+
-                </span>
+                <span className={styles.heroStatValue}>{packages.length}+</span>
                 <span className={styles.heroStatLabel}>باقة متاحة</span>
               </div>
               <div className={styles.heroStatDivider} />
               <div className={styles.heroStatItem}>
-                <span className={styles.heroStatValue}>
-                  {purchased.length}
-                </span>
+                <span className={styles.heroStatValue}>{purchased.length}</span>
                 <span className={styles.heroStatLabel}>اشتراك نشط</span>
+              </div>
+              <div className={styles.heroStatDivider} />
+              <div className={styles.heroStatItem}>
+                <span className={styles.heroStatValue}>{offers.length}</span>
+                <span className={styles.heroStatLabel}>عرض خاص</span>
               </div>
             </div>
           </motion.div>
@@ -516,30 +467,13 @@ export default function GradePage() {
         <div className={styles.tabsContainer}>
           <div className={styles.tabsList}>
             {[
-              { 
-                id: 'all', 
-                label: 'جميع الباقات', 
-                icon: BookOpen, 
-                count: purchased.length + available.length + offers.length 
-              },
-              { 
-                id: 'purchased', 
-                label: 'اشتراكاتي', 
-                icon: CheckCircle2, 
-                count: purchased.length, 
-                show: purchased.length > 0 
-              },
-              { 
-                id: 'offers', 
-                label: 'العروض', 
-                icon: Sparkles, 
-                count: offers.length, 
-                show: offers.length > 0 
-              }
+              { id: 'all', label: 'جميع الباقات', icon: BookOpen, count: purchased.length + available.length + offers.length },
+              { id: 'purchased', label: 'اشتراكاتي', icon: CheckCircle2, count: purchased.length, show: purchased.length > 0 },
+              { id: 'offers', label: 'العروض', icon: Sparkles, count: offers.length, show: offers.length > 0 }
             ].map((tab) => (
               tab.show !== false && (
-                <motion.button
-                  key={tab.id}
+                <motion.button 
+                  key={tab.id} 
                   className={`${styles.tabButton} ${activeTab === tab.id ? styles.tabActive : ''}`}
                   onClick={() => setActiveTab(tab.id as any)}
                   whileHover={{ y: -2 }}
@@ -549,10 +483,7 @@ export default function GradePage() {
                   <span>{tab.label}</span>
                   <span className={styles.tabCount}>{tab.count}</span>
                   {activeTab === tab.id && (
-                    <motion.div 
-                      className={styles.tabIndicator} 
-                      layoutId="activeTab" 
-                    />
+                    <motion.div className={styles.tabIndicator} layoutId="activeTab" />
                   )}
                 </motion.button>
               )
@@ -567,33 +498,17 @@ export default function GradePage() {
           {/* Quick Stats for logged in users */}
           {user && purchased.length > 0 && (
             <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
+              initial={{ y: 20, opacity: 0 }} 
+              animate={{ y: 0, opacity: 1 }} 
               className={styles.quickStats}
             >
               {[
-                { 
-                  icon: BookMarked, 
-                  label: 'باقة نشطة', 
-                  value: purchased.length 
-                },
-                { 
-                  icon: PlayCircle, 
-                  label: 'محاضرة متاحة', 
-                  value: purchased.reduce((acc, p) => acc + (p.lecture_count || 0), 0) 
-                },
-                { 
-                  icon: Clock, 
-                  label: 'يوم متبقي', 
-                  value: Math.max(0, Math.ceil(
-                    userPackages.reduce((acc, up) => 
-                      acc + (new Date(up.expires_at).getTime() - Date.now()), 0
-                    ) / (1000 * 60 * 60 * 24))
-                  ) 
-                }
+                { icon: BookMarked, label: 'باقة نشطة', value: purchased.length },
+                { icon: PlayCircle, label: 'محاضرة متاحة', value: purchased.reduce((acc, p) => acc + (p.lecture_count || 0), 0) },
+                { icon: Clock, label: 'يوم متبقي', value: Math.max(0, Math.ceil(userPackages.reduce((acc, up) => acc + (new Date(up.expires_at).getTime() - Date.now()), 0) / (1000 * 60 * 60 * 24))) }
               ].map((stat, idx) => (
-                <motion.div
-                  key={idx}
+                <motion.div 
+                  key={idx} 
                   className={styles.quickStatCard}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -614,7 +529,7 @@ export default function GradePage() {
           {/* Error Alert */}
           <AnimatePresence mode="wait">
             {error && (
-              <motion.div
+              <motion.div 
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
@@ -631,15 +546,14 @@ export default function GradePage() {
           <motion.div layout className={styles.packagesGrid}>
             <AnimatePresence mode="popLayout">
               {filteredPackages.map((pkg: any, index) => (
-                <PackageCard
+                <PackageCard 
                   key={pkg.id}
                   pkg={pkg}
                   isPurchased={purchased.some(p => p.id === pkg.id)}
+                  theme={theme}
                   index={index}
                   onPurchase={() => handlePurchaseClick(pkg)}
                   onEnter={() => handleEnterPackage(pkg.id)}
-                  lastUpdate={pkg.updated_at}
-                  formatLastUpdate={formatLastUpdate}
                 />
               ))}
             </AnimatePresence>
@@ -647,7 +561,7 @@ export default function GradePage() {
 
           {/* Empty State */}
           {filteredPackages.length === 0 && (
-            <motion.div
+            <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               className={styles.emptyState}
@@ -659,17 +573,17 @@ export default function GradePage() {
               <p>سيتم إضافة باقات جديدة قريباً</p>
             </motion.div>
           )}
-
         </div>
       </main>
 
       {/* Purchase Modal */}
       <AnimatePresence>
         {showPurchaseModal && selectedPackage && user && (
-          <PurchaseModal 
-            pkg={selectedPackage} 
-            user={user} 
-            walletBalance={walletBalance} 
+          <PurchaseModal
+            pkg={selectedPackage}
+            user={user}
+            walletBalance={walletBalance}
+            theme={theme}
             onClose={() => {
               setShowPurchaseModal(false)
               setSelectedPackage(null)
@@ -687,23 +601,14 @@ export default function GradePage() {
 
       {/* Confetti Effect */}
       <AnimatePresence>
-        {showConfetti && <ConfettiEffect />}
+        {showConfetti && <ConfettiEffect theme={theme} />}
       </AnimatePresence>
-
     </div>
   )
 }
 
 // Package Card Component
-function PackageCard({ 
-  pkg, 
-  isPurchased, 
-  index, 
-  onPurchase, 
-  onEnter,
-  lastUpdate,
-  formatLastUpdate
-}: any) {
+function PackageCard({ pkg, isPurchased, theme, index, onPurchase, onEnter }: any) {
   const getTypeLabel = () => {
     switch (pkg.type) {
       case 'weekly': return 'أسبوعي'
@@ -724,28 +629,29 @@ function PackageCard({
     }
   }
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    return date.toLocaleDateString('ar-EG', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    })
+  }
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ 
-        delay: index * 0.05, 
-        type: "spring", 
-        stiffness: 100, 
-        damping: 20 
-      }}
-      className={`${styles.packageCard} ${
-        isPurchased ? styles.cardPurchased : ''
-      } ${pkg.type === 'offer' ? styles.cardOffer : ''}`}
+      transition={{ delay: index * 0.05, type: "spring", stiffness: 100, damping: 20 }}
+      className={`${styles.packageCard} ${isPurchased ? styles.cardPurchased : ''} ${pkg.type === 'offer' ? styles.cardOffer : ''}`}
     >
       {/* Status Badge */}
       {(isPurchased || pkg.type === 'offer') && (
         <motion.div
-          className={`${styles.statusBadge} ${
-            isPurchased ? styles.badgePurchased : styles.badgeOffer
-          }`}
+          className={`${styles.statusBadge} ${isPurchased ? styles.badgePurchased : styles.badgeOffer}`}
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", delay: 0.2 }}
@@ -771,12 +677,7 @@ function PackageCard({
       {/* Card Image */}
       <div className={styles.cardImageSection}>
         {pkg.image_url ? (
-          <img 
-            src={pkg.image_url || "/placeholder.svg"} 
-            alt={pkg.name} 
-            className={styles.cardImage} 
-            loading="lazy" 
-          />
+          <img src={pkg.image_url} alt={pkg.name} className={styles.cardImage} loading="lazy" />
         ) : (
           <div className={styles.cardImagePlaceholder}>
             <GraduationCap size={48} />
@@ -816,17 +717,25 @@ function PackageCard({
             <Clock size={16} />
             <span>{pkg.duration_days} يوم</span>
           </div>
-          <div className={styles.cardStat}>
-            <Calendar size={16} />
-            <span>تحديث: {formatLastUpdate(lastUpdate)}</span>
+        </div>
+
+        {/* Metadata */}
+        <div className={styles.metadataRow}>
+          <div className={styles.metadataItem}>
+            <Users size={14} />
+            <span>{pkg.students_count?.toLocaleString() || 0} طالب</span>
+          </div>
+          <div className={styles.metadataItem}>
+            <Star size={14} className={styles.starIcon} />
+            <span>{pkg.rating}</span>
           </div>
         </div>
 
-        {/* Expiry */}
-        {pkg.expires_at && (
-          <div className={styles.expiryInfo}>
-            <Calendar size={14} />
-            <span>ينتهي: {new Date(pkg.expires_at).toLocaleDateString('ar-EG')}</span>
+        {/* Last Updated */}
+        {pkg.updated_at && (
+          <div className={styles.updatedInfo}>
+            <RefreshCw size={12} />
+            <span>آخر تحديث: {formatDate(pkg.updated_at)}</span>
           </div>
         )}
 
@@ -834,13 +743,11 @@ function PackageCard({
         <div className={styles.cardFooter}>
           <div className={styles.priceSection}>
             {pkg.original_price && (
-              <span className={styles.originalPrice}>
-                {pkg.original_price.toLocaleString()} ج.م
-              </span>
+              <span className={styles.originalPrice}>{pkg.original_price.toLocaleString()} ج.م</span>
             )}
             <span className={styles.currentPrice}>
               {pkg.price.toLocaleString()}
-              <small> ج.م/{getTypeLabel()}</small>
+              <small> ج.م</small>
             </span>
           </div>
 
@@ -872,29 +779,21 @@ function PackageCard({
 }
 
 // Purchase Modal Component
-function PurchaseModal({ 
-  pkg, 
-  user, 
-  walletBalance, 
-  onClose, 
-  onSuccess, 
-  gradeSlug 
-}: any) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  )
-  
+function PurchaseModal({ pkg, user, walletBalance, theme, onClose, onSuccess, gradeSlug }: any) {
   const [method, setMethod] = useState<'wallet' | 'code'>('wallet')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [codeDetails, setCodeDetails] = useState<any>(null)
   const [showSuccess, setShowSuccess] = useState(false)
 
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => { 
-      if (e.key === 'Escape') onClose() 
-    }
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handleEsc)
     document.body.style.overflow = 'hidden'
     return () => {
@@ -913,106 +812,45 @@ function PurchaseModal({
           throw new Error('رصيد غير كافٍ. يرجى شحن المحفظة أولاً.')
         }
 
-        // Deduct from wallet
-        const { error: deductError } = await supabase
-          .from('wallets')
-          .update({ 
-            balance: walletBalance - pkg.price,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id)
+        const deductResult = await deductWalletBalance(user.id, pkg.price, pkg.id)
+        if (!deductResult.success) {
+          throw new Error(deductResult.message || 'فشل في خصم المبلغ من المحفظة')
+        }
 
-        if (deductError) throw deductError
-
-        // Create transaction record
-        const { error: transactionError } = await supabase
-          .from('wallet_transactions')
-          .insert({
-            user_id: user.id,
-            amount: pkg.price,
-            type: 'purchase',
-            previous_balance: walletBalance,
-            new_balance: walletBalance - pkg.price,
-            description: `شراء باقة: ${pkg.name}`,
-            created_at: new Date().toISOString()
-          })
-
-        if (transactionError) throw transactionError
-
-        // Create user package
-        const expiresAt = new Date()
-        expiresAt.setDate(expiresAt.getDate() + (pkg.duration_days || 30))
-
-        const { error: userPkgError } = await supabase
-          .from('user_packages')
-          .insert({
-            user_id: user.id,
-            package_id: pkg.id,
-            purchased_at: new Date().toISOString(),
-            expires_at: expiresAt.toISOString(),
-            is_active: true,
-            source: 'wallet'
-          })
-
-        if (userPkgError) throw userPkgError
-
+        const pkgResult = await createUserPackage(user.id, pkg.id, pkg.duration_days || 30, 'wallet')
+        if (!pkgResult.success) {
+          throw new Error(pkgResult.message || 'فشل في تفعيل الباقة')
+        }
       } else if (method === 'code') {
         if (!code.trim()) {
           throw new Error('الرجاء إدخال كود التفعيل')
         }
 
-        // Validate code
-        const { data: codeData, error: codeError } = await supabase
-          .from('package_codes')
-          .select('*')
-          .eq('code', code.toUpperCase())
-          .eq('grade', gradeSlug)
-          .eq('is_used', false)
-          .single()
-
-        if (codeError || !codeData) {
-          throw new Error('كود غير صالح أو مستخدم بالفعل')
+        const validateResult = await validateCode(code.toUpperCase(), gradeSlug, pkg.id)
+        if (!validateResult.success) {
+          throw new Error(validateResult.message || 'كود غير صالح')
         }
 
-        // Mark code as used
-        const { error: markError } = await supabase
-          .from('package_codes')
-          .update({ 
-            is_used: true,
-            used_by: user.id,
-            used_at: new Date().toISOString()
-          })
-          .eq('id', codeData.id)
+        const markResult = await markCodeAsUsed(validateResult.data.id, user.id)
+        if (!markResult.success) {
+          throw new Error(markResult.message || 'فشل في استخدام الكود')
+        }
 
-        if (markError) throw markError
+        const pkgResult = await createUserPackage(user.id, pkg.id, pkg.duration_days || 30, 'code')
+        if (!pkgResult.success) {
+          throw new Error(pkgResult.message || 'فشل في تفعيل الباقة')
+        }
 
-        // Create user package
-        const expiresAt = new Date()
-        expiresAt.setDate(expiresAt.getDate() + (pkg.duration_days || 30))
-
-        const { error: userPkgError } = await supabase
-          .from('user_packages')
-          .insert({
-            user_id: user.id,
-            package_id: pkg.id,
-            purchased_at: new Date().toISOString(),
-            expires_at: expiresAt.toISOString(),
-            is_active: true,
-            source: 'code'
-          })
-
-        if (userPkgError) throw userPkgError
+        setCodeDetails(validateResult.data)
       }
 
       setShowSuccess(true)
 
-      // Add notification
       await supabase.from('notifications').insert({
         user_id: user.id,
         title: 'تم الشراء بنجاح!',
         message: `تم تفعيل ${pkg.name} بنجاح`,
-        type: 'success',
-        created_at: new Date().toISOString()
+        type: 'success'
       })
 
       setTimeout(() => {
@@ -1078,24 +916,18 @@ function PurchaseModal({
               </div>
               <h3>{pkg.name}</h3>
               <div className={styles.modalPrice}>
-                <span className={styles.priceValue}>
-                  {pkg.price.toLocaleString()}
-                </span>
+                <span className={styles.priceValue}>{pkg.price.toLocaleString()}</span>
                 <span className={styles.priceCurrency}>جنيه مصري</span>
               </div>
               {pkg.original_price && (
-                <span className={styles.modalOriginalPrice}>
-                  {pkg.original_price.toLocaleString()} ج.م
-                </span>
+                <span className={styles.modalOriginalPrice}>{pkg.original_price.toLocaleString()} ج.م</span>
               )}
             </div>
 
             <div className={styles.modalBody}>
               <div className={styles.paymentMethods}>
                 <motion.button 
-                  className={`${styles.methodCard} ${
-                    method === 'wallet' ? styles.methodActive : ''
-                  }`}
+                  className={`${styles.methodCard} ${method === 'wallet' ? styles.methodActive : ''}`}
                   onClick={() => {setMethod('wallet'); setError('')}}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -1104,11 +936,7 @@ function PurchaseModal({
                   </div>
                   <div className={styles.methodInfo}>
                     <strong>الدفع من المحفظة</strong>
-                    <span>رصيدك: <b className={
-                      walletBalance >= pkg.price ? styles.sufficient : styles.insufficient
-                    }>
-                      {walletBalance.toLocaleString()} ج.م
-                    </b></span>
+                    <span>رصيدك: <b className={walletBalance >= pkg.price ? styles.sufficient : styles.insufficient}>{walletBalance.toLocaleString()} ج.م</b></span>
                   </div>
                   <div className={styles.methodCheck}>
                     {walletBalance >= pkg.price ? (
@@ -1120,9 +948,7 @@ function PurchaseModal({
                 </motion.button>
 
                 <motion.button 
-                  className={`${styles.methodCard} ${
-                    method === 'code' ? styles.methodActive : ''
-                  }`}
+                  className={`${styles.methodCard} ${method === 'code' ? styles.methodActive : ''}`}
                   onClick={() => {setMethod('code'); setError('')}}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -1187,15 +1013,9 @@ function PurchaseModal({
                 whileTap={canPurchase() && !loading ? { scale: 0.98 } : {}}
               >
                 {loading ? (
-                  <>
-                    <Loader2 className={styles.spinning} size={20} />
-                    جاري المعالجة...
-                  </>
+                  <><Loader2 className={styles.spinning} size={20} /> جاري المعالجة...</>
                 ) : (
-                  <>
-                    <span>تأكيد الشراء</span>
-                    <ArrowLeft size={20} />
-                  </>
+                  <><span>تأكيد الشراء</span><ArrowLeft size={20} /></>
                 )}
               </motion.button>
 
@@ -1211,44 +1031,31 @@ function PurchaseModal({
   )
 }
 
-// Confetti Effect Component
-function ConfettiEffect() {
-  const theme = {
-    primary: '#1a1a2e',
-    accent: '#e94560',
-    secondary: '#16213e'
-  }
-  
+// Confetti Effect
+function ConfettiEffect({ theme }: { theme: ThemeType }) {
   return (
     <div className={styles.confettiContainer}>
       {[...Array(50)].map((_, i) => {
-        const colors = [
-          theme.primary, 
-          theme.accent, 
-          theme.secondary, 
-          '#f59e0b', 
-          '#10b981', 
-          '#ec4899'
-        ]
+        const colors = [theme.primary, theme.accent, theme.secondary, '#f59e0b', '#10b981', '#ec4899']
         const color = colors[Math.floor(Math.random() * colors.length)]
         
         return (
           <motion.div
             key={i}
             className={styles.confettiPiece}
-            initial={{
-              top: -10,
+            initial={{ 
+              top: -10, 
               left: Math.random() * 100 + '%',
               rotate: 0,
               scale: 0
             }}
-            animate={{
-              top: '110%',
+            animate={{ 
+              top: '110%', 
               left: `${Math.random() * 100}%`,
               rotate: Math.random() * 720,
               scale: Math.random() * 0.5 + 0.5
             }}
-            transition={{
+            transition={{ 
               duration: Math.random() * 3 + 2,
               ease: "linear"
             }}
