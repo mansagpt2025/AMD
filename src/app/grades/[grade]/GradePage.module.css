@@ -1,7 +1,7 @@
 /* ===================================
-   Grade Page - Premium Educational Platform
-   Modern, Professional Design with RTL Support
-   =================================== */
+Grade Page - Premium Educational Platform
+Modern, Professional Design with RTL Support
+=================================== */
 
 /* Base Variables */
 :root {
@@ -29,8 +29,8 @@
 }
 
 /* ===================================
-   Loading Screen
-   =================================== */
+Loading Screen
+=================================== */
 .loadingScreen {
   min-height: 100vh;
   display: flex;
@@ -80,8 +80,8 @@
 }
 
 /* ===================================
-   Page Wrapper
-   =================================== */
+Page Wrapper
+=================================== */
 .pageWrapper {
   min-height: 100vh;
   background: var(--grade-light);
@@ -128,8 +128,8 @@
 }
 
 /* ===================================
-   Header
-   =================================== */
+Header
+=================================== */
 .header {
   position: sticky;
   top: 0;
@@ -293,8 +293,8 @@
 }
 
 /* ===================================
-   Hero Section
-   =================================== */
+Hero Section
+=================================== */
 .heroSection {
   position: relative;
   padding: 3rem 1.5rem 2rem;
@@ -338,7 +338,7 @@
   font-size: 1rem;
   color: var(--grade-text-secondary);
   margin-bottom: 2rem;
-  max-width: 500px;
+  max-width: 600px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -348,6 +348,7 @@
   align-items: center;
   justify-content: center;
   gap: 2rem;
+  flex-wrap: wrap;
 }
 
 .heroStatItem {
@@ -376,8 +377,8 @@
 }
 
 /* ===================================
-   Tabs Navigation
-   =================================== */
+Tabs Navigation
+=================================== */
 .tabsNav {
   position: sticky;
   top: 70px;
@@ -464,8 +465,8 @@
 }
 
 /* ===================================
-   Main Content
-   =================================== */
+Main Content
+=================================== */
 .mainContent {
   position: relative;
   z-index: 1;
@@ -571,8 +572,8 @@
 }
 
 /* ===================================
-   Packages Grid
-   =================================== */
+Packages Grid
+=================================== */
 .packagesGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -772,17 +773,36 @@
   color: var(--grade-primary);
 }
 
-/* Expiry Info */
-.expiryInfo {
+/* Metadata Row */
+.metadataRow {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.metadataItem {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--grade-text-secondary);
+}
+
+.starIcon {
+  color: #f59e0b;
+}
+
+/* Updated Info */
+.updatedInfo {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem;
-  background: #fef3c7;
+  padding: 0.5rem;
+  background: #f0fdf4;
   border-radius: var(--grade-radius-sm);
   margin-bottom: 1rem;
-  font-size: 0.8rem;
-  color: #92400e;
+  font-size: 0.75rem;
+  color: #166534;
 }
 
 /* Card Footer */
@@ -853,8 +873,8 @@
 }
 
 /* ===================================
-   Empty State
-   =================================== */
+Empty State
+=================================== */
 .emptyState {
   text-align: center;
   padding: 4rem 2rem;
@@ -888,8 +908,8 @@
 }
 
 /* ===================================
-   Modal Overlay
-   =================================== */
+Modal Overlay
+=================================== */
 .modalOverlay {
   position: fixed;
   inset: 0;
@@ -1235,8 +1255,8 @@
 }
 
 /* ===================================
-   Confetti
-   =================================== */
+Confetti
+=================================== */
 .confettiContainer {
   position: fixed;
   inset: 0;
@@ -1250,13 +1270,13 @@
 }
 
 /* ===================================
-   Responsive Design
-   =================================== */
+Responsive Design
+=================================== */
 @media (max-width: 1024px) {
   .quickStats {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   .packagesGrid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
