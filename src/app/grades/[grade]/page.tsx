@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence, useScroll, useSpring, useMotionValue, useMotionTemplate } from 'framer-motion'
