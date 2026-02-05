@@ -1,7 +1,5 @@
 'use client'
-
 import React from "react"
-
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { motion, AnimatePresence, useScroll, useSpring, useMotionValue, useMotionTemplate } from 'framer-motion'
@@ -14,7 +12,6 @@ import {
   ChevronLeft, Award, BookMarked, ArrowLeft, Users
 } from 'lucide-react'
 import styles from './GradePage.module.css'
-
 import { 
   deductWalletBalance, 
   markCodeAsUsed, 
@@ -22,7 +19,6 @@ import {
   validateCode,
   getWalletBalance 
 } from './actions'
-
 interface Package {
   id: string
   name: string
@@ -49,7 +45,6 @@ interface UserPackage {
   is_active: boolean
   packages: Package
 }
-
 interface ThemeType {
   primary: string
   secondary: string
@@ -58,7 +53,6 @@ interface ThemeType {
   light: string
   dark: string
 }
-
 const themes: Record<string, ThemeType> = {
   first: {
     primary: '#1a1a2e',
@@ -93,25 +87,19 @@ export default function GradePage() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
-  
   const gradeSlug = params?.grade as 'first' | 'second' | 'third'
   const theme = themes[gradeSlug] || themes.first
-
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({ container: containerRef })
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 })
-  
-  const mouseX = useMotionValue(0)
+    const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
-  
-  const spotlightBackground = useMotionTemplate`radial-gradient(800px circle at ${mouseX}px ${mouseY}px, ${theme.accent}08, transparent 40%)`
-  
+    const spotlightBackground = useMotionTemplate`radial-gradient(800px circle at ${mouseX}px ${mouseY}px, ${theme.accent}08, transparent 40%)`
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect()
     mouseX.set(e.clientX - rect.left)
     mouseY.set(e.clientY - rect.top)
   }, [mouseX, mouseY])
-
   const [packages, setPackages] = useState<Package[]>([])
   const [userPackages, setUserPackages] = useState<UserPackage[]>([])
   const [user, setUser] = useState<any>(null)
@@ -123,23 +111,18 @@ export default function GradePage() {
   const [activeTab, setActiveTab] = useState<'all' | 'purchased' | 'offers'>('all')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
-
   const fetchData = useCallback(async () => {
     try {
       if (!isRefreshing) setLoading(true)
       setError(null)
-      
-      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
-      
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()     
       if (userError || !currentUser) {
         setUser(null)
         setLoading(false)
         setIsRefreshing(false)
         return
       }
-      
-      setUser(currentUser)
-
+          setUser(currentUser)
       const { data: packagesData, error: packagesError } = await supabase
         .from('packages')
         .select('*')
