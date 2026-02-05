@@ -90,7 +90,7 @@ interface ContentView {
   created_at: string
 }
 
-// ==================== Supabase Singleton ====================
+// ==================== Supabase Client ====================
 let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null
 
 const getSupabase = () => {
@@ -114,7 +114,7 @@ function LoadingState() {
           <motion.div 
             className={styles.loadingRing}
             animate={{ rotate: 360 }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
           />
           <GraduationCap className={styles.loadingIcon} size={28} />
         </div>
@@ -173,7 +173,6 @@ function PackageContent() {
   const [error, setError] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
-  const [processingContent, setProcessingContent] = useState<string | null>(null)
 
   const supabase = useMemo(() => getSupabase(), [])
 
@@ -216,7 +215,6 @@ function PackageContent() {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
-          console.error('Session error:', sessionError)
           setError('حدث خطأ في التحقق من الجلسة')
           setLoading(false)
           return
@@ -315,7 +313,7 @@ function PackageContent() {
           
           setUserProgress(progressData || [])
 
-          // Fetch content views from database
+          // Fetch content views
           if (contentsData && contentsData.length > 0) {
             const contentIds = contentsData.map((c: { id: any }) => c.id)
             
@@ -396,7 +394,13 @@ function PackageContent() {
     return true
   }, [packageData, lectures, contents, userProgress])
 
-  // Get view info for content
+  // Check if views are exhausted
+  const isViewsExhausted = useCallback((contentId: string, maxAttempts: number): boolean => {
+    const currentViews = contentViews.get(contentId) || 0
+    return currentViews >= maxAttempts
+  }, [contentViews])
+
+  // Get view count info
   const getViewInfo = useCallback((contentId: string, maxAttempts: number) => {
     const currentViews = contentViews.get(contentId) || 0
     return {
@@ -406,94 +410,6 @@ function PackageContent() {
       remaining: Math.max(0, maxAttempts - currentViews)
     }
   }, [contentViews])
-
-  // Record view and navigate to content
-  const handleContentClick = useCallback(async (
-    content: LectureContent, 
-    lectureIndex: number, 
-    contentIndex: number
-  ) => {
-    if (!supabase || !userId) return
-    
-    const accessible = isContentAccessible(lectureIndex, contentIndex)
-    const viewInfo = getViewInfo(content.id, content.max_attempts)
-    
-    // Check if locked or exhausted
-    if (!accessible || viewInfo.exhausted) return
-    
-    // Set processing state
-    setProcessingContent(content.id)
-    
-    try {
-      // Check existing view record
-      const { data: existingView, error: fetchError } = await supabase
-        .from('content_views')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('content_id', content.id)
-        .maybeSingle()
-
-      if (fetchError) {
-        console.error('Error fetching view:', fetchError)
-      }
-
-      if (existingView) {
-        // Update existing record - increment view count
-        const newViewCount = existingView.view_count + 1
-        
-        const { error: updateError } = await supabase
-          .from('content_views')
-          .update({
-            view_count: newViewCount,
-            last_viewed_at: new Date().toISOString()
-          })
-          .eq('id', existingView.id)
-
-        if (updateError) {
-          console.error('Error updating view:', updateError)
-          setProcessingContent(null)
-          return
-        }
-
-        // Update local state
-        setContentViews(prev => {
-          const newMap = new Map(prev)
-          newMap.set(content.id, newViewCount)
-          return newMap
-        })
-      } else {
-        // Create new record
-        const { error: insertError } = await supabase
-          .from('content_views')
-          .insert({
-            user_id: userId,
-            content_id: content.id,
-            view_count: 1,
-            last_viewed_at: new Date().toISOString()
-          })
-
-        if (insertError) {
-          console.error('Error inserting view:', insertError)
-          setProcessingContent(null)
-          return
-        }
-
-        // Update local state
-        setContentViews(prev => {
-          const newMap = new Map(prev)
-          newMap.set(content.id, 1)
-          return newMap
-        })
-      }
-
-      // Navigate to content page
-      router.push(`/grades/${gradeSlug}/packages/${packageId}/content/${content.id}`)
-      
-    } catch (err) {
-      console.error('Error recording view:', err)
-      setProcessingContent(null)
-    }
-  }, [supabase, userId, isContentAccessible, getViewInfo, gradeSlug, packageId, router])
 
   // Get content icon
   const getContentIcon = useCallback((type: string, isCompleted: boolean) => {
@@ -517,6 +433,20 @@ function PackageContent() {
     const progress = userProgress.find(p => p.lecture_content_id === contentId)
     return progress?.status || 'not_started'
   }, [userProgress])
+
+  // Handle content click
+  const handleContentClick = useCallback((
+    content: LectureContent, 
+    lectureIndex: number, 
+    contentIndex: number
+  ) => {
+    const accessible = isContentAccessible(lectureIndex, contentIndex)
+    const exhausted = isViewsExhausted(content.id, content.max_attempts)
+    
+    if (!accessible || exhausted) return
+    
+    router.push(`/grades/${gradeSlug}/packages/${packageId}/content/${content.id}`)
+  }, [isContentAccessible, isViewsExhausted, gradeSlug, packageId, router])
 
   // Toggle section
   const toggleSection = useCallback((sectionId: string) => {
@@ -569,9 +499,10 @@ function PackageContent() {
         await navigator.share(shareData)
       } else {
         await navigator.clipboard.writeText(window.location.href)
+        // Could add toast notification here
       }
     } catch {
-      // Silently handle error
+      // User cancelled or error
     }
   }, [packageData])
 
@@ -931,8 +862,7 @@ function PackageContent() {
                                   const isInProgressStatus = status === 'in_progress'
                                   
                                   const viewInfo = getViewInfo(content.id, content.max_attempts)
-                                  const isExpiredViews = viewInfo.exhausted
-                                  const isProcessing = processingContent === content.id
+                                  const isExpiredViews = viewInfo.exhausted && !isCompleted
                                   
                                   return (
                                     <motion.div
@@ -945,10 +875,9 @@ function PackageContent() {
                                       } ${!isAccessible ? styles.contentLocked : ''} ${
                                         isFailed ? styles.contentFailed : ''
                                       } ${isExpiredViews ? styles.contentExpired : ''}`}
-                                      onClick={() => !isProcessing && handleContentClick(content, lectureIndex, contentIndex)}
+                                      onClick={() => handleContentClick(content, lectureIndex, contentIndex)}
                                       role="button"
                                       tabIndex={isAccessible && !isExpiredViews ? 0 : -1}
-                                      style={{ pointerEvents: isProcessing ? 'none' : 'auto' }}
                                     >
                                       <div className={styles.contentMain}>
                                         {getContentIcon(content.type, isCompleted)}
@@ -989,14 +918,14 @@ function PackageContent() {
                                                 النجاح: {content.pass_score}%
                                               </span>
                                             )}
-                                            {/* View Count Badge - Real Data */}
+                                            {/* View Count Badge */}
                                             <span className={`${styles.viewCountBadge} ${
                                               viewInfo.exhausted ? styles.viewsExpired :
                                               viewInfo.remaining <= 2 ? styles.viewsLimited :
                                               styles.viewsAvailable
                                             }`}>
                                               <Eye size={12} />
-                                              {viewInfo.current} / {viewInfo.max}
+                                              {viewInfo.current}/{viewInfo.max}
                                             </span>
                                           </div>
                                         </div>
@@ -1011,21 +940,8 @@ function PackageContent() {
                                         ) : isExpiredViews ? (
                                           <div className={styles.expiredBadge}>
                                             <Ban size={14} />
-                                            <span>انتهت المشاهدات</span>
+                                            <span>منتهي</span>
                                           </div>
-                                        ) : isProcessing ? (
-                                          <motion.button
-                                            className={`${styles.actionButton} ${styles.btnPrimary}`}
-                                            disabled
-                                          >
-                                            <motion.div
-                                              animate={{ rotate: 360 }}
-                                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                            >
-                                              <Clock size={14} />
-                                            </motion.div>
-                                            جاري الفتح...
-                                          </motion.button>
                                         ) : (
                                           <motion.button
                                             whileHover={{ scale: 1.02 }}
@@ -1109,9 +1025,9 @@ function PackageContent() {
                   
                   <div className={styles.noteItem}>
                     <div className={`${styles.noteIcon} ${styles.noteOrange}`}>
-                      <Eye size={14} />
+                      <Bookmark size={14} />
                     </div>
-                    <p>لكل محتوى عدد مشاهدات محدود - استخدمها بحكمة</p>
+                    <p>لكل محتوى عدد مرات فتح محدود</p>
                   </div>
                 </div>
               </motion.div>
