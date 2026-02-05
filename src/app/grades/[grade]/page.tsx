@@ -166,9 +166,11 @@ export default function GradePage() {
       setUserPackages(userPkgs as UserPackage[] || [])
       
     } catch (err: any) {
-      console.error('Error fetching data:', err)
-      setError(err.message || 'حدث خطأ أثناء جلب البيانات')
-    } finally {
+  if (err?.name === 'AbortError') return
+  console.error('Error fetching data:', err)
+  setError(err.message || 'حدث خطأ أثناء جلب البيانات')
+}
+ finally {
       setLoading(false)
       setIsRefreshing(false)
     }
@@ -202,7 +204,9 @@ export default function GradePage() {
       })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+return () => {
+  supabase.removeChannel(channel)
+}
   }, [user?.id, supabase])
 
   const { purchased, available, offers } = useMemo(() => {
