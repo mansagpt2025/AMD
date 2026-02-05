@@ -1,741 +1,412 @@
-'use client'
+"use client"
 
 import React from "react"
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useRouter, useParams } from 'next/navigation'
-import { motion, AnimatePresence, useScroll, useSpring, useMotionValue, useMotionTemplate } from 'framer-motion'
-import { createBrowserClient } from '@supabase/ssr'
-import { 
-  Wallet, BookOpen, GraduationCap, Loader2, AlertCircle,
-  Crown, Sparkles, Clock, Calendar, Medal, PlayCircle,
-  CheckCircle2, ArrowRight, ShoppingCart, RefreshCw, 
-  Ticket, CreditCard, X, Shield, Gift, Zap, Star,
-  ChevronLeft, Award, BookMarked, ArrowLeft, Users
-} from 'lucide-react'
-import styles from './GradePage.module.css'
+import { useState, useMemo } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import {
+  BookOpen,
+  Calendar,
+  Clock,
+  CreditCard,
+  Gift,
+  GraduationCap,
+  Key,
+  Layers,
+  Package,
+  Play,
+  ShoppingCart,
+  Sparkles,
+  Star,
+  Timer,
+  Wallet,
+  X,
+  Check,
+  AlertCircle,
+  Shield,
+  CheckCircle2,
+  ChevronLeft,
+  Users,
+  TrendingUp,
+} from "lucide-react"
+import { use } from "react"
+import styles from "./GradePage.module.css"
 
-import { 
-  deductWalletBalance, 
-  markCodeAsUsed, 
-  createUserPackage, 
-  validateCode,
-  getWalletBalance 
-} from './actions'
-
-interface Package {
+// Types
+interface PackageData {
   id: string
   name: string
-  description: string
+  description: string | null
   price: number
-  image_url: string
-  type: 'weekly' | 'monthly' | 'term' | 'offer'
-  lecture_count: number
+  original_price: number | null
+  image_url: string | null
   grade: string
+  type: "weekly" | "monthly" | "term" | "offer"
+  lecture_count: number
   duration_days: number
   is_active: boolean
-  original_price?: number
-  discount_percentage?: number
-  features?: string[]
-  instructor?: string
-  rating?: number
-  students_count?: number
+  created_at: string
+  updated_at: string
 }
 
 interface UserPackage {
   id: string
   package_id: string
-  expires_at: string
+  purchased_at: string
+  expires_at: string | null
   is_active: boolean
-  packages: Package
 }
 
-interface ThemeType {
-  primary: string
-  secondary: string
-  accent: string
-  gradient: string
-  light: string
-  dark: string
-}
+// Mock Data for Demo
+const MOCK_PACKAGES: PackageData[] = [
+  {
+    id: "1",
+    name: "باقة الأسبوع الأول",
+    description: "محتوى تعليمي متكامل للأسبوع الأول من الفصل الدراسي",
+    price: 50,
+    original_price: 75,
+    image_url: null,
+    grade: "first",
+    type: "weekly",
+    lecture_count: 4,
+    duration_days: 7,
+    is_active: true,
+    created_at: "2024-01-15T10:00:00Z",
+    updated_at: "2024-02-01T14:30:00Z",
+  },
+  {
+    id: "2",
+    name: "باقة الأسبوع الثاني",
+    description: "استمر في رحلة التعلم مع محتوى الأسبوع الثاني",
+    price: 50,
+    original_price: null,
+    image_url: null,
+    grade: "first",
+    type: "weekly",
+    lecture_count: 5,
+    duration_days: 7,
+    is_active: true,
+    created_at: "2024-01-20T10:00:00Z",
+    updated_at: "2024-02-03T09:15:00Z",
+  },
+  {
+    id: "3",
+    name: "باقة شهر يناير",
+    description: "كل محتوى شهر يناير في باقة واحدة بسعر مميز",
+    price: 150,
+    original_price: 200,
+    image_url: null,
+    grade: "first",
+    type: "monthly",
+    lecture_count: 16,
+    duration_days: 30,
+    is_active: true,
+    created_at: "2024-01-01T10:00:00Z",
+    updated_at: "2024-01-28T16:45:00Z",
+  },
+  {
+    id: "4",
+    name: "باقة شهر فبراير",
+    description: "محتوى شهر فبراير الشامل",
+    price: 150,
+    original_price: null,
+    image_url: null,
+    grade: "first",
+    type: "monthly",
+    lecture_count: 14,
+    duration_days: 30,
+    is_active: true,
+    created_at: "2024-02-01T10:00:00Z",
+    updated_at: "2024-02-05T11:20:00Z",
+  },
+  {
+    id: "5",
+    name: "باقة الترم الأول",
+    description: "الباقة الشاملة للترم الأول بالكامل - وفر أكثر من 40%",
+    price: 400,
+    original_price: 700,
+    image_url: null,
+    grade: "first",
+    type: "term",
+    lecture_count: 48,
+    duration_days: 120,
+    is_active: true,
+    created_at: "2024-01-01T10:00:00Z",
+    updated_at: "2024-02-04T13:00:00Z",
+  },
+  {
+    id: "6",
+    name: "عرض البداية",
+    description: "عرض خاص للطلاب الجدد - خصم 50% على أول باقة",
+    price: 75,
+    original_price: 150,
+    image_url: null,
+    grade: "first",
+    type: "offer",
+    lecture_count: 8,
+    duration_days: 14,
+    is_active: true,
+    created_at: "2024-02-01T10:00:00Z",
+    updated_at: "2024-02-05T08:00:00Z",
+  },
+  {
+    id: "7",
+    name: "عرض المتفوقين",
+    description: "باقة خاصة للطلاب المتميزين مع محتوى إضافي حصري",
+    price: 200,
+    original_price: 350,
+    image_url: null,
+    grade: "first",
+    type: "offer",
+    lecture_count: 20,
+    duration_days: 45,
+    is_active: true,
+    created_at: "2024-01-25T10:00:00Z",
+    updated_at: "2024-02-02T17:30:00Z",
+  },
+]
 
-const themes: Record<string, ThemeType> = {
+const MOCK_USER_PACKAGES: UserPackage[] = [
+  {
+    id: "up1",
+    package_id: "1",
+    purchased_at: "2024-02-01T10:00:00Z",
+    expires_at: "2024-02-08T10:00:00Z",
+    is_active: true,
+  },
+]
+
+const MOCK_WALLET_BALANCE = 250
+
+// Grade configuration
+const GRADE_CONFIG: Record<string, { name: string; icon: React.ReactNode; color: string; students: number }> = {
   first: {
-    primary: '#1a1a2e',
-    secondary: '#16213e',
-    accent: '#e94560',
-    gradient: 'from-slate-900 via-slate-800 to-rose-900',
-    light: '#f8fafc',
-    dark: '#0f172a'
+    name: "الصف الأول الثانوي",
+    icon: <GraduationCap size={32} />,
+    color: "#3b82f6",
+    students: 1250,
   },
   second: {
-    primary: '#1a1a2e',
-    secondary: '#0f3460',
-    accent: '#00b4d8',
-    gradient: 'from-slate-900 via-blue-900 to-cyan-900',
-    light: '#f0f9ff',
-    dark: '#0c4a6e'
+    name: "الصف الثاني الثانوي",
+    icon: <GraduationCap size={32} />,
+    color: "#8b5cf6",
+    students: 980,
   },
   third: {
-    primary: '#1a1a2e',
-    secondary: '#2d132c',
-    accent: '#ee6c4d',
-    gradient: 'from-slate-900 via-rose-900 to-orange-900',
-    light: '#fff7ed',
-    dark: '#7c2d12'
+    name: "الصف الثالث الثانوي",
+    icon: <GraduationCap size={32} />,
+    color: "#f59e0b",
+    students: 1420,
+  },
+}
+
+// Tab configuration
+const TABS = [
+  { id: "weekly", label: "الأسبوعية", icon: <Calendar size={18} /> },
+  { id: "monthly", label: "الشهرية", icon: <Layers size={18} /> },
+  { id: "term", label: "الترم", icon: <BookOpen size={18} /> },
+  { id: "offer", label: "العروض", icon: <Gift size={18} /> },
+]
+
+// Helper functions
+function formatDate(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return "اليوم"
+  if (diffDays === 1) return "أمس"
+  if (diffDays < 7) return `منذ ${diffDays} أيام`
+  if (diffDays < 30) return `منذ ${Math.floor(diffDays / 7)} أسابيع`
+  return date.toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" })
+}
+
+function getRemainingDays(expiresAt: string | null): number | null {
+  if (!expiresAt) return null
+  const now = new Date()
+  const expiry = new Date(expiresAt)
+  const diffMs = expiry.getTime() - now.getTime()
+  return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+}
+
+function getTypeIcon(type: string) {
+  switch (type) {
+    case "weekly":
+      return <Calendar size={16} />
+    case "monthly":
+      return <Layers size={16} />
+    case "term":
+      return <BookOpen size={16} />
+    case "offer":
+      return <Gift size={16} />
+    default:
+      return <Package size={16} />
   }
 }
 
-export default function GradePage() {
-  const router = useRouter()
-  const params = useParams()
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-  
-  const gradeSlug = params?.grade as 'first' | 'second' | 'third'
-  const theme = themes[gradeSlug] || themes.first
-
-  const containerRef = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({ container: containerRef })
-  const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 })
-  
-  const mouseX = useMotionValue(0)
-  const mouseY = useMotionValue(0)
-  
-  const spotlightBackground = useMotionTemplate`radial-gradient(800px circle at ${mouseX}px ${mouseY}px, ${theme.accent}08, transparent 40%)`
-  
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    mouseX.set(e.clientX - rect.left)
-    mouseY.set(e.clientY - rect.top)
-  }, [mouseX, mouseY])
-
-  const [packages, setPackages] = useState<Package[]>([])
-  const [userPackages, setUserPackages] = useState<UserPackage[]>([])
-  const [user, setUser] = useState<any>(null)
-  const [walletBalance, setWalletBalance] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
-  const [activeTab, setActiveTab] = useState<'all' | 'purchased' | 'offers'>('all')
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [showConfetti, setShowConfetti] = useState(false)
-
-  const fetchData = useCallback(async () => {
-    try {
-      if (!isRefreshing) setLoading(true)
-      setError(null)
-      
-      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
-      
-      if (userError || !currentUser) {
-        setUser(null)
-        setLoading(false)
-        setIsRefreshing(false)
-        return
-      }
-      
-      setUser(currentUser)
-
-      const { data: packagesData, error: packagesError } = await supabase
-        .from('packages')
-        .select('*')
-        .eq('grade', gradeSlug)
-        .eq('is_active', true)
-        .order('price', { ascending: true })
-
-      if (packagesError) throw packagesError
-      
-      const enhancedPackages = packagesData?.map(pkg => ({
-        ...pkg,
-        features: pkg.features || [
-          `${pkg.lecture_count} محاضرة تفاعلية`,
-          'وصول كامل لمدة ' + pkg.duration_days + ' يوم',
-          'دعم فني على مدار الساعة',
-          'شهادة إتمام'
-        ],
-        original_price: pkg.type === 'offer' ? pkg.price * 1.3 : undefined,
-        instructor: pkg.instructor || 'أستاذ محمود الديب',
-        rating: pkg.rating || 4.9,
-        students_count: pkg.students_count || 0
-      })) || []
-      
-      setPackages(enhancedPackages)
-
-      const walletResult = await getWalletBalance(currentUser.id)
-      if (walletResult.success && walletResult.data) {
-        setWalletBalance(walletResult.data.balance || 0)
-      } else {
-        console.error('Failed to fetch wallet:', walletResult.message)
-      }
-
-      const { data: userPkgs, error: userPkgsError } = await supabase
-        .from('user_packages')
-        .select(`*, packages:package_id(*)`)
-        .eq('user_id', currentUser.id)
-        .eq('is_active', true)
-        .gt('expires_at', new Date().toISOString())
-
-      if (userPkgsError) throw userPkgsError
-      setUserPackages(userPkgs as UserPackage[] || [])
-      
-    } catch (err: any) {
-      console.error('Error fetching data:', err)
-      setError(err.message || 'حدث خطأ أثناء جلب البيانات')
-    } finally {
-      setLoading(false)
-      setIsRefreshing(false)
-    }
-  }, [gradeSlug, supabase, isRefreshing])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  useEffect(() => {
-    if (!user?.id) return
-    
-    const channel = supabase
-      .channel(`wallet-${user.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'wallets',
-        filter: `user_id=eq.${user.id}`
-      }, async (payload: any) => {
-        if (payload.new?.balance !== undefined) {
-          setWalletBalance(payload.new.balance)
-        } else {
-          const result = await getWalletBalance(user.id)
-          if (result.success && result.data) {
-            setWalletBalance(result.data.balance ?? 0)
-          }
-        }
-        setShowConfetti(true)
-        setTimeout(() => setShowConfetti(false), 3000)
-      })
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [user?.id, supabase])
-
-  const { purchased, available, offers } = useMemo(() => {
-    const purchasedIds = userPackages.map(up => up.package_id)
-    
-    const purchased = userPackages
-      .filter(up => up.packages)
-      .map(up => ({ 
-        ...up.packages, 
-        userPackageId: up.id, 
-        expires_at: up.expires_at 
-      }))
-    
-    const available = packages.filter(p => 
-      !purchasedIds.includes(p.id) && p.type !== 'offer'
-    )
-    
-    const offers = packages.filter(p => 
-      !purchasedIds.includes(p.id) && p.type === 'offer'
-    )
-    
-    return { purchased, available, offers }
-  }, [packages, userPackages])
-
-  const filteredPackages = useMemo(() => {
-    switch (activeTab) {
-      case 'purchased': return purchased
-      case 'offers': return offers
-      default: return [...purchased, ...available, ...offers]
-    }
-  }, [purchased, available, offers, activeTab])
-
-  const handlePurchaseClick = (pkg: Package) => {
-    if (!user) {
-      router.push(`/login?returnUrl=/grades/${gradeSlug}`)
-      return
-    }
-    setSelectedPackage(pkg)
-    setShowPurchaseModal(true)
+function getTypeLabel(type: string) {
+  switch (type) {
+    case "weekly":
+      return "أسبوعية"
+    case "monthly":
+      return "شهرية"
+    case "term":
+      return "ترم"
+    case "offer":
+      return "عرض"
+    default:
+      return type
   }
+}
 
-  const handleEnterPackage = (pkgId: string) => {
-    router.push(`/grades/${gradeSlug}/packages/${pkgId}`)
-  }
-
-  const handleRefresh = () => {
-    setIsRefreshing(true)
-    fetchData()
-  }
-
-  const getGradeName = () => {
-    switch(gradeSlug) {
-      case 'first': return 'الصف الأول الثانوي'
-      case 'second': return 'الصف الثاني الثانوي'
-      case 'third': return 'الصف الثالث الثانوي'
-      default: return 'الصف الدراسي'
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className={styles.loadingScreen}>
-        <div className={styles.loadingContent}>
-          <div className={styles.loadingLogo}>
-            <motion.div 
-              className={styles.loadingRing}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            />
-            <Crown className={styles.loadingIcon} size={32} />
-          </div>
-          <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            جاري تحميل البيانات
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            نحضر لك أفضل المحتوى التعليمي...
-          </motion.p>
-        </div>
-      </div>
-    )
-  }
+// Confetti Component
+function Confetti() {
+  const pieces = Array.from({ length: 50 }, (_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    delay: Math.random() * 0.5,
+    duration: 2 + Math.random() * 2,
+    color: ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"][Math.floor(Math.random() * 5)],
+    size: 8 + Math.random() * 8,
+  }))
 
   return (
-    <div 
-      className={styles.pageWrapper} 
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-    >
-      <motion.div
-        className={styles.spotlight}
-        style={{ background: spotlightBackground }}
-      />
-
-      <motion.div 
-        className={styles.progressIndicator}
-        style={{ scaleX }}
-      />
-
-      {/* Floating Elements */}
-      <div className={styles.floatingElements}>
-        {[...Array(6)].map((_, i) => (
-          <motion.div
-            key={i}
-            className={styles.floatingOrb}
-            animate={{
-              y: [0, -30, 0],
-              x: [0, Math.sin(i) * 20, 0],
-              scale: [1, 1.1, 1],
-            }}
-            transition={{
-              duration: 4 + i,
-              repeat: Infinity,
-              delay: i * 0.5,
-              ease: "easeInOut"
-            }}
-            style={{
-              left: `${15 + i * 15}%`,
-              top: `${20 + (i % 3) * 25}%`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <div className={styles.headerContent}>
-            {/* Logo */}
-            <motion.div 
-              initial={{ x: -30, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              className={styles.brand}
-            >
-              <div className={styles.logoMark}>
-                <Crown size={24} />
-              </div>
-              <div className={styles.brandInfo}>
-                <span className={styles.brandName}>البارع محمود الديب</span>
-                <span className={styles.brandTagline}>منارة العلم والتميز</span>
-              </div>
-            </motion.div>
-
-            {/* Wallet or Login */}
-            {user ? (
-              <motion.div 
-                initial={{ x: 30, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                className={styles.walletWidget}
-              >
-                <div className={styles.walletContent}>
-                  <div className={styles.walletIconWrapper}>
-                    <Wallet size={18} />
-                  </div>
-                  <div className={styles.walletInfo}>
-                    <span className={styles.walletLabel}>رصيدك</span>
-                    <span className={styles.walletAmount}>{walletBalance.toLocaleString()} ج.م</span>
-                  </div>
-                </div>
-                <motion.button 
-                  className={styles.refreshButton}
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  whileHover={{ rotate: 180 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <RefreshCw size={16} className={isRefreshing ? styles.spinning : ''} />
-                </motion.button>
-              </motion.div>
-            ) : (
-              <motion.button
-                initial={{ x: 30, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                className={styles.loginButton}
-                onClick={() => router.push(`/login?returnUrl=/grades/${gradeSlug}`)}
-              >
-                <span>تسجيل الدخول</span>
-                <ArrowLeft size={18} />
-              </motion.button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section className={styles.heroSection}>
-        <div className={styles.heroContainer}>
-          <motion.div 
-            initial={{ y: 40, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className={styles.heroContent}
-          >
-            <div className={styles.gradeIconWrapper}>
-              <motion.div 
-                className={styles.gradeIcon}
-                whileHover={{ scale: 1.1, rotate: 5 }}
-              >
-                <GraduationCap size={40} />
-              </motion.div>
-            </div>
-            
-            <h1 className={styles.heroTitle}>{getGradeName()}</h1>
-            <p className={styles.heroSubtitle}>اختر باقتك المثالية وانطلق في رحلة التميز الأكاديمي</p>
-            
-            <div className={styles.heroStats}>
-              <div className={styles.heroStatItem}>
-                <span className={styles.heroStatValue}>{packages.length}+</span>
-                <span className={styles.heroStatLabel}>باقة متاحة</span>
-              </div>
-              <div className={styles.heroStatDivider} />
-              <div className={styles.heroStatItem}>
-                <span className={styles.heroStatValue}>{purchased.length}</span>
-                <span className={styles.heroStatLabel}>اشتراك نشط</span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Navigation Tabs */}
-      <nav className={styles.tabsNav}>
-        <div className={styles.tabsContainer}>
-          <div className={styles.tabsList}>
-            {[
-              { id: 'all', label: 'جميع الباقات', icon: BookOpen, count: purchased.length + available.length + offers.length },
-              { id: 'purchased', label: 'اشتراكاتي', icon: CheckCircle2, count: purchased.length, show: purchased.length > 0 },
-              { id: 'offers', label: 'العروض', icon: Sparkles, count: offers.length, show: offers.length > 0 }
-            ].map((tab) => (
-              tab.show !== false && (
-                <motion.button 
-                  key={tab.id}
-                  className={`${styles.tabButton} ${activeTab === tab.id ? styles.tabActive : ''}`}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <tab.icon size={18} />
-                  <span>{tab.label}</span>
-                  <span className={styles.tabCount}>{tab.count}</span>
-                  {activeTab === tab.id && (
-                    <motion.div 
-                      className={styles.tabIndicator}
-                      layoutId="activeTab"
-                    />
-                  )}
-                </motion.button>
-              )
-            ))}
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className={styles.mainContent}>
-        <div className={styles.contentContainer}>
-          {/* Quick Stats for logged in users */}
-          {user && purchased.length > 0 && (
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className={styles.quickStats}
-            >
-              {[
-                { icon: BookMarked, label: 'باقة نشطة', value: purchased.length },
-                { icon: PlayCircle, label: 'محاضرة متاحة', value: purchased.reduce((acc, p) => acc + (p.lecture_count || 0), 0) },
-                { icon: Clock, label: 'يوم متبقي', value: Math.max(0, Math.ceil(userPackages.reduce((acc, up) => acc + (new Date(up.expires_at).getTime() - Date.now()), 0) / (1000 * 60 * 60 * 24))) }
-              ].map((stat, idx) => (
-                <motion.div 
-                  key={idx}
-                  className={styles.quickStatCard}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                >
-                  <div className={styles.quickStatIcon}>
-                    <stat.icon size={22} />
-                  </div>
-                  <div className={styles.quickStatInfo}>
-                    <span className={styles.quickStatValue}>{stat.value}</span>
-                    <span className={styles.quickStatLabel}>{stat.label}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
-
-          {/* Error Alert */}
-          <AnimatePresence mode="wait">
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className={styles.errorAlert}
-              >
-                <AlertCircle size={20} />
-                <span>{error}</span>
-                <button onClick={fetchData}>إعادة المحاولة</button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Packages Grid */}
-          <motion.div layout className={styles.packagesGrid}>
-            <AnimatePresence mode="popLayout">
-              {filteredPackages.map((pkg: any, index) => (
-                <PackageCard 
-                  key={pkg.id}
-                  pkg={pkg}
-                  isPurchased={purchased.some(p => p.id === pkg.id)}
-                  theme={theme}
-                  index={index}
-                  onPurchase={() => handlePurchaseClick(pkg)}
-                  onEnter={() => handleEnterPackage(pkg.id)}
-                />
-              ))}
-            </AnimatePresence>
-          </motion.div>
-
-          {/* Empty State */}
-          {filteredPackages.length === 0 && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className={styles.emptyState}
-            >
-              <div className={styles.emptyIcon}>
-                <BookOpen size={48} />
-              </div>
-              <h3>لا توجد باقات متاحة</h3>
-              <p>سيتم إضافة باقات جديدة قريباً</p>
-            </motion.div>
-          )}
-        </div>
-      </main>
-
-      {/* Purchase Modal */}
-      <AnimatePresence>
-        {showPurchaseModal && selectedPackage && user && (
-          <PurchaseModal 
-            pkg={selectedPackage}
-            user={user}
-            walletBalance={walletBalance}
-            theme={theme}
-            onClose={() => {
-              setShowPurchaseModal(false)
-              setSelectedPackage(null)
-            }}
-            onSuccess={() => {
-              handleRefresh()
-              setShowPurchaseModal(false)
-              setShowConfetti(true)
-              setTimeout(() => setShowConfetti(false), 5000)
-            }}
-            gradeSlug={gradeSlug}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Confetti Effect */}
-      <AnimatePresence>
-        {showConfetti && <ConfettiEffect theme={theme} />}
-      </AnimatePresence>
+    <div className={styles.confettiContainer}>
+      {pieces.map((piece) => (
+        <motion.div
+          key={piece.id}
+          className={styles.confettiPiece}
+          initial={{ y: -20, x: 0, rotate: 0, opacity: 1 }}
+          animate={{
+            y: window.innerHeight + 100,
+            x: (Math.random() - 0.5) * 200,
+            rotate: Math.random() * 720 - 360,
+            opacity: 0,
+          }}
+          transition={{
+            duration: piece.duration,
+            delay: piece.delay,
+            ease: "easeOut",
+          }}
+          style={{
+            left: `${piece.left}%`,
+            width: piece.size,
+            height: piece.size,
+            backgroundColor: piece.color,
+            borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+          }}
+        />
+      ))}
     </div>
   )
 }
 
 // Package Card Component
-function PackageCard({ pkg, isPurchased, theme, index, onPurchase, onEnter }: any) {
-  const getTypeLabel = () => {
-    switch (pkg.type) {
-      case 'weekly': return 'أسبوعي'
-      case 'monthly': return 'شهري'
-      case 'term': return 'ترم كامل'
-      case 'offer': return 'عرض خاص'
-      default: return pkg.type
-    }
-  }
-
-  const getTypeIcon = () => {
-    switch (pkg.type) {
-      case 'weekly': return <Clock size={14} />
-      case 'monthly': return <Calendar size={14} />
-      case 'term': return <Medal size={14} />
-      case 'offer': return <Zap size={14} />
-      default: return <BookOpen size={14} />
-    }
-  }
+function PackageCard({
+  pkg,
+  isOwned,
+  userPackage,
+  onPurchase,
+  onEnter,
+}: {
+  pkg: PackageData
+  isOwned: boolean
+  userPackage?: UserPackage
+  onPurchase: () => void
+  onEnter: () => void
+}) {
+  const remainingDays = userPackage ? getRemainingDays(userPackage.expires_at) : null
+  const discount = pkg.original_price ? Math.round(((pkg.original_price - pkg.price) / pkg.original_price) * 100) : null
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: 40 }}
+      className={`${styles.packageCard} ${isOwned ? styles.ownedCard : ""}`}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ delay: index * 0.05, type: "spring", stiffness: 100, damping: 20 }}
-      className={`${styles.packageCard} ${isPurchased ? styles.cardPurchased : ''} ${pkg.type === 'offer' ? styles.cardOffer : ''}`}
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.3 }}
     >
-      {/* Status Badge */}
-      {(isPurchased || pkg.type === 'offer') && (
-        <motion.div 
-          className={`${styles.statusBadge} ${isPurchased ? styles.badgePurchased : styles.badgeOffer}`}
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", delay: 0.2 }}
-        >
-          {isPurchased ? <CheckCircle2 size={12} /> : <Zap size={12} />}
-          <span>{isPurchased ? 'مفعّل' : 'عرض خاص'}</span>
-        </motion.div>
-      )}
-
-      {/* Discount Badge */}
-      {pkg.original_price && (
-        <motion.div 
-          className={styles.discountBadge}
-          initial={{ x: 30, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Sparkles size={12} />
-          <span>خصم {Math.round((1 - pkg.price/pkg.original_price) * 100)}%</span>
-        </motion.div>
-      )}
-
-      {/* Card Image */}
+      {/* Card Image/Header */}
       <div className={styles.cardImageSection}>
-        {pkg.image_url ? (
-          <img src={pkg.image_url || "/placeholder.svg"} alt={pkg.name} className={styles.cardImage} loading="lazy" />
-        ) : (
-          <div className={styles.cardImagePlaceholder}>
-            <GraduationCap size={48} />
+        <div className={styles.cardImageOverlay} />
+        <div className={styles.cardImageContent}>
+          {getTypeIcon(pkg.type)}
+          <span>{getTypeLabel(pkg.type)}</span>
+        </div>
+        {discount && (
+          <div className={styles.discountBadge}>
+            <Sparkles size={12} />
+            <span>خصم {discount}%</span>
           </div>
         )}
-        <div className={styles.cardImageOverlay} />
-        
-        {/* Type Badge */}
-        <div className={`${styles.typeBadge} ${styles[`type${pkg.type.charAt(0).toUpperCase() + pkg.type.slice(1)}`]}`}>
-          {getTypeIcon()}
-          <span>{getTypeLabel()}</span>
-        </div>
+        {isOwned && (
+          <div className={styles.ownedBadge}>
+            <Check size={14} />
+            <span>مشترك</span>
+          </div>
+        )}
       </div>
 
       {/* Card Content */}
       <div className={styles.cardContent}>
         <h3 className={styles.cardTitle}>{pkg.name}</h3>
-        <p className={styles.cardDescription}>{pkg.description}</p>
+        {pkg.description && <p className={styles.cardDescription}>{pkg.description}</p>}
 
-        {/* Features */}
-        <ul className={styles.featureList}>
-          {pkg.features?.slice(0, 3).map((feature: string, i: number) => (
-            <li key={i}>
-              <CheckCircle2 size={14} />
-              <span>{feature}</span>
-            </li>
-          ))}
-        </ul>
-
-        {/* Stats Row */}
-        <div className={styles.cardStatsRow}>
+        {/* Stats */}
+        <div className={styles.cardStats}>
           <div className={styles.cardStat}>
-            <PlayCircle size={16} />
+            <Play size={14} />
             <span>{pkg.lecture_count} محاضرة</span>
           </div>
           <div className={styles.cardStat}>
-            <Clock size={16} />
+            <Timer size={14} />
             <span>{pkg.duration_days} يوم</span>
+          </div>
+          <div className={styles.cardStat}>
+            <Clock size={14} />
+            <span>{formatDate(pkg.updated_at)}</span>
           </div>
         </div>
 
-        {/* Expiry */}
-        {pkg.expires_at && (
+        {/* Expiry Info for Owned Packages */}
+        {isOwned && remainingDays !== null && (
           <div className={styles.expiryInfo}>
-            <Calendar size={14} />
-            <span>ينتهي: {new Date(pkg.expires_at).toLocaleDateString('ar-EG')}</span>
+            <Clock size={14} />
+            <span>
+              {remainingDays > 0 ? `متبقي ${remainingDays} يوم` : "انتهت الصلاحية"}
+            </span>
           </div>
         )}
 
         {/* Footer */}
         <div className={styles.cardFooter}>
           <div className={styles.priceSection}>
-            {pkg.original_price && (
-              <span className={styles.originalPrice}>{pkg.original_price.toLocaleString()} ج.م</span>
-            )}
+            {pkg.original_price && <span className={styles.originalPrice}>{pkg.original_price} ج.م</span>}
             <span className={styles.currentPrice}>
-              {pkg.price.toLocaleString()}
-              <small> ج.م</small>
+              {pkg.price} <small>ج.م</small>
             </span>
           </div>
 
-          {isPurchased ? (
+          {isOwned ? (
             <motion.button
               className={styles.enterButton}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
               onClick={onEnter}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
+              <Play size={18} />
               <span>دخول</span>
-              <ChevronLeft size={18} />
             </motion.button>
           ) : (
             <motion.button
               className={styles.purchaseButton}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
               onClick={onPurchase}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <span>اشترك الآن</span>
               <ShoppingCart size={18} />
+              <span>اشتراك</span>
             </motion.button>
           )}
         </div>
@@ -745,296 +416,488 @@ function PackageCard({ pkg, isPurchased, theme, index, onPurchase, onEnter }: an
 }
 
 // Purchase Modal Component
-function PurchaseModal({ pkg, user, walletBalance, theme, onClose, onSuccess, gradeSlug }: any) {
-  const [method, setMethod] = useState<'wallet' | 'code'>('wallet')
-  const [code, setCode] = useState('')
+function PurchaseModal({
+  pkg,
+  walletBalance,
+  onClose,
+  onSuccess,
+}: {
+  pkg: PackageData
+  walletBalance: number
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "code">("wallet")
+  const [code, setCode] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [codeDetails, setCodeDetails] = useState<any>(null)
-  const [showSuccess, setShowSuccess] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', handleEsc)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', handleEsc)
-      document.body.style.overflow = ''
-    }
-  }, [onClose])
+  const canPayWithWallet = walletBalance >= pkg.price
 
   const handlePurchase = async () => {
     setLoading(true)
-    setError('')
+    setError("")
 
-    try {
-      if (method === 'wallet') {
-        if (walletBalance < pkg.price) {
-          throw new Error('رصيد غير كافٍ. يرجى شحن المحفظة أولاً.')
-        }
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
-        const deductResult = await deductWalletBalance(user.id, pkg.price, pkg.id)
-        if (!deductResult.success) {
-          throw new Error(deductResult.message || 'فشل في خصم المبلغ من المحفظة')
-        }
-
-        const pkgResult = await createUserPackage(user.id, pkg.id, pkg.duration_days || 30, 'wallet')
-        if (!pkgResult.success) {
-          throw new Error(pkgResult.message || 'فشل في تفعيل الباقة')
-        }
-
-      } else if (method === 'code') {
-        if (!code.trim()) {
-          throw new Error('الرجاء إدخال كود التفعيل')
-        }
-
-        const validateResult = await validateCode(code.toUpperCase(), gradeSlug, pkg.id)
-        if (!validateResult.success) {
-          throw new Error(validateResult.message || 'كود غير صالح')
-        }
-
-        const markResult = await markCodeAsUsed(validateResult.data.id, user.id)
-        if (!markResult.success) {
-          throw new Error(markResult.message || 'فشل في استخدام الكود')
-        }
-
-        const pkgResult = await createUserPackage(user.id, pkg.id, pkg.duration_days || 30, 'code')
-        if (!pkgResult.success) {
-          throw new Error(pkgResult.message || 'فشل في تفعيل الباقة')
-        }
-
-        setCodeDetails(validateResult.data)
+    if (paymentMethod === "code") {
+      if (!code.trim()) {
+        setError("يرجى إدخال كود الاشتراك")
+        setLoading(false)
+        return
       }
-
-      setShowSuccess(true)
-      
-      await supabase.from('notifications').insert({
-        user_id: user.id,
-        title: 'تم الشراء بنجاح!',
-        message: `تم تفعيل ${pkg.name} بنجاح`,
-        type: 'success'
-      })
-
-      setTimeout(() => {
-        onSuccess()
-      }, 2000)
-
-    } catch (err: any) {
-      console.error('Purchase error:', err)
-      setError(err.message || 'حدث خطأ أثناء عملية الشراء')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const canPurchase = () => {
-    if (method === 'wallet') {
-      return walletBalance >= pkg.price
+      // Demo: Accept any code that starts with "CODE"
+      if (!code.toUpperCase().startsWith("CODE")) {
+        setError("كود الاشتراك غير صحيح أو مستخدم مسبقاً")
+        setLoading(false)
+        return
+      }
     } else {
-      return code.trim().length > 0
+      if (!canPayWithWallet) {
+        setError("رصيد المحفظة غير كافي")
+        setLoading(false)
+        return
+      }
     }
+
+    setSuccess(true)
+    setLoading(false)
+
+    // Auto close after success
+    setTimeout(() => {
+      onSuccess()
+    }, 2000)
   }
 
   return (
-    <motion.div 
-      className={styles.modalOverlay}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-    >
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className={styles.modalContent}
-        onClick={e => e.stopPropagation()}
+    <AnimatePresence>
+      <motion.div
+        className={styles.modalOverlay}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
       >
-        {showSuccess ? (
-          <motion.div 
-            className={styles.successView}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <motion.div 
-              className={styles.successIcon}
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 0.5 }}
-            >
-              <CheckCircle2 size={64} />
-            </motion.div>
-            <h3>تم الشراء بنجاح!</h3>
-            <p>يمكنك الآن الوصول إلى جميع محتويات الباقة</p>
-          </motion.div>
-        ) : (
-          <>
-            <button className={styles.modalClose} onClick={onClose}>
-              <X size={24} />
-            </button>
+        {success && <Confetti />}
+        <motion.div
+          className={styles.modalContent}
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {!success ? (
+            <>
+              <button className={styles.modalClose} onClick={onClose}>
+                <X size={20} />
+              </button>
 
-            <div className={styles.modalHeader}>
-              <div className={styles.modalIconWrapper}>
-                <Gift size={28} />
-              </div>
-              <h3>{pkg.name}</h3>
-              <div className={styles.modalPrice}>
-                <span className={styles.priceValue}>{pkg.price.toLocaleString()}</span>
-                <span className={styles.priceCurrency}>جنيه مصري</span>
-              </div>
-              {pkg.original_price && (
-                <span className={styles.modalOriginalPrice}>{pkg.original_price.toLocaleString()} ج.م</span>
-              )}
-            </div>
-
-            <div className={styles.modalBody}>
-              <div className={styles.paymentMethods}>
-                <motion.button 
-                  className={`${styles.methodCard} ${method === 'wallet' ? styles.methodActive : ''}`}
-                  onClick={() => {setMethod('wallet'); setError('')}}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className={styles.methodIcon}>
-                    <CreditCard size={22} />
-                  </div>
-                  <div className={styles.methodInfo}>
-                    <strong>الدفع من المحفظة</strong>
-                    <span>رصيدك: <b className={walletBalance >= pkg.price ? styles.sufficient : styles.insufficient}>{walletBalance.toLocaleString()} ج.م</b></span>
-                  </div>
-                  <div className={styles.methodCheck}>
-                    {walletBalance >= pkg.price ? (
-                      <CheckCircle2 size={20} className={styles.checkSuccess} />
-                    ) : (
-                      <AlertCircle size={20} className={styles.checkError} />
-                    )}
-                  </div>
-                </motion.button>
-
-                <motion.button 
-                  className={`${styles.methodCard} ${method === 'code' ? styles.methodActive : ''}`}
-                  onClick={() => {setMethod('code'); setError('')}}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className={`${styles.methodIcon} ${styles.methodIconCode}`}>
-                    <Ticket size={22} />
-                  </div>
-                  <div className={styles.methodInfo}>
-                    <strong>كود التفعيل</strong>
-                    <span>أدخل الكود للتفعيل الفوري</span>
-                  </div>
-                </motion.button>
+              {/* Header */}
+              <div className={styles.modalHeader}>
+                <div className={styles.modalIconWrapper}>
+                  <CreditCard size={28} />
+                </div>
+                <h3>{pkg.name}</h3>
+                <div className={styles.modalPrice}>
+                  <span className={styles.priceValue}>{pkg.price}</span>
+                  <span className={styles.priceCurrency}>جنيه مصري</span>
+                  {pkg.original_price && (
+                    <span className={styles.modalOriginalPrice}>بدلاً من {pkg.original_price} ج.م</span>
+                  )}
+                </div>
               </div>
 
-              {method === 'code' && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className={styles.codeInputSection}
-                >
-                  <input 
-                    type="text" 
-                    value={code} 
-                    onChange={e => setCode(e.target.value.toUpperCase())} 
-                    placeholder="أدخل الكود هنا"
-                    maxLength={20}
-                    disabled={loading}
-                    className={styles.codeInput}
-                  />
-                </motion.div>
-              )}
+              {/* Body */}
+              <div className={styles.modalBody}>
+                {/* Payment Methods */}
+                <div className={styles.paymentMethods}>
+                  {/* Wallet Option */}
+                  <button
+                    className={`${styles.methodCard} ${paymentMethod === "wallet" ? styles.methodActive : ""}`}
+                    onClick={() => setPaymentMethod("wallet")}
+                  >
+                    <div className={styles.methodIcon}>
+                      <Wallet size={20} />
+                    </div>
+                    <div className={styles.methodInfo}>
+                      <strong>الدفع من المحفظة</strong>
+                      <span className={canPayWithWallet ? styles.sufficient : styles.insufficient}>
+                        رصيدك: {walletBalance} ج.م
+                      </span>
+                    </div>
+                    <div className={styles.methodCheck}>
+                      {paymentMethod === "wallet" &&
+                        (canPayWithWallet ? (
+                          <CheckCircle2 size={24} className={styles.checkSuccess} />
+                        ) : (
+                          <AlertCircle size={24} className={styles.checkError} />
+                        ))}
+                    </div>
+                  </button>
 
-              {method === 'wallet' && walletBalance < pkg.price && (
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={styles.insufficientWarning}
-                >
-                  <AlertCircle size={18} />
-                  <div>
-                    <strong>رصيد غير كافٍ</strong>
-                    <span>يرجى شحن محفظتك أولاً</span>
-                  </div>
-                </motion.div>
-              )}
+                  {/* Code Option */}
+                  <button
+                    className={`${styles.methodCard} ${paymentMethod === "code" ? styles.methodActive : ""}`}
+                    onClick={() => setPaymentMethod("code")}
+                  >
+                    <div className={`${styles.methodIcon} ${styles.methodIconCode}`}>
+                      <Key size={20} />
+                    </div>
+                    <div className={styles.methodInfo}>
+                      <strong>كود اشتراك</strong>
+                      <span>لديك كود؟ أدخله هنا</span>
+                    </div>
+                    <div className={styles.methodCheck}>
+                      {paymentMethod === "code" && <CheckCircle2 size={24} className={styles.checkSuccess} />}
+                    </div>
+                  </button>
+                </div>
 
-              {error && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={styles.errorMessage}
-                >
-                  <AlertCircle size={16} />
-                  <span>{error}</span>
-                </motion.div>
-              )}
-
-              <motion.button 
-                className={styles.confirmButton}
-                onClick={handlePurchase}
-                disabled={!canPurchase() || loading}
-                whileHover={canPurchase() && !loading ? { scale: 1.02 } : {}}
-                whileTap={canPurchase() && !loading ? { scale: 0.98 } : {}}
-              >
-                {loading ? (
-                  <><Loader2 className={styles.spinning} size={20} /> جاري المعالجة...</>
-                ) : (
-                  <><span>تأكيد الشراء</span><ArrowLeft size={20} /></>
+                {/* Code Input */}
+                {paymentMethod === "code" && (
+                  <motion.div
+                    className={styles.codeInputSection}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <input
+                      type="text"
+                      className={styles.codeInput}
+                      placeholder="أدخل كود الاشتراك"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.toUpperCase())}
+                      dir="ltr"
+                    />
+                  </motion.div>
                 )}
-              </motion.button>
 
-              <div className={styles.securityNote}>
-                <Shield size={16} />
-                <span>معاملة آمنة ومشفرة 100%</span>
+                {/* Insufficient Balance Warning */}
+                {paymentMethod === "wallet" && !canPayWithWallet && (
+                  <div className={styles.insufficientWarning}>
+                    <AlertCircle size={20} />
+                    <div>
+                      <strong>رصيد غير كافي</strong>
+                      <span>تحتاج {pkg.price - walletBalance} ج.م إضافية</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error Message */}
+                {error && (
+                  <motion.div
+                    className={styles.errorMessage}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <AlertCircle size={18} />
+                    <span>{error}</span>
+                  </motion.div>
+                )}
+
+                {/* Confirm Button */}
+                <motion.button
+                  className={styles.confirmButton}
+                  onClick={handlePurchase}
+                  disabled={loading || (paymentMethod === "wallet" && !canPayWithWallet)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {loading ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Clock size={20} />
+                    </motion.div>
+                  ) : (
+                    <>
+                      <ShoppingCart size={20} />
+                      <span>تأكيد الاشتراك</span>
+                    </>
+                  )}
+                </motion.button>
+
+                {/* Security Note */}
+                <div className={styles.securityNote}>
+                  <Shield size={14} />
+                  <span>معاملة آمنة ومشفرة</span>
+                </div>
               </div>
-            </div>
-          </>
-        )}
+            </>
+          ) : (
+            <motion.div
+              className={styles.successView}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <div className={styles.successIcon}>
+                <CheckCircle2 size={48} />
+              </div>
+              <h3>تم الاشتراك بنجاح!</h3>
+              <p>يمكنك الآن الوصول إلى محتوى الباقة</p>
+            </motion.div>
+          )}
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </AnimatePresence>
   )
 }
 
-// Confetti Effect
-function ConfettiEffect({ theme }: { theme: ThemeType }) {
+// Main Page Component
+export default function GradePage({ params }: { params: Promise<{ grade: string }> }) {
+  const resolvedParams = use(params)
+  const gradeSlug = resolvedParams.grade
+
+  const [activeTab, setActiveTab] = useState<string>("weekly")
+  const [selectedPackage, setSelectedPackage] = useState<PackageData | null>(null)
+  const [userPackages, setUserPackages] = useState<UserPackage[]>(MOCK_USER_PACKAGES)
+  const [walletBalance, setWalletBalance] = useState(MOCK_WALLET_BALANCE)
+
+  // Get grade config
+  const gradeConfig = GRADE_CONFIG[gradeSlug] || GRADE_CONFIG.first
+
+  // Filter packages by current grade and active tab
+  const filteredPackages = useMemo(() => {
+    return MOCK_PACKAGES.filter((pkg) => pkg.grade === gradeSlug && pkg.type === activeTab && pkg.is_active)
+  }, [gradeSlug, activeTab])
+
+  // Check if user owns a package
+  const isPackageOwned = (packageId: string) => {
+    return userPackages.some((up) => up.package_id === packageId && up.is_active)
+  }
+
+  // Get user package data
+  const getUserPackage = (packageId: string) => {
+    return userPackages.find((up) => up.package_id === packageId)
+  }
+
+  // Handle purchase success
+  const handlePurchaseSuccess = () => {
+    if (selectedPackage) {
+      // Add to user packages
+      setUserPackages((prev) => [
+        ...prev,
+        {
+          id: `up${Date.now()}`,
+          package_id: selectedPackage.id,
+          purchased_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
+          is_active: true,
+        },
+      ])
+      // Deduct from wallet
+      setWalletBalance((prev) => prev - selectedPackage.price)
+    }
+    setSelectedPackage(null)
+  }
+
+  // Stats
+  const totalPackages = MOCK_PACKAGES.filter((p) => p.grade === gradeSlug && p.is_active).length
+  const totalLectures = MOCK_PACKAGES.filter((p) => p.grade === gradeSlug && p.is_active).reduce(
+    (sum, p) => sum + p.lecture_count,
+    0
+  )
+  const ownedCount = userPackages.filter((up) =>
+    MOCK_PACKAGES.some((p) => p.id === up.package_id && p.grade === gradeSlug)
+  ).length
+
   return (
-    <div className={styles.confettiContainer}>
-      {[...Array(50)].map((_, i) => {
-        const colors = [theme.primary, theme.accent, theme.secondary, '#f59e0b', '#10b981', '#ec4899']
-        const color = colors[Math.floor(Math.random() * colors.length)]
-        
-        return (
+    <div className={styles.pageContainer}>
+      {/* Header */}
+      <header className={styles.header}>
+        <div className={styles.headerContent}>
+          <div className={styles.headerInner}>
+            {/* Logo */}
+            <div className={styles.brand}>
+              <div className={styles.logoMark}>
+                <GraduationCap size={24} />
+              </div>
+              <div className={styles.brandText}>
+                <span className={styles.brandName}>منصة محمود الديب</span>
+                <span className={styles.brandTagline}>التعليمية</span>
+              </div>
+            </div>
+
+            {/* Wallet Widget */}
+            <div className={styles.walletWidget}>
+              <div className={styles.walletIconWrapper}>
+                <Wallet size={18} />
+              </div>
+              <div className={styles.walletInfo}>
+                <span className={styles.walletLabel}>المحفظة</span>
+                <span className={styles.walletBalance}>{walletBalance} ج.م</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className={styles.heroSection}>
+        <motion.div
+          className={styles.heroContent}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className={styles.gradeIcon} style={{ background: `linear-gradient(135deg, ${gradeConfig.color}, ${gradeConfig.color}dd)` }}>
+            {gradeConfig.icon}
+          </div>
+          <h1 className={styles.heroTitle}>{gradeConfig.name}</h1>
+          <p className={styles.heroSubtitle}>اختر الباقة المناسبة لك وابدأ رحلة التفوق</p>
+
+          {/* Hero Stats */}
+          <div className={styles.heroStats}>
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatValue}>{totalPackages}</span>
+              <span className={styles.heroStatLabel}>باقة متاحة</span>
+            </div>
+            <div className={styles.heroStatDivider} />
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatValue}>{totalLectures}</span>
+              <span className={styles.heroStatLabel}>محاضرة</span>
+            </div>
+            <div className={styles.heroStatDivider} />
+            <div className={styles.heroStat}>
+              <span className={styles.heroStatValue}>{gradeConfig.students}+</span>
+              <span className={styles.heroStatLabel}>طالب</span>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Quick Stats */}
+      <section className={styles.quickStatsSection}>
+        <div className={styles.quickStats}>
           <motion.div
-            key={i}
-            className={styles.confettiPiece}
-            initial={{ 
-              top: -10, 
-              left: Math.random() * 100 + '%',
-              rotate: 0,
-              scale: 0
-            }}
-            animate={{ 
-              top: '110%', 
-              left: `${Math.random() * 100}%`,
-              rotate: Math.random() * 720,
-              scale: Math.random() * 0.5 + 0.5
-            }}
-            transition={{ 
-              duration: Math.random() * 3 + 2,
-              ease: "linear"
-            }}
-            style={{
-              backgroundColor: color,
-              width: Math.random() * 12 + 6,
-              height: Math.random() * 12 + 6,
-              borderRadius: Math.random() > 0.5 ? '50%' : '2px'
-            }}
-          />
-        )
-      })}
+            className={styles.quickStatCard}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <div className={styles.quickStatIcon} style={{ background: "linear-gradient(135deg, #3b82f6, #2563eb)" }}>
+              <Package size={20} />
+            </div>
+            <div className={styles.quickStatInfo}>
+              <span className={styles.quickStatValue}>{totalPackages}</span>
+              <span className={styles.quickStatLabel}>إجمالي الباقات</span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            className={styles.quickStatCard}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <div className={styles.quickStatIcon} style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}>
+              <Star size={20} />
+            </div>
+            <div className={styles.quickStatInfo}>
+              <span className={styles.quickStatValue}>{ownedCount}</span>
+              <span className={styles.quickStatLabel}>باقاتك</span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            className={styles.quickStatCard}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className={styles.quickStatIcon} style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
+              <Users size={20} />
+            </div>
+            <div className={styles.quickStatInfo}>
+              <span className={styles.quickStatValue}>{gradeConfig.students}+</span>
+              <span className={styles.quickStatLabel}>طالب مشترك</span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            className={styles.quickStatCard}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <div className={styles.quickStatIcon} style={{ background: "linear-gradient(135deg, #8b5cf6, #7c3aed)" }}>
+              <TrendingUp size={20} />
+            </div>
+            <div className={styles.quickStatInfo}>
+              <span className={styles.quickStatValue}>{totalLectures}</span>
+              <span className={styles.quickStatLabel}>محاضرة</span>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Tabs Navigation */}
+      <nav className={styles.tabsNav}>
+        <div className={styles.tabsContainer}>
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              className={`${styles.tabButton} ${activeTab === tab.id ? styles.tabActive : ""}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className={styles.mainContent}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            {filteredPackages.length > 0 ? (
+              <div className={styles.packagesGrid}>
+                {filteredPackages.map((pkg) => (
+                  <PackageCard
+                    key={pkg.id}
+                    pkg={pkg}
+                    isOwned={isPackageOwned(pkg.id)}
+                    userPackage={getUserPackage(pkg.id)}
+                    onPurchase={() => setSelectedPackage(pkg)}
+                    onEnter={() => {
+                      // Navigate to package content
+                      window.location.href = `/grades/${gradeSlug}/packages/${pkg.id}`
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={styles.emptyState}>
+                <div className={styles.emptyIcon}>
+                  <Package size={40} />
+                </div>
+                <h3>لا توجد باقات متاحة</h3>
+                <p>لا توجد باقات {getTypeLabel(activeTab)} متاحة حالياً</p>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </main>
+
+      {/* Purchase Modal */}
+      {selectedPackage && (
+        <PurchaseModal
+          pkg={selectedPackage}
+          walletBalance={walletBalance}
+          onClose={() => setSelectedPackage(null)}
+          onSuccess={handlePurchaseSuccess}
+        />
+      )}
     </div>
   )
 }
