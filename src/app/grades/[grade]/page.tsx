@@ -1,27 +1,26 @@
 'use client'
 
 import React from "react"
+
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { motion, AnimatePresence, useScroll, useSpring, useMotionValue, useMotionTemplate } from 'framer-motion'
 import { createBrowserClient } from '@supabase/ssr'
-import {
+import { 
   Wallet, BookOpen, GraduationCap, Loader2, AlertCircle,
   Crown, Sparkles, Clock, Calendar, Medal, PlayCircle,
-  CheckCircle2, ArrowRight, ShoppingCart, RefreshCw,
+  CheckCircle2, ArrowRight, ShoppingCart, RefreshCw, 
   Ticket, CreditCard, X, Shield, Gift, Zap, Star,
-  ChevronLeft, Award, BookMarked, ArrowLeft, Users,
-  Award as AwardIcon, Book, Video, FileText, Check
+  ChevronLeft, Award, BookMarked, ArrowLeft, Users
 } from 'lucide-react'
 import styles from './GradePage.module.css'
 
-// Import actions
-import {
-  deductWalletBalance,
-  markCodeAsUsed,
-  createUserPackage,
+import { 
+  deductWalletBalance, 
+  markCodeAsUsed, 
+  createUserPackage, 
   validateCode,
-  getWalletBalance
+  getWalletBalance 
 } from './actions'
 
 interface Package {
@@ -41,8 +40,6 @@ interface Package {
   instructor?: string
   rating?: number
   students_count?: number
-  created_at?: string
-  updated_at?: string
 }
 
 interface UserPackage {
@@ -60,7 +57,6 @@ interface ThemeType {
   gradient: string
   light: string
   dark: string
-  glow: string
 }
 
 const themes: Record<string, ThemeType> = {
@@ -70,8 +66,7 @@ const themes: Record<string, ThemeType> = {
     accent: '#e94560',
     gradient: 'from-slate-900 via-slate-800 to-rose-900',
     light: '#f8fafc',
-    dark: '#0f172a',
-    glow: 'rgba(233, 69, 96, 0.3)'
+    dark: '#0f172a'
   },
   second: {
     primary: '#1a1a2e',
@@ -79,8 +74,7 @@ const themes: Record<string, ThemeType> = {
     accent: '#00b4d8',
     gradient: 'from-slate-900 via-blue-900 to-cyan-900',
     light: '#f0f9ff',
-    dark: '#0c4a6e',
-    glow: 'rgba(0, 180, 216, 0.3)'
+    dark: '#0c4a6e'
   },
   third: {
     primary: '#1a1a2e',
@@ -88,8 +82,7 @@ const themes: Record<string, ThemeType> = {
     accent: '#ee6c4d',
     gradient: 'from-slate-900 via-rose-900 to-orange-900',
     light: '#fff7ed',
-    dark: '#7c2d12',
-    glow: 'rgba(238, 108, 77, 0.3)'
+    dark: '#7c2d12'
   }
 }
 
@@ -100,19 +93,19 @@ export default function GradePage() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
-
+  
   const gradeSlug = params?.grade as 'first' | 'second' | 'third'
   const theme = themes[gradeSlug] || themes.first
 
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({ container: containerRef })
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 })
-
+  
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
-
-  const spotlightBackground = useMotionTemplate`radial-gradient(800px circle at ${mouseX}px ${mouseY}px, ${theme.accent}15, transparent 40%)`
-
+  
+  const spotlightBackground = useMotionTemplate`radial-gradient(800px circle at ${mouseX}px ${mouseY}px, ${theme.accent}08, transparent 40%)`
+  
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect()
     mouseX.set(e.clientX - rect.left)
@@ -135,19 +128,18 @@ export default function GradePage() {
     try {
       if (!isRefreshing) setLoading(true)
       setError(null)
-
+      
       const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
-
+      
       if (userError || !currentUser) {
         setUser(null)
         setLoading(false)
         setIsRefreshing(false)
         return
       }
-
+      
       setUser(currentUser)
 
-      // Fetch packages for this grade
       const { data: packagesData, error: packagesError } = await supabase
         .from('packages')
         .select('*')
@@ -156,7 +148,7 @@ export default function GradePage() {
         .order('price', { ascending: true })
 
       if (packagesError) throw packagesError
-
+      
       const enhancedPackages = packagesData?.map(pkg => ({
         ...pkg,
         features: pkg.features || [
@@ -165,33 +157,31 @@ export default function GradePage() {
           'دعم فني على مدار الساعة',
           'شهادة إتمام'
         ],
-        original_price: pkg.type === 'offer' ? Math.round(pkg.price * 1.3) : undefined,
+        original_price: pkg.type === 'offer' ? pkg.price * 1.3 : undefined,
         instructor: pkg.instructor || 'أستاذ محمود الديب',
         rating: pkg.rating || 4.9,
-        students_count: pkg.students_count || 1500,
-        created_at: pkg.created_at,
-        updated_at: pkg.updated_at
+        students_count: pkg.students_count || 0
       })) || []
-
+      
       setPackages(enhancedPackages)
 
-      // Fetch wallet balance
       const walletResult = await getWalletBalance(currentUser.id)
       if (walletResult.success && walletResult.data) {
         setWalletBalance(walletResult.data.balance || 0)
+      } else {
+        console.error('Failed to fetch wallet:', walletResult.message)
       }
 
-      // Fetch user packages
       const { data: userPkgs, error: userPkgsError } = await supabase
         .from('user_packages')
-        .select('*, packages:package_id(*)')
+        .select(`*, packages:package_id(*)`)
         .eq('user_id', currentUser.id)
         .eq('is_active', true)
         .gt('expires_at', new Date().toISOString())
 
       if (userPkgsError) throw userPkgsError
       setUserPackages(userPkgs as UserPackage[] || [])
-
+      
     } catch (err: any) {
       console.error('Error fetching data:', err)
       setError(err.message || 'حدث خطأ أثناء جلب البيانات')
@@ -207,7 +197,7 @@ export default function GradePage() {
 
   useEffect(() => {
     if (!user?.id) return
-
+    
     const channel = supabase
       .channel(`wallet-${user.id}`)
       .on('postgres_changes', {
@@ -234,23 +224,23 @@ export default function GradePage() {
 
   const { purchased, available, offers } = useMemo(() => {
     const purchasedIds = userPackages.map(up => up.package_id)
-
+    
     const purchased = userPackages
       .filter(up => up.packages)
-      .map(up => ({
-        ...up.packages,
-        userPackageId: up.id,
-        expires_at: up.expires_at
+      .map(up => ({ 
+        ...up.packages, 
+        userPackageId: up.id, 
+        expires_at: up.expires_at 
       }))
-
-    const available = packages.filter(p =>
+    
+    const available = packages.filter(p => 
       !purchasedIds.includes(p.id) && p.type !== 'offer'
     )
-
-    const offers = packages.filter(p =>
+    
+    const offers = packages.filter(p => 
       !purchasedIds.includes(p.id) && p.type === 'offer'
     )
-
+    
     return { purchased, available, offers }
   }, [packages, userPackages])
 
@@ -289,37 +279,28 @@ export default function GradePage() {
     }
   }
 
-  const getGradeSubtitle = () => {
-    switch(gradeSlug) {
-      case 'first': return 'المرحلة الأولى من التعليم الثانوي - بناء أساس قوي'
-      case 'second': return 'المرحلة المتوسطة - تطوير المهارات والمعرفة'
-      case 'third': return 'المرحلة النهائية - الاستعداد للجامعة'
-      default: return 'اختر باقتك المثالية'
-    }
-  }
-
   if (loading) {
     return (
       <div className={styles.loadingScreen}>
         <div className={styles.loadingContent}>
           <div className={styles.loadingLogo}>
             <motion.div 
-              className={styles.loadingRing} 
-              animate={{ rotate: 360 }} 
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }} 
+              className={styles.loadingRing}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
             />
             <Crown className={styles.loadingIcon} size={32} />
           </div>
           <motion.h2 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
             جاري تحميل البيانات
           </motion.h2>
-          <motion.p 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
             نحضر لك أفضل المحتوى التعليمي...
@@ -330,9 +311,17 @@ export default function GradePage() {
   }
 
   return (
-    <div className={styles.pageWrapper} ref={containerRef} onMouseMove={handleMouseMove}>
-      <motion.div className={styles.spotlight} style={{ background: spotlightBackground }} />
+    <div 
+      className={styles.pageWrapper} 
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+    >
       <motion.div
+        className={styles.spotlight}
+        style={{ background: spotlightBackground }}
+      />
+
+      <motion.div 
         className={styles.progressIndicator}
         style={{ scaleX }}
       />
@@ -340,22 +329,22 @@ export default function GradePage() {
       {/* Floating Elements */}
       <div className={styles.floatingElements}>
         {[...Array(6)].map((_, i) => (
-          <motion.div 
-            key={i} 
+          <motion.div
+            key={i}
             className={styles.floatingOrb}
-            animate={{ 
-              y: [0, -30, 0], 
-              x: [0, Math.sin(i) * 20, 0], 
-              scale: [1, 1.1, 1], 
+            animate={{
+              y: [0, -30, 0],
+              x: [0, Math.sin(i) * 20, 0],
+              scale: [1, 1.1, 1],
             }}
-            transition={{ 
-              duration: 4 + i, 
-              repeat: Infinity, 
-              delay: i * 0.5, 
-              ease: "easeInOut" 
+            transition={{
+              duration: 4 + i,
+              repeat: Infinity,
+              delay: i * 0.5,
+              ease: "easeInOut"
             }}
-            style={{ 
-              left: `${15 + i * 15}%`, 
+            style={{
+              left: `${15 + i * 15}%`,
               top: `${20 + (i % 3) * 25}%`,
             }}
           />
@@ -368,8 +357,8 @@ export default function GradePage() {
           <div className={styles.headerContent}>
             {/* Logo */}
             <motion.div 
-              initial={{ x: -30, opacity: 0 }} 
-              animate={{ x: 0, opacity: 1 }} 
+              initial={{ x: -30, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
               className={styles.brand}
             >
               <div className={styles.logoMark}>
@@ -426,21 +415,22 @@ export default function GradePage() {
       <section className={styles.heroSection}>
         <div className={styles.heroContainer}>
           <motion.div 
-            initial={{ y: 40, opacity: 0 }} 
-            animate={{ y: 0, opacity: 1 }} 
-            transition={{ delay: 0.1 }} 
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
             className={styles.heroContent}
           >
             <div className={styles.gradeIconWrapper}>
               <motion.div 
-                className={styles.gradeIcon} 
-                whileHover={{ scale: 1.1, rotate: 5 }} 
+                className={styles.gradeIcon}
+                whileHover={{ scale: 1.1, rotate: 5 }}
               >
                 <GraduationCap size={40} />
               </motion.div>
             </div>
+            
             <h1 className={styles.heroTitle}>{getGradeName()}</h1>
-            <p className={styles.heroSubtitle}>{getGradeSubtitle()}</p>
+            <p className={styles.heroSubtitle}>اختر باقتك المثالية وانطلق في رحلة التميز الأكاديمي</p>
             
             <div className={styles.heroStats}>
               <div className={styles.heroStatItem}>
@@ -451,11 +441,6 @@ export default function GradePage() {
               <div className={styles.heroStatItem}>
                 <span className={styles.heroStatValue}>{purchased.length}</span>
                 <span className={styles.heroStatLabel}>اشتراك نشط</span>
-              </div>
-              <div className={styles.heroStatDivider} />
-              <div className={styles.heroStatItem}>
-                <span className={styles.heroStatValue}>{offers.length}</span>
-                <span className={styles.heroStatLabel}>عرض خاص</span>
               </div>
             </div>
           </motion.div>
@@ -473,7 +458,7 @@ export default function GradePage() {
             ].map((tab) => (
               tab.show !== false && (
                 <motion.button 
-                  key={tab.id} 
+                  key={tab.id}
                   className={`${styles.tabButton} ${activeTab === tab.id ? styles.tabActive : ''}`}
                   onClick={() => setActiveTab(tab.id as any)}
                   whileHover={{ y: -2 }}
@@ -483,7 +468,10 @@ export default function GradePage() {
                   <span>{tab.label}</span>
                   <span className={styles.tabCount}>{tab.count}</span>
                   {activeTab === tab.id && (
-                    <motion.div className={styles.tabIndicator} layoutId="activeTab" />
+                    <motion.div 
+                      className={styles.tabIndicator}
+                      layoutId="activeTab"
+                    />
                   )}
                 </motion.button>
               )
@@ -498,8 +486,8 @@ export default function GradePage() {
           {/* Quick Stats for logged in users */}
           {user && purchased.length > 0 && (
             <motion.div 
-              initial={{ y: 20, opacity: 0 }} 
-              animate={{ y: 0, opacity: 1 }} 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
               className={styles.quickStats}
             >
               {[
@@ -508,7 +496,7 @@ export default function GradePage() {
                 { icon: Clock, label: 'يوم متبقي', value: Math.max(0, Math.ceil(userPackages.reduce((acc, up) => acc + (new Date(up.expires_at).getTime() - Date.now()), 0) / (1000 * 60 * 60 * 24))) }
               ].map((stat, idx) => (
                 <motion.div 
-                  key={idx} 
+                  key={idx}
                   className={styles.quickStatCard}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -579,7 +567,7 @@ export default function GradePage() {
       {/* Purchase Modal */}
       <AnimatePresence>
         {showPurchaseModal && selectedPackage && user && (
-          <PurchaseModal
+          <PurchaseModal 
             pkg={selectedPackage}
             user={user}
             walletBalance={walletBalance}
@@ -629,16 +617,6 @@ function PackageCard({ pkg, isPurchased, theme, index, onPurchase, onEnter }: an
     }
   }
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return ''
-    const date = new Date(dateString)
-    return date.toLocaleDateString('ar-EG', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    })
-  }
-
   return (
     <motion.div
       layout
@@ -650,7 +628,7 @@ function PackageCard({ pkg, isPurchased, theme, index, onPurchase, onEnter }: an
     >
       {/* Status Badge */}
       {(isPurchased || pkg.type === 'offer') && (
-        <motion.div
+        <motion.div 
           className={`${styles.statusBadge} ${isPurchased ? styles.badgePurchased : styles.badgeOffer}`}
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -663,7 +641,7 @@ function PackageCard({ pkg, isPurchased, theme, index, onPurchase, onEnter }: an
 
       {/* Discount Badge */}
       {pkg.original_price && (
-        <motion.div
+        <motion.div 
           className={styles.discountBadge}
           initial={{ x: 30, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
@@ -677,7 +655,7 @@ function PackageCard({ pkg, isPurchased, theme, index, onPurchase, onEnter }: an
       {/* Card Image */}
       <div className={styles.cardImageSection}>
         {pkg.image_url ? (
-          <img src={pkg.image_url} alt={pkg.name} className={styles.cardImage} loading="lazy" />
+          <img src={pkg.image_url || "/placeholder.svg"} alt={pkg.name} className={styles.cardImage} loading="lazy" />
         ) : (
           <div className={styles.cardImagePlaceholder}>
             <GraduationCap size={48} />
@@ -719,23 +697,11 @@ function PackageCard({ pkg, isPurchased, theme, index, onPurchase, onEnter }: an
           </div>
         </div>
 
-        {/* Metadata */}
-        <div className={styles.metadataRow}>
-          <div className={styles.metadataItem}>
-            <Users size={14} />
-            <span>{pkg.students_count?.toLocaleString() || 0} طالب</span>
-          </div>
-          <div className={styles.metadataItem}>
-            <Star size={14} className={styles.starIcon} />
-            <span>{pkg.rating}</span>
-          </div>
-        </div>
-
-        {/* Last Updated */}
-        {pkg.updated_at && (
-          <div className={styles.updatedInfo}>
-            <RefreshCw size={12} />
-            <span>آخر تحديث: {formatDate(pkg.updated_at)}</span>
+        {/* Expiry */}
+        {pkg.expires_at && (
+          <div className={styles.expiryInfo}>
+            <Calendar size={14} />
+            <span>ينتهي: {new Date(pkg.expires_at).toLocaleDateString('ar-EG')}</span>
           </div>
         )}
 
@@ -821,6 +787,7 @@ function PurchaseModal({ pkg, user, walletBalance, theme, onClose, onSuccess, gr
         if (!pkgResult.success) {
           throw new Error(pkgResult.message || 'فشل في تفعيل الباقة')
         }
+
       } else if (method === 'code') {
         if (!code.trim()) {
           throw new Error('الرجاء إدخال كود التفعيل')
@@ -845,7 +812,7 @@ function PurchaseModal({ pkg, user, walletBalance, theme, onClose, onSuccess, gr
       }
 
       setShowSuccess(true)
-
+      
       await supabase.from('notifications').insert({
         user_id: user.id,
         title: 'تم الشراء بنجاح!',
@@ -874,14 +841,14 @@ function PurchaseModal({ pkg, user, walletBalance, theme, onClose, onSuccess, gr
   }
 
   return (
-    <motion.div
+    <motion.div 
       className={styles.modalOverlay}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
     >
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -889,12 +856,12 @@ function PurchaseModal({ pkg, user, walletBalance, theme, onClose, onSuccess, gr
         onClick={e => e.stopPropagation()}
       >
         {showSuccess ? (
-          <motion.div
+          <motion.div 
             className={styles.successView}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <motion.div
+            <motion.div 
               className={styles.successIcon}
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 0.5 }}
